@@ -50,8 +50,3 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-/Default/
-
-/FileSystem/FileSystem
-/Kernel/Kernel
-/Memoria/Memoria
