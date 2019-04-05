@@ -4,13 +4,19 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../src/FileSystem.c 
+../src/Compactador.c \
+../src/FileSystem.c \
+../src/Lissandra.c 
 
 OBJS += \
-./src/FileSystem.o 
+./src/Compactador.o \
+./src/FileSystem.o \
+./src/Lissandra.o 
 
 C_DEPS += \
-./src/FileSystem.d 
+./src/Compactador.d \
+./src/FileSystem.d \
+./src/Lissandra.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
