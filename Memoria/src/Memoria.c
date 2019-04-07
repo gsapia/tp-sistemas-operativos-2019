@@ -55,118 +55,118 @@ void* consola(){
 }
 
 char *apiMemoria(char* mensaje){
-	char* comando = strtok(mensaje, " ");
-	if(comando){
-		if(!strcmp(comando,SELECT)){
+	char** comando = string_split(mensaje, " ");
+	if(*comando){
+		u_int16_t cantArgumentos = 0;
+		while(*(comando+cantArgumentos+1)){
+			cantArgumentos++;
+		}
+
+		if(!strcmp(*comando,SELECT)){
 			//SELECT [NOMBRE_TABLA] [KEY]
 			//SELECT TABLA1 3
 
-			char* nombreTabla = strtok(NULL, " ");
-			char* keystr = strtok(NULL, " ");
-			char* endptr;
-			ulong key;
-			if(keystr){
-				key = strtoul(keystr, &endptr, 10);
+			if(cantArgumentos == 2){
+				char* nombreTabla = *(comando+1);
+				char* keystr = *(comando+2);
+				char* endptr;
+				ulong key = strtoul(keystr, &endptr, 10);
+				if(*endptr == '\0'&& key < 65536){
+					return selects(nombreTabla, key);
+				}
 			}
-			if(!nombreTabla || !endptr || *endptr != '\0'|| (key > 65536 || key < 0) || strtok(NULL, " ")){
-				return strdup("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
-			}
-			return selects(nombreTabla, key);
+			return string_from_format("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
 		}
-		else if(!strcmp(comando,INSERT)){
+		else if(!strcmp(*comando,INSERT)){
 			//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”
 			//INSERT TABLA1 3 “Mi nombre es Lissandra”
 
-			char* nombreTabla = strtok(NULL, " ");
-			char* keystr = strtok(NULL, " ");
-			char* endptr= 0;
-			ulong key;
-			if(keystr){
-				key = strtoul(keystr, &endptr, 10);
+			if (cantArgumentos == 3) {
+				char* nombreTabla = *(comando+1);
+				char* keystr = *(comando+2);
+				char* endptr;
+				ulong key = strtoul(keystr, &endptr, 10);
+				char* valor = *(comando+3);
+				if (*endptr == '\0' && key < 65536) {
+					return insert(nombreTabla, key, valor);
+				}
 			}
-			char* valor = strtok(NULL, " ");
-			if(!nombreTabla || !endptr || *endptr != '\0'|| key > 65536 || !valor || strtok(NULL, " ")){
-				return strdup("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
-			}
-			return insert(nombreTabla, key, valor);
+			return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
 		}
-		else if(!strcmp(comando,CREATE)){
+		else if(!strcmp(*comando,CREATE)){
 			//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
 			//CREATE TABLA1 SC 4 60000
 
-			char* nombreTabla = strtok(NULL, " ");
-			char* tipoConsistencia = strtok(NULL, " ");
+			if(cantArgumentos == 4){
+				char* nombreTabla = *(comando+1);
+				char* tipoConsistencia = *(comando+2);
 
-			char* cantidadParticionesstr = strtok(NULL, " ");
-			char* compactionTimestr = strtok(NULL, " ");
-			char* endptr = 0;
-			ulong cantidadParticiones;
-			ulong compactionTime;
-			if(cantidadParticionesstr && compactionTimestr){
-				cantidadParticiones = strtoul(cantidadParticionesstr, &endptr, 10);
+				char* cantidadParticionesstr = *(comando+3);
+				char* compactionTimestr = *(comando+4);
+				char* endptr = 0;
+				ulong cantidadParticiones = strtoul(cantidadParticionesstr, &endptr, 10);
+				ulong compactionTime;
 				if(*endptr == '\0')
 					compactionTime = strtoul(compactionTimestr, &endptr, 10);
+				if(*endptr == '\0'){
+					// Faltaria revisar si el tipo de consistencia es valido ^
+					return create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+				}
+				return string_from_format("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
 			}
-			if(!nombreTabla || !tipoConsistencia || !endptr || *endptr != '\0' || !cantidadParticiones || !compactionTime || strtok(NULL, " ")){
-				// Faltaria revisar el tipo de consistencia ^
-				return strdup("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
-			}
-			return create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 		}
-		else if(!strcmp(comando,DESCRIBE)){
+		else if(!strcmp(*comando,DESCRIBE)){
 			//DESCRIBE [NOMBRE_TABLA]
 			//DESCRIBE TABLA1
-
-			char* nombreTabla = strtok(NULL, " ");
-			if(!nombreTabla || strtok(NULL, " ")){
-				return strdup("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
+			if(cantArgumentos == 1){
+				char* nombreTabla = *(comando+1);
+				return describe(nombreTabla);
 			}
-			return describe(nombreTabla);
+			return string_from_format("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
 		}
-		else if(!strcmp(comando,DROP)){
+		else if(!strcmp(*comando,DROP)){
 			//DROP [NOMBRE_TABLA]
 			//DROP TABLA1
 
-			char* nombreTabla = strtok(NULL, " ");
-			if(!nombreTabla || strtok(NULL, " ")){
-				return strdup("Sintaxis invalida. Uso: DROP [NOMBRE_TABLA]");
+			if(cantArgumentos == 1){
+				char* nombreTabla = *(comando+1);
+				return drop(nombreTabla);
 			}
-			return drop(nombreTabla);
+			return string_from_format("Sintaxis invalida. Uso: DROP [NOMBRE_TABLA]");
 		}
 		else if(comando && !strcmp(comando,JOURNAL)){
 			//JOURNAL
 
-			if(strtok(NULL, " ")){
-				return strdup("Sintaxis invalida. Uso: JOURNAL");
+			if(cantArgumentos == 0){
+				return journal();
 			}
-			return journal();
+			return string_from_format("Sintaxis invalida. Uso: JOURNAL");
 		}
 	}
-	return strdup("Comando invalido");
+	return string_from_format("Comando invalido");
 }
 
-// Abajo uso strdup() porque ahora solo uso string literals (no es memoria dinamica), y por ende free() rompe.
-// Habria que ver despues si eso es necesario, o tratando los resultados como const char* es suficiente
+
 char* selects(char* nombreTabla, u_int16_t key){
 	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
-	return strdup("Elegiste SELECT");
+	return string_from_format("Elegiste SELECT");
 }
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
 	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, key, valor);
-	return strdup("Elegiste INSERT");
+	return string_from_format("Elegiste INSERT");
 }
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
 	log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%s CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
-	return strdup("Elegiste CREATE");
+	return string_from_format("Elegiste CREATE");
 }
 char* describe(char* nombreTabla){
 	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
-	return strdup("Elegiste DESCRIBE");
+	return string_from_format("Elegiste DESCRIBE");
 }
 char* drop(char* nombreTabla){
 	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
-	return strdup("Elegiste DROP");
+	return string_from_format("Elegiste DROP");
 }
 char* journal(){
-	return strdup("Elegiste JOURNAL");
+	return string_from_format("Elegiste JOURNAL");
 }

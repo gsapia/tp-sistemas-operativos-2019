@@ -8,6 +8,7 @@
 #include <commons/config.h>
 #include <readline/readline.h>
 #include <pthread.h>
+
 #define SELECT "SELECT"
 #define INSERT "INSERT"
 #define CREATE "CREATE"
