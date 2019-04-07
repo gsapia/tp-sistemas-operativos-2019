@@ -55,6 +55,6 @@ dkms.conf
 *.log
 
 #Binarios
-/FileSystem/FileSystem
-/Kernel/Kernel
-/Memoria/Memoria 
+/FileSystem/Debug/FileSystem
+/Kernel/Debug/Kernel
+/Memoria/Debug/Memoria 
