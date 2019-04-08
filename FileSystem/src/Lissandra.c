@@ -25,7 +25,7 @@
 ##### .TMP / DUMPS / MEMTABLE
 -.tmp = se guardan los datos que vayan modificandose para luego compactarlos
 -Dos jerarquias de .tmp:
-	-El area de "memtable", dividido por tabla, son los datos que no fueron dumpeados en un archivo temporal.
+	-El area de "memtable", dividido por tabla, son los datos que no fueron dumpeados en un archivo temporal. Son los Insert que se acumulan hasta que se haga un DUMP.
 	-Datos en .tmp que estan pendientes de compactacion
 
 */
@@ -33,92 +33,47 @@
 #include "LFS.h"
 
 void *apiLissandra();
-char *consola();
 void dump();
 void funcionModulo();
-
+t_config *leer_config();
+int iniciar_servidor(char* PUERTO_ESCUCHA);
+t_log* iniciar_logger();
+int esperar_cliente(int socket_servidor);
+void hiloAPILissandra(pthread_t hiloAPI);
 
 int main(void){
-	pthread_t hiloAPI; int hilo;
-	Registro registro;
+	printf("Iniciando\n");
+	//logger = iniciar_logger();
+	pthread_t hiloAPI;
 
-	hilo = pthread_create(&hiloAPI, NULL, apiLissandra, NULL);
+	//log_info(logger, "Log funcionando...\n");
+	//hiloAPILissandra(hiloAPI);
+
+	//epoch() (Como carajo funciona)
+	dump();
+	funcionModulo(11,2);
+
+	t_config* config = leer_config();
+	printf("Cree el Config\n");
+	char* valor = config_get_string_value(config, "PUERTOESCUCHA");
+	printf("El valor es: %s \n", valor);
+
+	/*
+	//Actuo como SERVIDOR
+
+	int server_fd = iniciar_servidor(puerto_escucha);
+	log_info(logger, "Servidor listo para recibir al cliente");
+	int cliente_fd = esperar_cliente(server_fd);
+
+*/
+	return EXIT_SUCCESS;
+}
+
+void hiloAPILissandra(pthread_t hiloAPI){
+	int hilo = pthread_create(&hiloAPI, NULL, apiLissandra, NULL);
 	if(hilo){
 		fprintf(stderr,"Error - pthread_create() return code: %d\n",hilo);
 		exit(EXIT_FAILURE);
 	 }
-
 	pthread_join(hiloAPI, NULL);
-
-	dump();
-	funcionModulo();
-	return EXIT_SUCCESS;
-}
-
-void *apiLissandra(){
-	char *linea;
-	printf("Estas es la API de Lissandra.\n");
-
-	while(1){
-		linea = consola();
-		if(!strncmp(linea,SELECT,6)){
-			printf("Elegiste Select\n");
-			//SELECT [NOMBRE_TABLA] [KEY]
-			//SELECT TABLA1 3
-			free(linea);
-		}
-		if(!strncmp(linea,INSERT,6)){
-			printf("Elegiste Insert\n");
-			//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]” [Timestamp]
-			//INSERT TABLA1 3 “Mi nombre es Lissandra” 1548421507
-			free(linea);
-		}
-		if(!strncmp(linea,CREATE,6)){
-			printf("Elegiste Create\n");
-			//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
-			//CREATE TABLA1 SC 4 60000
-			free(linea);
-		}
-		if(!strncmp(linea,DESCRIBE,8)){
-			printf("Elegiste Describe\n");
-			//DESCRIBE [NOMBRE_TABLA]
-			//DESCRIBE TABLA1
-			free(linea);
-		}
-		if(!strncmp(linea,DROP,4)){
-			printf("Elegiste Drop\n");
-			//DROP [NOMBRE_TABLA]
-			//DROP TABLA1
-			free(linea);
-		}
-		if(!strncmp(linea,EXIT, 4)) {
-			printf("Elegiste Exit\n");
-			free(linea);
-			break;
-		}
-	}
-}
-
-char *consola(){
-	char *linea;
-	printf("Elegi la opcion que quieras que se ejecute:\n");
-	printf("1.Select\n");
-	printf("2.Insert\n");
-	printf("3.Create\n");
-	printf("4.Describe\n");
-	printf("5.Drop\n");
-	printf("0.Exit\n");
-	linea = readline(">");
-	return linea;
-}
-
-//Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla).
-//Luego se limpia la memtable.
-void dump(){
-	printf("Hago Dump\n");
-}
-//Distribuye las disitntas Key dentro de dicha tabla.
-//Se dividirá la key por la cantidad de particiones y el resto de la operación será la partición a utilizar
-void funcionModulo(){
-	printf("Hago Funcion Modulo\n");
 }
