@@ -1,5 +1,6 @@
 #include "Memoria.h"
 
+
 void* consola();
 char* apiMemoria(char*);
 
