@@ -32,6 +32,7 @@
 
 #include "LFS.h"
 
+void *consola();
 void *apiLissandra();
 void dump();
 void funcionModulo();
@@ -39,41 +40,43 @@ t_config *leer_config();
 int iniciar_servidor(char* PUERTO_ESCUCHA);
 t_log* iniciar_logger();
 int esperar_cliente(int socket_servidor);
+void enviar_mensaje(char* mensaje, int socket_cliente);
 void hiloAPILissandra(pthread_t hiloAPI);
 
 int main(void){
-	printf("Iniciando\n");
-	//logger = iniciar_logger();
-	pthread_t hiloAPI;
+	//Inicio todas las variables
 
-	//log_info(logger, "Log funcionando...\n");
-	//hiloAPILissandra(hiloAPI);
 
-	//epoch() (Como carajo funciona)
-	dump();
-	funcionModulo(11,2);
-
+/*
 	t_config* config = leer_config();
-	printf("Cree el Config\n");
-	char* valor = config_get_string_value(config, "PUERTOESCUCHA");
-	printf("El valor es: %s \n", valor);
 
-	/*
-	//Actuo como SERVIDOR
-
-	int server_fd = iniciar_servidor(puerto_escucha);
+	Hago de Servidor
+	char* puertoEscucha = config_get_string_value(config, "PUERTOESCUCHA");
+	int server_fd = iniciar_servidor(puertoEscucha);
 	log_info(logger, "Servidor listo para recibir al cliente");
 	int cliente_fd = esperar_cliente(server_fd);
 
-*/
-	return EXIT_SUCCESS;
-}
+	//Envio el value a MEMORIA
 
-void hiloAPILissandra(pthread_t hiloAPI){
-	int hilo = pthread_create(&hiloAPI, NULL, apiLissandra, NULL);
+	char* tamanoValue = config_get_string_value(config, "TAMAÑOVALUE");
+	enviar_mensaje(tamanoValue, cliente_fd);
+	*/
+	//Inicio la API
+
+	logger = iniciar_logger();
+	log_info(logger, "Hola, soy Lissandra");
+
+	pthread_t hiloConsola;
+	int hilo = pthread_create(&hiloConsola, NULL, consola, NULL);
 	if(hilo){
-		fprintf(stderr,"Error - pthread_create() return code: %d\n",hilo);
-		exit(EXIT_FAILURE);
-	 }
-	pthread_join(hiloAPI, NULL);
+			fprintf(stderr,"Error - pthread_create() return code: %d\n",hilo);
+			exit(EXIT_FAILURE);
+		 }
+		pthread_join(hiloConsola, NULL);
+
+
+	//Esperar con recv() que MEMORIA nos mande las cosas
+
+
+	return EXIT_SUCCESS;
 }

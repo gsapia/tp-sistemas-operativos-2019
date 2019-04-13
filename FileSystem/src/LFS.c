@@ -2,75 +2,222 @@
 #include "LFS.h"
 
 // ############### LISSANDRA ###############
-char* consola();
 
-void *apiLissandra(){
-	printf("Estas es la API de LissandraAA.\n");
+void* consola();
+char* apiMemoria(char*);
 
-	while(1){
-		char *linea = consola();
-		if(strncmp(linea, "", 1) != 0){
-			printf("Elegiste %s\n", linea);
+char* selects(char* nombreTabla, u_int16_t key);
+// ^ La funcion select() ya existe, hay que buscar otro nombre mas creativo.... ^
+char* insert(char* nombreTabla, u_int16_t key, char* valor);
+char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
+// ^ Cantidad de particiones puede ser mas grande que u_int??? Lo mismo para compactionTime ^
+// ^ Ademas mas abajo asumo que son mayores a 0, quizas esta mal? ^
+// ^^ tipoConsistencia podria ser un enum?? ^^
+char* describe(char* nombreTabla);
+char* drop(char* nombreTabla);
 
-			if(!strncmp(linea,SELECT,6)){
 
-				//SELECT [NOMBRE_TABLA] [KEY]
-				//SELECT TABLA1 3
-				free(linea);
-			}
-			if(!strncmp(linea,INSERT,6)){
+void* consola(){
+	char *linea;
+	char *resultado;
+	while(1) {
+		linea = readline(">");
 
-				//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]” [Timestamp]
-				//INSERT TABLA1 3 “Mi nombre es Lissandra” 1548421507
-				free(linea);
-			}
-			if(!strncmp(linea,CREATE,6)){
-
-				//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
-				//CREATE TABLA1 SC 4 60000
-				free(linea);
-			}
-			if(!strncmp(linea,DESCRIBE,8)){
-
-				//DESCRIBE [NOMBRE_TABLA]
-				//DESCRIBE TABLA1
-				free(linea);
-			}
-			if(!strncmp(linea,DROP,4)){
-
-				//DROP [NOMBRE_TABLA]
-				//DROP TABLA1
-				free(linea);
-			}
-			if(!strncmp(linea,EXIT, 4)) {
-
-				free(linea);
-				break;
-			}
+		if(!strcmp(linea,"exit")){
+			free(linea);
+			break;
 		}
+
+		resultado = apiMemoria(linea);
+		free(linea);
+		puts(resultado);
+		free(resultado);
 	}
 }
 
-char* consola(){
-	char *linea;
-	printf("Elegi la opcion que quieras que se ejecute:\n");
-	printf("1.Select\n");
-	printf("2.Insert\n");
-	printf("3.Create\n");
-	printf("4.Describe\n");
-	printf("5.Drop\n");
-	printf("0.Exit\n");
-	linea = readline(">");
-	return linea;
+char *apiMemoria(char* mensaje){
+	char** comando = string_split(mensaje, " ");
+	if(comando[0]){
+		u_int16_t cantArgumentos = 0;
+		while(comando[cantArgumentos+1]){
+			cantArgumentos++;
+		}
+
+		if(!strcmp(comando[0],SELECT)){
+			//SELECT [NOMBRE_TABLA] [KEY]
+			//SELECT TABLA1 3
+
+			free(comando[0]);
+			if(cantArgumentos == 2){
+				char* nombreTabla = comando[1];
+				char* keystr = comando[2];
+				char* endptr;
+				ulong key = strtoul(keystr, &endptr, 10);
+				if(*endptr == '\0'&& key < 65536){
+					char* resultado = selects(nombreTabla, key);
+					free(nombreTabla);
+					free(keystr);
+					free(comando);
+					return resultado;
+				}
+			}
+			while(cantArgumentos){
+				free(comando[cantArgumentos]);
+				cantArgumentos--;
+			}
+			free(comando);
+			return string_from_format("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
+		}
+		else if(!strcmp(comando[0],INSERT)){
+			//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”
+			//INSERT TABLA1 3 "Mi nombre es Lissandra"
+
+			free(comando[0]);
+			if (cantArgumentos >= 3) {
+				char** argumentos = string_n_split(mensaje, 4, " ");
+				char** ultimoArgumento = string_split(argumentos[3], "\"");
+				free(argumentos[0]);
+				free(argumentos[1]);
+				free(argumentos[2]);
+				free(argumentos[3]);
+				free(argumentos);
+
+				if(!ultimoArgumento[1]){ // Si hay un solo argumento sigo, sino es que hay argumentos de mas...
+					char* nombreTabla = comando[1];
+					char* keystr = comando[2];
+					char* endptr;
+					ulong key = strtoul(keystr, &endptr, 10);
+					char* valor = ultimoArgumento[0];
+					if (*endptr == '\0' && key < 65536) {
+						char* resultado = insert(nombreTabla, key, valor);
+						while(cantArgumentos){
+							free(comando[cantArgumentos]);
+							cantArgumentos--;
+						}
+						free(valor);
+						free(ultimoArgumento);
+						free(comando);
+						return resultado;
+					}
+				}
+
+				for(int i = 0; ultimoArgumento[i]; i++){
+					free(ultimoArgumento[i]);
+				}
+				free(ultimoArgumento);
+			}
+			while(cantArgumentos){
+				free(comando[cantArgumentos]);
+				cantArgumentos--;
+			}
+			free(comando);
+			return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
+		}
+		else if(!strcmp(comando[0],CREATE)){
+			//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
+			//CREATE TABLA1 SC 4 60000
+
+			free(comando[0]);
+			if(cantArgumentos == 4){
+				char* nombreTabla = comando[1];
+				char* tipoConsistencia = comando[2];
+
+				char* cantidadParticionesstr = comando[3];
+				char* compactionTimestr = comando[4];
+				char* endptr = 0;
+				ulong cantidadParticiones = strtoul(cantidadParticionesstr, &endptr, 10);
+				ulong compactionTime;
+				if(*endptr == '\0')
+					compactionTime = strtoul(compactionTimestr, &endptr, 10);
+				if(*endptr == '\0'){
+					// Faltaria revisar si el tipo de consistencia es valido ^
+					char* resultado = create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+					free(nombreTabla);
+					free(tipoConsistencia);
+					free(cantidadParticionesstr);
+					free(compactionTimestr);
+					free(comando);
+					return resultado;
+				}
+			}
+			while(cantArgumentos){
+				free(comando[cantArgumentos]);
+				cantArgumentos--;
+			}
+			free(comando);
+			return string_from_format("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
+		}
+		else if(!strcmp(comando[0],DESCRIBE)){
+			//DESCRIBE [NOMBRE_TABLA]
+			//DESCRIBE TABLA1
+
+			free(comando[0]);
+			if(cantArgumentos == 1){
+				char* nombreTabla = comando[1];
+				char* resultado = describe(nombreTabla);
+				free(nombreTabla);
+				free(comando);
+				return resultado;
+			}
+			while(cantArgumentos){
+				free(comando[cantArgumentos]);
+				cantArgumentos--;
+			}
+			free(comando);
+			return string_from_format("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
+		}
+		else if(!strcmp(comando[0],DROP)){
+			//DROP [NOMBRE_TABLA]
+			//DROP TABLA1
+
+			free(comando[0]);
+			if(cantArgumentos == 1){
+				char* nombreTabla = comando[1];
+				char* resultado = drop(nombreTabla);
+				free(nombreTabla);
+				free(comando);
+				return resultado;
+			}
+			while(cantArgumentos){
+				free(comando[cantArgumentos]);
+				cantArgumentos--;
+			}
+			free(comando);
+			return string_from_format("Sintaxis invalida. Uso: DROP [NOMBRE_TABLA]");
+		}
+
+		while(cantArgumentos){
+			free(comando[cantArgumentos]);
+			cantArgumentos--;
+		}
+		free(comando[0]);
+	}
+	free(comando);
+	return string_from_format("Comando invalido");
 }
 
-t_config* leer_config() {
-	return config_create("LFS.config");
+
+char* selects(char* nombreTabla, u_int16_t key){
+	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
+	return string_duplicate("Elegiste SELECT");
+}
+char* insert(char* nombreTabla, u_int16_t key, char* valor){
+	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, key, valor);
+	return string_from_format("Elegiste INSERT");
+}
+char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
+	log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%s CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+	return string_from_format("Elegiste CREATE");
+}
+char* describe(char* nombreTabla){
+	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
+	return string_from_format("Elegiste DESCRIBE");
+}
+char* drop(char* nombreTabla){
+	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
+	return string_from_format("Elegiste DROP");
 }
 
-t_log* iniciar_logger() {
-	return log_create("log.log", "LissandraServer", 1, LOG_LEVEL_DEBUG);
-}
 
 //Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla). Luego se limpia la memtable.
 void dump(){
@@ -78,17 +225,9 @@ void dump(){
 }
 
 //Distribuye las disitntas Key dentro de dicha tabla. Se dividirá la key por la cantidad de particiones y el resto de la operación será la partición a utilizar
-void funcionModulo(int key, int particiones){
-	printf("Hago Funcion Modulo entre %d y %d, dando como resultado: %d\n",key,particiones, key % particiones);
+int funcionModulo(int key, int particiones){
+	return key % particiones;
 }
-
-/*
-t_config* leer_config() {
-	t_config* config = config_create("FS.config");
-	return config;
-}
-*/
-
 
 // ############### SOCKET SERVIDOR ###############
 
@@ -307,3 +446,13 @@ void liberar_conexion(int socket_cliente)
 	close(socket_cliente);
 }
 
+
+// ############### Extras ###############
+
+t_config* leer_config() {
+	return config_create("LFS.config");
+}
+
+t_log* iniciar_logger() {
+	return log_create("log.log", "LissandraServer", 1, LOG_LEVEL_DEBUG);
+}

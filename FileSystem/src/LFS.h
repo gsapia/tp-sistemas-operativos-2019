@@ -33,6 +33,7 @@ typedef struct{
 	double timeStamp;
 	uint16_t key;
 	char* value;
+	struct Registro *siguiente;
 }Registro;
 
 
