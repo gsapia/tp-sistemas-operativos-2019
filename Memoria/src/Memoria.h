@@ -8,6 +8,9 @@
 #include <commons/config.h>
 #include <readline/readline.h>
 #include <pthread.h>
+#include<sys/socket.h>
+#include<unistd.h>
+#include<netdb.h>
 
 #define SELECT "SELECT"
 #define INSERT "INSERT"
@@ -15,5 +18,7 @@
 #define DESCRIBE "DESCRIBE"
 #define DROP "DROP"
 #define JOURNAL "JOURNAL"
+
+t_log* logger;
 
 #endif /* MEMORIA_H_ */
