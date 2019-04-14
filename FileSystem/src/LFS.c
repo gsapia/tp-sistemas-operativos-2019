@@ -4,15 +4,12 @@
 // ############### LISSANDRA ###############
 
 void* consola();
-char* apiMemoria(char*);
+char* apiLissandra(char*);
 
 char* selects(char* nombreTabla, u_int16_t key);
 // ^ La funcion select() ya existe, hay que buscar otro nombre mas creativo.... ^
 char* insert(char* nombreTabla, u_int16_t key, char* valor);
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
-// ^ Cantidad de particiones puede ser mas grande que u_int??? Lo mismo para compactionTime ^
-// ^ Ademas mas abajo asumo que son mayores a 0, quizas esta mal? ^
-// ^^ tipoConsistencia podria ser un enum?? ^^
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
 
@@ -28,14 +25,14 @@ void* consola(){
 			break;
 		}
 
-		resultado = apiMemoria(linea);
+		resultado = apiLissandra(linea);
 		free(linea);
 		puts(resultado);
 		free(resultado);
 	}
 }
 
-char *apiMemoria(char* mensaje){
+char *apiLissandra(char* mensaje){
 	char** comando = string_split(mensaje, " ");
 	if(comando[0]){
 		u_int16_t cantArgumentos = 0;
@@ -231,6 +228,72 @@ int funcionModulo(int key, int particiones){
 
 // ############### SOCKET SERVIDOR ###############
 
+void* servidor(){
+	log_trace(logger, "Iniciando servidor");
+
+	struct sockaddr_in direccionServidor;
+	direccionServidor.sin_family = AF_INET;
+	direccionServidor.sin_addr.s_addr = INADDR_ANY;
+	direccionServidor.sin_port = htons(8080);
+
+	int servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+	int activado = 1;
+	setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
+
+	if(bind(servidor,&direccionServidor,sizeof(direccionServidor))){
+		log_error(logger, "Fallo el servidor");
+		exit(EXIT_FAILURE); ///
+	}
+
+	listen(servidor,SOMAXCONN);
+	log_trace(logger, "Escuchando");
+
+	struct sockaddr_in direccionCliente;
+	unsigned int tamanoDireccion = sizeof(direccionCliente);
+	int cliente = accept(servidor, &direccionCliente, &tamanoDireccion);
+	log_trace(logger, "Recibi una conexion en %d", cliente);
+
+
+	send(cliente, "Hola soy FS\n", sizeof("Hola soy FS\n"), 0);
+	while(1){
+		char* buffer = malloc(12);
+
+		int bytesRecibidos = recv(cliente, buffer, 16, 0);
+		if(bytesRecibidos < 0){
+			log_error(logger, "El cliente se desconecto");
+			exit(EXIT_FAILURE);
+		}
+		buffer[bytesRecibidos] = '\0';
+		string_trim(&buffer);
+		log_trace(logger, "Me llego el mensaje: %s", buffer);
+		if(!strcmp(buffer,"Hola soy Memoria")){
+			send(cliente, "Hola Memoria!\n", sizeof("Hola Memoria!\n"), 0);
+			free(buffer);
+			break;
+		}
+		free(buffer);
+	}
+
+	while(1){
+		char* buffer = malloc(100);
+
+		int bytesRecibidos = recv(cliente, buffer, 99, 0);
+		if(bytesRecibidos < 0){
+			log_error(logger, "El cliente se desconecto");
+			exit(EXIT_FAILURE); ///
+		}
+		buffer[bytesRecibidos-1] = '\0';
+		string_trim(&buffer);
+		log_trace(logger, "Me llego el mensaje: %s", buffer);
+		char* resultado = apiLissandra(buffer);
+		send(cliente, resultado, string_length(resultado), 0);
+		free(buffer);
+		free(resultado);
+	}
+}
+
+/*
 int iniciar_servidor(char* PUERTO_ESCUCHA)
 {
 
@@ -243,7 +306,7 @@ int iniciar_servidor(char* PUERTO_ESCUCHA)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    getaddrinfo(IP, PUERTO_ESCUCHA, &hints, &servinfo);
+    getaddrinfo(NULL, PUERTO_ESCUCHA, &hints, &servinfo);
 
     for (p=servinfo; p != NULL; p = p->ai_next)
     {
@@ -328,125 +391,7 @@ t_list* recibir_paquete(int socket_cliente)
 	return NULL;
 }
 
-
-// ############### SOCKET CLIENTE ###############
-
-void* serializar_paquete(t_paquete* paquete, int bytes)
-{
-	void * magic = malloc(bytes);
-	int desplazamiento = 0;
-
-	memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(magic + desplazamiento, paquete->buffer->stream, paquete->buffer->size);
-	desplazamiento+= paquete->buffer->size;
-
-	return magic;
-}
-
-int crear_conexion(char *ip, char* puerto)
-{
-	struct addrinfo hints;
-	struct addrinfo *server_info;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
-
-	getaddrinfo(ip, puerto, &hints, &server_info);
-
-	int socket_cliente = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
-
-	if(connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1)
-		printf("error");
-
-	freeaddrinfo(server_info);
-
-	return socket_cliente;
-}
-
-void enviar_mensaje(char* mensaje, int socket_cliente)
-{
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-
-	paquete->codigo_operacion = MENSAJE;
-	paquete->buffer = malloc(sizeof(t_buffer));
-	paquete->buffer->size = strlen(mensaje) + 1;
-	paquete->buffer->stream = malloc(paquete->buffer->size);
-	memcpy(paquete->buffer->stream, mensaje, paquete->buffer->size);
-
-	int bytes = paquete->buffer->size + 2*sizeof(int);
-
-	void* a_enviar = serializar_paquete(paquete, bytes);
-
-	send(socket_cliente, a_enviar, bytes, 0);
-
-	free(a_enviar);
-	eliminar_paquete(paquete);
-}
-
-void crear_buffer(t_paquete* paquete)
-{
-	paquete->buffer = malloc(sizeof(t_buffer));
-	paquete->buffer->size = 0;
-	paquete->buffer->stream = NULL;
-}
-
-t_paquete* crear_super_paquete(void)
-{
-	//me falta un malloc!
-	t_paquete* paquete = malloc(sizeof(t_paquete));;
-
-	//descomentar despues de arreglar
-	paquete->codigo_operacion = PAQUETE;
-	crear_buffer(paquete);
-	return paquete;
-}
-
-t_paquete* crear_paquete(void)
-{
-	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete->codigo_operacion = PAQUETE;
-	crear_buffer(paquete);
-	return paquete;
-}
-
-void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio)
-{
-	paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
-
-	memcpy(paquete->buffer->stream + paquete->buffer->size, &tamanio, sizeof(int));
-	memcpy(paquete->buffer->stream + paquete->buffer->size + sizeof(int), valor, tamanio);
-
-	paquete->buffer->size += tamanio + sizeof(int);
-}
-
-void enviar_paquete(t_paquete* paquete, int socket_cliente)
-{
-	int bytes = paquete->buffer->size + 2*sizeof(int);
-	void* a_enviar = serializar_paquete(paquete, bytes);
-
-	send(socket_cliente, a_enviar, bytes, 0);
-
-	free(a_enviar);
-}
-
-void eliminar_paquete(t_paquete* paquete)
-{
-	free(paquete->buffer->stream);
-	free(paquete->buffer);
-	free(paquete);
-}
-
-void liberar_conexion(int socket_cliente)
-{
-	close(socket_cliente);
-}
-
-
+*/
 // ############### Extras ###############
 
 t_config* leer_config() {
@@ -454,5 +399,5 @@ t_config* leer_config() {
 }
 
 t_log* iniciar_logger() {
-	return log_create("log.log", "LissandraServer", 1, LOG_LEVEL_DEBUG);
+	return log_create("Lissandralog", "Lissandra", 1, LOG_LEVEL_TRACE);
 }

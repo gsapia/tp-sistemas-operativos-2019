@@ -33,49 +33,33 @@
 #include "LFS.h"
 
 void *consola();
-void *apiLissandra();
-void dump();
-void funcionModulo();
 t_config *leer_config();
-int iniciar_servidor(char* PUERTO_ESCUCHA);
 t_log* iniciar_logger();
-int esperar_cliente(int socket_servidor);
-void enviar_mensaje(char* mensaje, int socket_cliente);
-void hiloAPILissandra(pthread_t hiloAPI);
+void* servidor();
 
 int main(void){
-	//Inicio todas las variables
-
-
-/*
 	t_config* config = leer_config();
-
-	Hago de Servidor
-	char* puertoEscucha = config_get_string_value(config, "PUERTOESCUCHA");
-	int server_fd = iniciar_servidor(puertoEscucha);
-	log_info(logger, "Servidor listo para recibir al cliente");
-	int cliente_fd = esperar_cliente(server_fd);
-
-	//Envio el value a MEMORIA
-
-	char* tamanoValue = config_get_string_value(config, "TAMAÑOVALUE");
-	enviar_mensaje(tamanoValue, cliente_fd);
-	*/
-	//Inicio la API
 
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 
+	/*Api Lissandra
 	pthread_t hiloConsola;
-	int hilo = pthread_create(&hiloConsola, NULL, consola, NULL);
-	if(hilo){
-			fprintf(stderr,"Error - pthread_create() return code: %d\n",hilo);
-			exit(EXIT_FAILURE);
-		 }
-		pthread_join(hiloConsola, NULL);
+	if(pthread_create(&hiloConsola, NULL, consola, NULL)){
+		log_error(logger, "Hilo consola: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}*/
+	//Servidor
+	pthread_t hiloServidor;
+	if(pthread_create(&hiloServidor, NULL, servidor, NULL)){
+		log_error(logger, "Hilo servidor: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
 
 
-	//Esperar con recv() que MEMORIA nos mande las cosas
+//	pthread_join(hiloConsola, NULL);
+	pthread_join(hiloServidor,NULL);
+	log_destroy(logger);
 
 
 	return EXIT_SUCCESS;
