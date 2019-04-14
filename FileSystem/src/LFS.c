@@ -399,5 +399,5 @@ t_config* leer_config() {
 }
 
 t_log* iniciar_logger() {
-	return log_create("Lissandralog", "Lissandra", 1, LOG_LEVEL_TRACE);
+	return log_create("Lissandra.log", "Lissandra", 1, LOG_LEVEL_TRACE);
 }
