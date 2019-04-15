@@ -27,26 +27,49 @@
 int main(void) {
 	puts("Soy Kernel");
 
-	/*int socketPedido;
+
+	//Socket Cliente
+
+	int cliente;
 		struct sockaddr_in direccionServidor;
 		direccionServidor.sin_family = AF_INET;
 		direccionServidor.sin_addr.s_addr = INADDR_ANY;
-		direccionServidor.sin_port = htons(6060); //Puerto que tiene que escuchar
+		direccionServidor.sin_port = htons(8082); //Puerto al que me conecto ?
 
 
-	    socketPedido = socket (AF_INET ,SOCK_STREAM ,0); //Pedimos un socket enviandole parametros que especifica que utilizamos protocolo TCP/ IP
+	    cliente = socket (AF_INET ,SOCK_STREAM ,0); //Pedimos un socket enviandole parametros que especifica que utilizamos protocolo TCP/ IP
 
-	    if (bind(socketPedido, (void*) &direccionServidor ,sizeof(direccionServidor)) != 0) //Colomos un bind para que no rompa el codigo.
-	    {                                                                                   //Si falla me devuelve un codigo != de cero.
-	    	perror("Fallo el bind!");
+	    if (connect (cliente, (void*) &direccionServidor, sizeof(direccionServidor)) !=0 ) //
+	    {
+	    	perror("No se pudo conectar ");
 	    	return 1;
 
 	    }//End if
 
-	    printf("Estoy escuchando\n");
-	    listen(socketPedido, SOMAXCONN); // Le pasamos como parametros el socket y un maximo de conexiones, esas conexiones iran a una cola
-	                                    // las cuales iremos aceptando. (SOMAXCONN es el numero maximo de conexiones) */
+	     /*while (9){
+	    	 char mensaje[1000];
+	    	 scanf ("%s", mensaje);
+	    	 send (cliente, mensaje, strlen(mensaje),0 );
+	     }*/
 
+	    send(cliente, "Hola soy Kernel", sizeof("Hola soy Kernel"), 0);
+	    	while(1){
+	    		char* buffer = malloc(sizeof("Hola soy Memoria"));
+
+	    		int bytesRecibidos = recv(cliente, buffer, sizeof("Hola soy Memoria"), 0);
+	    		if(bytesRecibidos < 0){
+	    			log_error(logger, "El cliente se desconecto");
+	    			exit(EXIT_FAILURE);
+	    		}
+	    		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
+	    		if(!strcmp(buffer,"Hola soy Memoria")){
+	    			send(cliente, "Hola Memoria!", sizeof("Hola Memoria!"), 0);
+	    			free(buffer);
+	    			break;
+	    		}
+	    		free(buffer);
+
+	    	}
 
   //****************************** falta terminar socket*****************************
 
@@ -55,7 +78,7 @@ int main(void) {
 
 } // end main
 
-char *apiMemoria(char* mensaje){
+/*char *apiMemoria(char* mensaje){
 	char** comando = string_split(mensaje, " ");
 	if(comando[0]){
 		u_int16_t cantArgumentos = 0;
@@ -253,6 +276,6 @@ char* drop(char* nombreTabla){
 }
 char* journal(){
 	return string_from_format("Elegiste JOURNAL");
-}
+}*/
 
 
