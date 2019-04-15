@@ -228,13 +228,13 @@ int funcionModulo(int key, int particiones){
 
 // ############### SOCKET SERVIDOR ###############
 
-void* servidor(int puerto_escucha){
+void* servidor(uint16_t puerto_escucha){
 	log_trace(logger, "Iniciando servidor");
 
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
 	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons((uint16_t)puerto_escucha);
+	direccionServidor.sin_port = htons(puerto_escucha);
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -257,16 +257,14 @@ void* servidor(int puerto_escucha){
 
 	send(cliente, "Hola soy FS", sizeof("Hola soy FS"), 0);
 	while(1){
-		char* buffer = malloc(17);
+		char* buffer = malloc(sizeof("Hola soy Memoria"));
 
-		int bytesRecibidos = recv(cliente, buffer, 16, 0);
+		int bytesRecibidos = recv(cliente, buffer, sizeof("Hola soy Memoria"), 0);
 		if(bytesRecibidos < 0){
 			log_error(logger, "El cliente se desconecto");
 			exit(EXIT_FAILURE);
 		}
-		buffer[bytesRecibidos] = '\0';
-		string_trim(&buffer);
-		log_trace(logger, "Me llego el mensaje: %s", buffer);
+		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
 		if(!strcmp(buffer,"Hola soy Memoria")){
 			send(cliente, "Hola Memoria!", sizeof("Hola Memoria!"), 0);
 			free(buffer);
@@ -278,14 +276,14 @@ void* servidor(int puerto_escucha){
 	while(1){
 		char* buffer = malloc(100);
 
-		int bytesRecibidos = recv(cliente, buffer, 99, 0);
+		int bytesRecibidos = recv(cliente, buffer, 100, 0);
 		if(bytesRecibidos < 0){
 			log_error(logger, "El cliente se desconecto");
 			exit(EXIT_FAILURE); ///
 		}
 		buffer[bytesRecibidos-1] = '\0';
 		string_trim(&buffer);
-		log_trace(logger, "Me llego el mensaje: %s", buffer);
+		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
 		char* resultado = apiLissandra(buffer);
 		send(cliente, resultado, string_length(resultado), 0);
 		free(buffer);

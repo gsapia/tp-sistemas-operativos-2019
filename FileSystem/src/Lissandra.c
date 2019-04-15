@@ -51,7 +51,7 @@ int main(void){
 	}*/
 	//Servidor
 	pthread_t hiloServidor;
-	if(pthread_create(&hiloServidor, NULL, servidor, NULL)){
+	if(pthread_create(&hiloServidor, NULL, servidor, puerto_escucha)){
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
