@@ -35,11 +35,11 @@
 void *consola();
 t_config *leer_config();
 t_log* iniciar_logger();
-void* servidor();
+void* servidor(int puerto_escucha);
 
 int main(void){
 	t_config* config = leer_config();
-
+	int puerto_escucha = config_get_int_value(config, "PUERTOESCUCHA");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 

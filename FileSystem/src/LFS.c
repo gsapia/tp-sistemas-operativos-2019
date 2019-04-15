@@ -195,23 +195,23 @@ char *apiLissandra(char* mensaje){
 
 
 char* selects(char* nombreTabla, u_int16_t key){
-	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
+	log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
 	return string_duplicate("Elegiste SELECT");
 }
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
-	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, key, valor);
+	log_debug(logger, "INSERT: Recibi Tabla: %s Key:%d Valor: %s", nombreTabla, key, valor);
 	return string_from_format("Elegiste INSERT");
 }
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
-	log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%s CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+	log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 	return string_from_format("Elegiste CREATE");
 }
 char* describe(char* nombreTabla){
-	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
+	log_debug(logger, "DESCRIBE: Recibi Tabla: %s", nombreTabla);
 	return string_from_format("Elegiste DESCRIBE");
 }
 char* drop(char* nombreTabla){
-	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
+	log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
 	return string_from_format("Elegiste DROP");
 }
 
@@ -228,13 +228,13 @@ int funcionModulo(int key, int particiones){
 
 // ############### SOCKET SERVIDOR ###############
 
-void* servidor(){
+void* servidor(int puerto_escucha){
 	log_trace(logger, "Iniciando servidor");
 
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
 	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(8080);
+	direccionServidor.sin_port = htons((uint16_t)puerto_escucha);
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -255,9 +255,9 @@ void* servidor(){
 	log_trace(logger, "Recibi una conexion en %d", cliente);
 
 
-	send(cliente, "Hola soy FS\n", sizeof("Hola soy FS\n"), 0);
+	send(cliente, "Hola soy FS", sizeof("Hola soy FS"), 0);
 	while(1){
-		char* buffer = malloc(12);
+		char* buffer = malloc(17);
 
 		int bytesRecibidos = recv(cliente, buffer, 16, 0);
 		if(bytesRecibidos < 0){
@@ -268,7 +268,7 @@ void* servidor(){
 		string_trim(&buffer);
 		log_trace(logger, "Me llego el mensaje: %s", buffer);
 		if(!strcmp(buffer,"Hola soy Memoria")){
-			send(cliente, "Hola Memoria!\n", sizeof("Hola Memoria!\n"), 0);
+			send(cliente, "Hola Memoria!", sizeof("Hola Memoria!"), 0);
 			free(buffer);
 			break;
 		}
