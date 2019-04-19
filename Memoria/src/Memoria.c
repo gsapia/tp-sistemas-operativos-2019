@@ -66,6 +66,15 @@ void leerConfig(){
 	config.puerto_escucha = config_get_int_value(configf, "PUERTO");
 	log_trace(logger, "Lei puerto: %d", config.puerto_escucha); // Esto nomas para probar, pero esta de mas y habria que sacarlo
 	// TODO
+	config.puerto_fs = config_get_int_value(configf, "PUERTO_FS");
+	config.ip_seeds = config_get_array_value(configf, "IP_SEEDS");
+	config.puertos_seeds = config_get_array_value(configf, "PUERTO_SEEDS");
+	config.retardo_acc_mp = config_get_int_value(configf, "RETARDO_MEM");
+	config.retardo_acc_fs = config_get_int_value(configf, "RETARDO_FS");
+	config.tamanio_memoria = config_get_int_value(configf, "TAM_MEM");
+	config.tiempo_journal = config_get_int_value(configf, "RETARDO_JOURNAL");
+	config.tiempo_gossiping = config_get_int_value(configf, "RETARDO_GOSSIPING");
+	config.numero_memoria = config_get_int_value(configf, "MEMORY_NUMBER");
 }
 
 void* consola() {
