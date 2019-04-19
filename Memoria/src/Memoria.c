@@ -5,6 +5,20 @@ void* consola();
 void* servidor();
 void* cliente();
 
+typedef struct{
+	int puerto_escucha;
+	char* ip_fs;
+	int puerto_fs;
+	char* ip_seeds[2];
+	int puertos_seeds[2];
+	int retardo_acc_mp;
+	int retardo_acc_fs;
+	int tamanio_memoria;
+	int tiempo_journal;
+	int tiempo_gossiping;
+	int numero_memoria;
+}config;
+
 int main(void) {
 	logger = log_create("Memoria.log", "Memoria", 1, LOG_LEVEL_TRACE);
 	log_info(logger, "Hola Soy Memoria");
@@ -27,6 +41,22 @@ int main(void) {
 	}
 	pthread_join(hiloConsola, NULL);
 
+	config configM;
+	FILE * configmem;
+	char temp[50];
+	configmem = fopen("Memoria.config", "r");
+	if(configmem == NULL){
+		log_info(logger, "No se pudo abrir el archivo de configuracion");
+		exit(1);
+	}
+	getline(configmem, temp);
+	configM.puerto_escucha = string_substring(temp, 16, 4);
+	limpiarBuffer(temp, 50);
+	getline(configmem, temp);
+	configM.ip_fs = string_substring(temp, 8, 11);
+
+
+
 	// 1. Conectarse al proceso File System y realizar handshake necesario para obtener los datos requeridos. Esto incluye el tamaño máximo del Value configurado para la administración de las páginas.
 
 	// 2. Inicializar la memoria principal (que se explican en los siguientes apartados).
@@ -38,6 +68,12 @@ int main(void) {
 	log_destroy(logger);
 
 	return EXIT_SUCCESS;
+}
+
+void limpiarBuffer(char temp[], int dim){
+	for(int i = 0;i<=50 ;i++){
+		temp[i] = '\0';
+	}
 }
 
 void* consola() {
