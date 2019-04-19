@@ -5,7 +5,7 @@ void* consola();
 void* servidor();
 void* cliente();
 
-typedef struct{
+struct Config{
 	int puerto_escucha;
 	char* ip_fs;
 	int puerto_fs;
@@ -18,10 +18,14 @@ typedef struct{
 	int tiempo_gossiping;
 	int numero_memoria;
 }config;
+void leerConfig();
 
 int main(void) {
 	logger = log_create("Memoria.log", "Memoria", 1, LOG_LEVEL_TRACE);
 	log_info(logger, "Hola Soy Memoria");
+
+	leerConfig();
+
 	pthread_t hiloConsola;
 	if (pthread_create(&hiloConsola, NULL, consola, NULL)) {
 		log_error(logger, "Hilo consola: Error - pthread_create()");
@@ -41,19 +45,6 @@ int main(void) {
 	}
 	pthread_join(hiloConsola, NULL);
 
-	config configM;
-	FILE * configmem;
-	char temp[50];
-	configmem = fopen("Memoria.config", "r");
-	if(configmem == NULL){
-		log_info(logger, "No se pudo abrir el archivo de configuracion");
-		exit(1);
-	}
-	getline(configmem, temp);
-	configM.puerto_escucha = string_substring(temp, 16, 4);
-	limpiarBuffer(temp, 50);
-	getline(configmem, temp);
-	configM.ip_fs = string_substring(temp, 8, 11);
 
 
 
@@ -70,10 +61,11 @@ int main(void) {
 	return EXIT_SUCCESS;
 }
 
-void limpiarBuffer(char temp[], int dim){
-	for(int i = 0;i<=50 ;i++){
-		temp[i] = '\0';
-	}
+void leerConfig(){
+	t_config* configf = config_create("Memoria.config");
+	config.puerto_escucha = config_get_int_value(configf, "PUERTO");
+	log_trace(logger, "Lei puerto: %d", config.puerto_escucha); // Esto nomas para probar, pero esta de mas y habria que sacarlo
+	// TODO
 }
 
 void* consola() {
