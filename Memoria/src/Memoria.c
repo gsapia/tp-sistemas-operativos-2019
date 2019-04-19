@@ -9,8 +9,8 @@ struct Config{
 	int puerto_escucha;
 	char* ip_fs;
 	int puerto_fs;
-	char* ip_seeds[2];
-	int puertos_seeds[2];
+	char** ip_seeds;
+	int* puertos_seeds;
 	int retardo_acc_mp;
 	int retardo_acc_fs;
 	int tamanio_memoria;
@@ -64,11 +64,24 @@ int main(void) {
 void leerConfig(){
 	t_config* configf = config_create("Memoria.config");
 	config.puerto_escucha = config_get_int_value(configf, "PUERTO");
-	log_trace(logger, "Lei puerto: %d", config.puerto_escucha); // Esto nomas para probar, pero esta de mas y habria que sacarlo
-	// TODO
 	config.puerto_fs = config_get_int_value(configf, "PUERTO_FS");
 	config.ip_seeds = config_get_array_value(configf, "IP_SEEDS");
-	config.puertos_seeds = config_get_array_value(configf, "PUERTO_SEEDS");
+
+	char** str_puertos_seeds = config_get_array_value(configf, "PUERTO_SEEDS");
+
+	int cantSeeds;
+	for(cantSeeds = 0; str_puertos_seeds[cantSeeds]; cantSeeds++); // Cuento la cantidad de puertos en el array
+
+	config.puertos_seeds = malloc(sizeof(int) * cantSeeds); // El array de puertos va a tener tamanio igual a la cantidad de seeds.
+															// O sea, uno menos que el array de IPs (ya que este ultimo tiene un ultimo lugar para el NULL)
+															// La idea es que cuando se necesiten, se accedan a IP y Puerto en simultaneo, asi que controlariamos con el array de IPs
+
+	for(int i = 0; i < cantSeeds; i++){
+		config.puertos_seeds[i] = strtol(str_puertos_seeds[i], NULL, 10);
+		log_trace(logger, "Lei puerto de seeds: %d", config.puertos_seeds[i]); // Esto nomas para probar, pero esta de mas y habria que sacarlo
+
+	}
+
 	config.retardo_acc_mp = config_get_int_value(configf, "RETARDO_MEM");
 	config.retardo_acc_fs = config_get_int_value(configf, "RETARDO_FS");
 	config.tamanio_memoria = config_get_int_value(configf, "TAM_MEM");
