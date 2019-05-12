@@ -176,6 +176,7 @@ char *apiMemoria(char* mensaje){
 	return string_from_format("Comando invalido");
 }
 
+
 void consola() {
 	char *linea;
 	char *resultado;

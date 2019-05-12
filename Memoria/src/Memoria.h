@@ -42,4 +42,5 @@ struct pagina{
 	char* valor; // El valor tiene un tamanio maximo informado por LFS desde el comienzo.
 };
 
+
 #endif /* MEMORIA_H_ */

@@ -34,7 +34,6 @@ int main(void) {
 
 
 
-
 	// 1. Conectarse al proceso File System y realizar handshake necesario para obtener los datos requeridos. Esto incluye el tamaño máximo del Value configurado para la administración de las páginas.
 
 	// 2. Inicializar la memoria principal (que se explican en los siguientes apartados).

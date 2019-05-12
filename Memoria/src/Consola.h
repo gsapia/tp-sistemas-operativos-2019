@@ -13,7 +13,6 @@
 #include <commons/string.h>
 #include <string.h>
 
-
 void consola();
 
 #endif /* CONSOLA_H_ */

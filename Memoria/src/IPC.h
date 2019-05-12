@@ -19,6 +19,7 @@ enum operaciones{
 	JOURNAL
 };
 
+
 typedef struct{
 	uint16_t tamanio_nombre;
 	char* nombreTabla;

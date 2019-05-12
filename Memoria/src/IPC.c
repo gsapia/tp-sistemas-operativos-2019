@@ -29,6 +29,7 @@ struct_select recibir_select(int cliente){
 	puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
+
 	// Para tener en cuenta: El recv recibe un maximo de bytes como diga el tercer parametro,
 	// pero puede recibir menos por alguna circunstancia no esperada (si llegaron menos bytes de los que esperaba).
 	// La cantidad de bytes recibidos es el valor que devuelve recv, por lo que podemos almacenar y usar ese valor
