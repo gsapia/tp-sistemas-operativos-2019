@@ -60,8 +60,8 @@ void leerConfig(){
 	for(cantSeeds = 0; str_puertos_seeds[cantSeeds]; cantSeeds++); // Cuento la cantidad de puertos en el array
 
 	config.puertos_seeds = malloc(sizeof(int) * cantSeeds); // El array de puertos va a tener tamanio igual a la cantidad de seeds.
-                                                                // O sea, uno menos que el array de IPs (ya que este ultimo tiene un ultimo lugar para el NULL)
-                                                                // La idea es que cuando se necesiten, se accedan a IP y Puerto en simultaneo, asi que controlariamos con el array de IPs
+															// O sea, uno menos que el array de IPs (ya que este ultimo tiene un ultimo lugar para el NULL)
+															// La idea es que cuando se necesiten, se accedan a IP y Puerto en simultaneo, asi que controlariamos con el array de IPs
 
 	for(int i = 0; i < cantSeeds; i++){
 		config.puertos_seeds[i] = strtol(str_puertos_seeds[i], NULL, 10);
