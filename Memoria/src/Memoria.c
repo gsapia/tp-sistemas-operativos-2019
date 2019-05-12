@@ -1,23 +1,10 @@
 #include "Memoria.h"
 #include "API.h"
+#include "IPC.h"
+#include "Consola.h"
 
-void* consola();
-void* servidor();
-void* cliente();
-
-struct Config{
-	int puerto_escucha;
-	char* ip_fs;
-	int puerto_fs;
-	char** ip_seeds;
-	int* puertos_seeds;
-	int retardo_acc_mp;
-	int retardo_acc_fs;
-	int tamanio_memoria;
-	int tiempo_journal;
-	int tiempo_gossiping;
-	int numero_memoria;
-}config;
+//void* servidor();
+//void cliente();
 void leerConfig();
 
 int main(void) {
@@ -27,19 +14,19 @@ int main(void) {
 	leerConfig();
 
 	pthread_t hiloConsola;
-	if (pthread_create(&hiloConsola, NULL, consola, NULL)) {
+	if (pthread_create(&hiloConsola, NULL, (void*)consola, NULL)) {
 		log_error(logger, "Hilo consola: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 
 	pthread_t hiloServidor;
-	if (pthread_create(&hiloServidor, NULL, servidor, NULL)) {
+	if (pthread_create(&hiloServidor, NULL, (void*)servidor, NULL)) {
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 
 	pthread_t hiloCliente;
-	if (pthread_create(&hiloCliente, NULL, cliente, NULL)) {
+	if (pthread_create(&hiloCliente, NULL, (void*)cliente, NULL)) {
 		log_error(logger, "Hilo cliente: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
@@ -69,7 +56,7 @@ void leerConfig(){
 
 	char** str_puertos_seeds = config_get_array_value(configf, "PUERTO_SEEDS");
 
-	int cantSeeds;
+	int cantSeeds = 0;
 	for(cantSeeds = 0; str_puertos_seeds[cantSeeds]; cantSeeds++); // Cuento la cantidad de puertos en el array
 
 	config.puertos_seeds = malloc(sizeof(int) * cantSeeds); // El array de puertos va a tener tamanio igual a la cantidad de seeds.
@@ -88,27 +75,12 @@ void leerConfig(){
 	config.tiempo_journal = config_get_int_value(configf, "RETARDO_JOURNAL");
 	config.tiempo_gossiping = config_get_int_value(configf, "RETARDO_GOSSIPING");
 	config.numero_memoria = config_get_int_value(configf, "MEMORY_NUMBER");
+	free(configf);
 }
 
-void* consola() {
-	char *linea;
-	char *resultado;
-	while (1) {
-		linea = readline(">");
 
-		if (!strcmp(linea, "exit")) {
-			free(linea);
-			break;
-		}
 
-		resultado = apiMemoria(linea);
-		free(linea);
-		puts(resultado);
-		free(resultado);
-	}
-}
-
-void* servidor() {
+/*void* servidor() {
 	log_trace(logger, "Iniciando servidor");
 
 	struct sockaddr_in direccionServidor;
@@ -171,9 +143,10 @@ void* servidor() {
 		free(buffer);
 		free(resultado);
 	}
-}
+}*/
 
-void* cliente(){
+
+/*void* cliente(){
 	log_trace(logger, "Iniciando cliente");
 
 	struct sockaddr_in direccionServidor;
@@ -185,7 +158,8 @@ void* cliente(){
 	log_trace(logger, "Conectando con servidor (FS)");
 	if (connect(cliente, &direccionServidor, sizeof(direccionServidor))) {
 		log_error(logger, "No se pudo conectar con el servidor (FS)");
-		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
+		//exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
+		return;
 	}
 
 	send(cliente, "Hola soy Memoria", sizeof("Hola soy Memoria"), 0);
@@ -216,4 +190,4 @@ void* cliente(){
 		}
 		free(buffer);
 	}
-}
+}*/

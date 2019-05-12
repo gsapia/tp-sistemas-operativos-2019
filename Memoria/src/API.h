@@ -2,7 +2,6 @@
 #define API_H_
 
 #include "Memoria.h"
-char* apiMemoria(char*);
 
 char* selects(char* nombreTabla, u_int16_t key);
 // ^ La funcion select() ya existe, hay que buscar otro nombre mas creativo.... ^
