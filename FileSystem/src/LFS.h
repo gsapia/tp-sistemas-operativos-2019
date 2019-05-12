@@ -18,42 +18,31 @@
 #include<signal.h>
 #include<sys/socket.h>
 #include<netdb.h>
+#include<sys/stat.h>
+#include<commons/bitarray.h>
 
-#define SELECT "SELECT"
-#define INSERT "INSERT"
-#define CREATE "CREATE"
-#define DESCRIBE "DESCRIBE"
-#define DROP "DROP"
+#define SELECT "SELECT" 	//1
+#define INSERT "INSERT"	 	//2
+#define CREATE "CREATE" 	//3
+#define DESCRIBE "DESCRIBE"	//4
+#define DROP "DROP"			//5
 #define EXIT "EXIT"
 #define IP "127.0.0.1"
 
 t_log* logger;
 
+// ##### MemTable #####
 typedef struct{
 	double timeStamp;
 	uint16_t key;
 	char* value;
-	struct Registro *siguiente;
 }Registro;
 
+typedef struct{
+	Registro r;
+	struct NodoRegistro* siguiente;
+}NodoRegistro;
 
-// ##### SOCKETS #####
-typedef enum
-{
-	MENSAJE,
-	PAQUETE
-}op_code;
 
-typedef struct
-{
-	int size;
-	void* stream;
-} t_buffer;
-
-typedef struct
-{
-	op_code codigo_operacion;
-	t_buffer* buffer;
-} t_paquete;
 
 #endif /* LFS_H_ */
