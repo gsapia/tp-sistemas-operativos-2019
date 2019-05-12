@@ -13,6 +13,7 @@
 #include<unistd.h>
 #include<netdb.h>
 #include <pthread.h>
+#include<readline/history.h>
 
 
 #define SELECT "SELECT"
