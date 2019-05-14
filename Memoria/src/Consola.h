@@ -1,10 +1,3 @@
-/*
- * Consola.h
- *
- *  Created on: 11 may. 2019
- *      Author: utnso
- */
-
 #ifndef CONSOLA_H_
 #define CONSOLA_H_
 

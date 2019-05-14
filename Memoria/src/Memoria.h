@@ -6,6 +6,7 @@
 #include <commons/log.h>
 #include <commons/string.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
 #include <readline/readline.h>
 #include <pthread.h>
 #include <sys/socket.h>
@@ -35,12 +36,5 @@ struct Config{
 }config;
 
 t_log* logger;
-
-struct pagina{
-	long int timestamp; // Revisar bien el tipo
-	u_int16_t key;
-	char* valor; // El valor tiene un tamanio maximo informado por LFS desde el comienzo.
-};
-
 
 #endif /* MEMORIA_H_ */

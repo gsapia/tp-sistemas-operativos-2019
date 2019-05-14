@@ -264,11 +264,10 @@ void servidor() {
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
 				 */
-				printf("Comando recibido: SELECT %s %s\n\n", paquete.nombreTabla, paquete.key);
+				printf("Comando recibido: SELECT %s %d\n\n", paquete.nombreTabla, paquete.key);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
-				free(paquete.key);
 			}
 			break;
 			case INSERT:
@@ -279,11 +278,10 @@ void servidor() {
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
 				 */
-				printf("Comando recibido: INSERT %s %s \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
+				printf("Comando recibido: INSERT %s %d \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
-				free(paquete.key);
 				free(paquete.valor);
 			}
 			break;

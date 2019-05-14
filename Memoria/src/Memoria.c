@@ -2,10 +2,12 @@
 #include "API.h"
 #include "IPC.h"
 #include "Consola.h"
+#include "MemoriaPrincipal.h"
 
 //void* servidor();
 //void cliente();
 void leerConfig();
+void initMemoriaPrincipal();
 
 int main(void) {
 	logger = log_create("Memoria.log", "Memoria", 1, LOG_LEVEL_TRACE);
@@ -24,6 +26,12 @@ int main(void) {
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
+
+	// Para probar, supongo un valor de longitud 4 bytes. Pero habria que usar el valor enviado por LFS
+	tamanio_value = 4;
+
+	initMemoriaPrincipal();
+
 
 	pthread_t hiloCliente;
 	if (pthread_create(&hiloCliente, NULL, (void*)cliente, NULL)) {
@@ -65,7 +73,6 @@ void leerConfig(){
 	for(int i = 0; i < cantSeeds; i++){
 		config.puertos_seeds[i] = strtol(str_puertos_seeds[i], NULL, 10);
 		log_trace(logger, "Lei puerto de seeds: %d", config.puertos_seeds[i]); // Esto nomas para probar, pero esta de mas y habria que sacarlo
-
 	}
 
 	config.retardo_acc_mp = config_get_int_value(configf, "RETARDO_MEM");
@@ -74,7 +81,7 @@ void leerConfig(){
 	config.tiempo_journal = config_get_int_value(configf, "RETARDO_JOURNAL");
 	config.tiempo_gossiping = config_get_int_value(configf, "RETARDO_GOSSIPING");
 	config.numero_memoria = config_get_int_value(configf, "MEMORY_NUMBER");
-	free(configf);
+	config_destroy(configf);
 }
 
 

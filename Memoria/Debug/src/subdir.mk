@@ -7,19 +7,25 @@ C_SRCS += \
 ../src/API.c \
 ../src/Consola.c \
 ../src/IPC.c \
-../src/Memoria.c 
+../src/Memoria.c \
+../src/MemoriaPrincipal.c \
+../src/Misc.c 
 
 OBJS += \
 ./src/API.o \
 ./src/Consola.o \
 ./src/IPC.o \
-./src/Memoria.o 
+./src/Memoria.o \
+./src/MemoriaPrincipal.o \
+./src/Misc.o 
 
 C_DEPS += \
 ./src/API.d \
 ./src/Consola.d \
 ./src/IPC.d \
-./src/Memoria.d 
+./src/Memoria.d \
+./src/MemoriaPrincipal.d \
+./src/Misc.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
