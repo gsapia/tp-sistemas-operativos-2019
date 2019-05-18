@@ -253,21 +253,79 @@
 			printf("Adios hilo!\n");
 		}
 
+
 int main(void) {
 
 
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
-    log_info (logger, "Hola soy KKernel");
+    log_info (logger, "Hola soy KKernel \n");
 
     printf("Prueba de hilo\n");
 
-    pthread_t hiloAConsola;
 
+    pthread_t hiloAConsola;
 	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL)){
 		log_error(logger,"Hilo consola: error en la creacion pthread_create");
 		exit(EXIT_FAILURE);
 	}
 
+
+
+
+	// Algoritmo Plani RR SuperIncompleto
+
+
+	int quantum= 4; // Aca deberia ir "QUANTUM" .
+	int contador,cantScripts,time,remain,flag=0;
+	int tiempoEspera =0, tiempoRetorno=0, arrivosVec[10],rafagasVec[10],rt[10];
+	printf("Ingrese la cantidad de scripts");
+	scanf ("%d",&cantScripts);
+	remain = cantScripts;
+
+	for (contador=0; contador < cantScripts ; contador++)
+	{
+		printf("Ingrese los arribos y rafagas del script %d :", contador +1 );
+		scanf("%d", &arrivosVec[contador]);
+		scanf("%d", &rafagasVec[contador]);
+		rt[contador]=rafagasVec[contador];
+	}
+
+
+	for(time=0, contador=0; remain!=0;)
+	{
+		if(rt[contador] <= quantum && rt[contador]>0)
+		{
+		time =+ rafagasVec[contador];
+		rafagasVec[contador]=0;
+		flag =1;
+
+		}//end if
+		else if(rt[contador]>0)
+		{
+			rt[contador]-=quantum;
+			time+=quantum;
+		}
+		if(rt[contador]==0 && flag == 1)
+		{
+			remain--;
+			      printf("P[%d]\t|\t%d\t|\t%d\n",contador+1,time-arrivosVec[contador],time-arrivosVec[contador]-rafagasVec[contador]);
+			      tiempoEspera+=time-arrivosVec[contador]-rafagasVec[contador];
+			      tiempoRetorno+=time-arrivosVec[contador];
+			      flag=0;
+		}
+		if(contador==cantScripts-1)
+		      contador=0;
+		    else if(arrivosVec[contador+1]<=time)
+		      contador++;
+		    else
+		      contador=0;
+		  }
+		  printf("\nAverage Waiting Time= %f\n",tiempoEspera*1.0/cantScripts);
+		  printf("Avg Tiempo De Retorno Time = %f",tiempoRetorno*1.0/cantScripts);
+
+	}
+
+	// Fin RR
 
 
     /*//Pruebas de hilos
