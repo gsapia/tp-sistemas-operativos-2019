@@ -23,22 +23,22 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: Memoria
+all: ClienteEjemplo
 
 dependents:
-	-cd /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug && $(MAKE) clean all
+	-cd /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug && $(MAKE) all
 
 # Tool invocations
-Memoria: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so
+ClienteEjemplo: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so
 	@echo 'Building target: $@'
-	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug" -o "Memoria" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Invoking: Cross GCC Linker'
+	gcc -L"/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug" -o "ClienteEjemplo" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) Memoria
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) ClienteEjemplo
 	-@echo ' '
 
 .PHONY: all clean dependents

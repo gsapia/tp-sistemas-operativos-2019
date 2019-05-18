@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>Memoria</name>
+	<name>serializacion</name>
 	<comment></comment>
 	<projects>
-		<project>serializacion</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

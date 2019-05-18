@@ -1,0 +1,16 @@
+Para usar en eclipse:
+
+1. Propiedades del proyecto -> C/C++ General -> Paths and Symbols -> References -> Tildar serializacion
+2. En el menu de arriba, Run -> Run configurations -> A la izquierda elegir el proyecto -> Enviroment -> New
+3. Llenar con 
+	Name: LD_LIBRARY_PATH
+	Value: ${project_loc:/serializacion}/Debug
+4. En cada archivo que la uses, #include "serializacion.h"
+
+(Eso de value es la ruta absoluta a la ubicacion de la biblioteca compartida. 
+Eclipse reemplaza ${project_loc:/serializacion} con la ruta absoluta al proyecto serializacion en tu maquina.
+Si lo lanzas por consola, vas a tener que setear esa variable de entorno a la ruta absoluta.
+Por ejemplo: $ LD_LIBRARY_PATH=/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug ./ClienteEjemplo )
+
+
+Mas info: https://www.youtube.com/watch?v=Aw9kXFqWu_I
