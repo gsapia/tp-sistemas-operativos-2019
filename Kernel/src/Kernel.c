@@ -18,7 +18,7 @@
 	char* run();
 	void metrics();
 
-	t_log* logger;
+
 
 	void* consola(){
 		char *linea;
@@ -31,7 +31,7 @@
 				break;
 			}
 
-			resultado = apiKernel(linea); //Tiene un error en esta linea "Undefined reference to apiKernel"
+			resultado = apiKernel(linea);
 			free(linea);
 			puts(resultado);
 			free(resultado);
@@ -245,13 +245,47 @@
 	}
 
 
+	void saludar(){
+			printf("Hola soy un hilo \n");
+				}
+
+		void despedir(){
+			printf("Adios hilo!\n");
+		}
 
 int main(void) {
-	puts("Soy Kernel");
+
+
+	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
+    log_info (logger, "Hola soy KKernel");
+
+    printf("Prueba de hilo\n");
+
+    pthread_t hiloAConsola;
+
+	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL)){
+		log_error(logger,"Hilo consola: error en la creacion pthread_create");
+		exit(EXIT_FAILURE);
+	}
+
+
+
+    /*//Pruebas de hilos
+    pthread_t unHilo;
+	pthread_create(&unHilo,NULL, (void*)saludar,NULL);
+
+    pthread_join(unHilo,NULL);
+
+    pthread_t otroHilo;
+	pthread_create (&otroHilo, NULL, (void*)despedir,NULL);
+
+    pthread_join (otroHilo,NULL);*/
+
+
 
 	//SOCKET CLIENTE KERNEL
 
-	int cliente;
+	/*int cliente;
 		struct sockaddr_in direccionServidor;
 		direccionServidor.sin_family = AF_INET;
 		direccionServidor.sin_addr.s_addr = INADDR_ANY;
@@ -283,14 +317,15 @@ int main(void) {
 	    		}
 	    		free(buffer);
 
-	    	} //End Socket Cliente Kernel
+	    	}
 
-  // ??-
+	*/return EXIT_SUCCESS;
 
-	return EXIT_SUCCESS;
+}//End Socket Cliente Kernel*/
 
-}
 
-} //End Main
+
+
+ //End Main
 
 
