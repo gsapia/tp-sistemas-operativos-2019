@@ -8,7 +8,10 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include src/subdir.mk
+-include ServidorEjemplo/src/subdir.mk
+-include ServidorEjemplo/Debug/src/subdir.mk
+-include ClienteEjemplo/src/subdir.mk
+-include ClienteEjemplo/Debug/src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -23,25 +26,21 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: Memoria
-
-dependents:
-	-cd /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug && $(MAKE) clean all
+all: libserializacion.so
 
 # Tool invocations
-Memoria: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so
+libserializacion.so: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug" -o "Memoria" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -shared -o "libserializacion.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) Memoria
+	-$(RM) $(LIBRARIES)$(OBJS)$(C_DEPS) libserializacion.so
 	-@echo ' '
 
 .PHONY: all clean dependents
-/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so:
 
 -include ../makefile.targets
