@@ -30,19 +30,22 @@
 #define IP "127.0.0.1"
 
 t_log* logger;
+t_config* config;
 
 // ##### MemTable #####
 typedef struct{
 	double timeStamp;
 	uint16_t key;
 	char* value;
-}Registro;
+	char* nombre_tabla;
+}t_registro;
 
 typedef struct{
-	Registro r;
-	struct NodoRegistro* siguiente;
-}NodoRegistro;
+	double timeStamp;
+	uint16_t key;
+	char* value;
+}t_registroBusqueda;
 
-
-
+t_list *memTable;
+int cont;
 #endif /* LFS_H_ */

@@ -39,14 +39,13 @@ void* servidor(int puerto_escucha);
 void *fileSystem(t_config *config);
 
 int main(void){
-/*
-	t_config* config = leer_config();
+	memTable = list_create(); cont = 0;
+	config = leer_config();
 	int puerto_escucha = config_get_int_value(config, "PUERTOESCUCHA");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 
 	//Creo las Tablas del FileSystem necesarias
-	t_config* config = leer_config();
 	pthread_t hiloFS;
 	if(pthread_create(&hiloFS, NULL, fileSystem, config)){
 		log_error(logger, "Hilo consola: Error - pthread_create()");
@@ -60,20 +59,16 @@ int main(void){
 		log_error(logger, "Hilo consola: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-	//Servidor
+	/*Servidor
 	pthread_t hiloServidor;
 	if(pthread_create(&hiloServidor, NULL, servidor, puerto_escucha)){
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-
-
-//	pthread_join(hiloConsola, NULL);
-	pthread_join(hiloServidor,NULL);
-	log_destroy(logger);
-
-	Registro r1, r2;
 */
+	pthread_join(hiloConsola, NULL);
+//	pthread_join(hiloServidor,NULL);
+	log_destroy(logger);
 
 
 	return EXIT_SUCCESS;

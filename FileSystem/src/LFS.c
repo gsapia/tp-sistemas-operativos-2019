@@ -6,7 +6,12 @@ char* insert(char* nombreTabla, u_int16_t key, char* valor);
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
-struct NodoRegistro *memTable = NULL;
+bool existeTabla(char* nombreTabla);
+FILE* obtenerMetaDataLectura(char* nombreTabla);
+int funcionModulo(int key, int particiones);
+int obtenerParticiones(FILE* metadata);
+char* obtenerValue(char* nombreTabla, u_int16_t key, int particion);
+FILE* obtenerBIN(int particion, char* nombreTabla);
 
 void* consola(){
 	char *linea;
@@ -188,22 +193,64 @@ char *apiLissandra(char* mensaje){
 }
 
 char* selects(char* nombreTabla, u_int16_t key){
-	log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
-	return string_duplicate("Elegiste SELECT");
+	char* valueReturn;
+	if(existeTabla(nombreTabla)){
+		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
+		int particiones = obtenerParticiones(metadata);
+		printf("Obtuve la cantidad de particiones: %d \n", particiones);
+		int particion = funcionModulo(key, particiones);
+		printf("La Particion a la que hay que ir a buscar es: %d \n", particion);
+		valueReturn = obtenerValue(nombreTabla, key, particion);
+
+		fclose(metadata);
+		log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
+	}else{
+		log_debug(logger, "No existe en el File System la tabla: ",nombreTabla);
+	}
+	return string_from_format("El value es: %s",valueReturn);
 }
+
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
-	log_debug(logger, "INSERT: Recibi Tabla: %s Key:%d Valor: %s", nombreTabla, key, valor);
+
+	if(existeTabla(nombreTabla)){
+		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
+		t_registro *registro = malloc(sizeof(t_registro));
+		registro->nombre_tabla = malloc(31);
+		registro->value = malloc(51);
+		strcpy(registro->nombre_tabla, nombreTabla);
+		registro->key = key;
+		strcpy(registro->value, valor);
+//		registro.timestamp;
+
+		list_add(memTable, registro);
+		cont++;
+
+		fclose(metadata);
+		log_debug(logger, "INSERT: Recibi Tabla: %s Key: %d Valor: %s", nombreTabla, key, valor);
+	}else{
+		log_debug(logger, "No existe en el File System la tabla: ",nombreTabla);
+	}
 	return string_from_format("Elegiste INSERT");
+
 }
+
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
 	log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 	return string_from_format("Elegiste CREATE");
 }
+
 char* describe(char* nombreTabla){
 	log_debug(logger, "DESCRIBE: Recibi Tabla: %s", nombreTabla);
 	return string_from_format("Elegiste DESCRIBE");
 }
+
 char* drop(char* nombreTabla){
+	t_registro *imprimir;
+	for(int i=0;i<cont;i++){
+			imprimir = list_get(memTable,i);
+			printf("Nombre de Tabla: %s \nKey: %u \nValue: %s \n", imprimir->nombre_tabla, imprimir->key, imprimir->value);
+		}
+		cont = 0;
 	log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
 	return string_from_format("Elegiste DROP");
 }
@@ -218,6 +265,75 @@ int funcionModulo(int key, int particiones){
 	return key % particiones;
 }
 
+char* obtenerValue(char* nombreTabla, u_int16_t key, int particion){
+	char* value = "Valor Default";
+	int contador = 0;
+	void *listaDeReg = list_create();
+	t_registroBusqueda *reg = malloc(sizeof(t_registroBusqueda));
+	FILE* bin = obtenerBIN(particion, nombreTabla);
+
+	reg->key = 10;
+	reg->timeStamp = 400;
+	reg->value = "Value 1";
+	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
+/*	reg->key = 10;
+	reg->timeStamp = 100;
+	reg->value = "Value 2";
+	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
+	reg->key = 10;
+	reg->timeStamp = 200;
+	reg->value = "Value 3";
+	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
+*/
+	while(!feof(bin)){
+		t_registroBusqueda *reg2;
+		fread(&reg2, sizeof(t_registroBusqueda), 1, bin);
+		if(reg->key == key){
+			list_add(listaDeReg, reg2);
+			contador++;
+		}
+	}
+	printf("Contador = %d \n", contador);
+	t_registroBusqueda *aux1;
+	t_registroBusqueda *aux2;
+	if(contador > 0){
+		if(contador == 1){
+			aux1 = list_get(listaDeReg,0);
+			value = aux1->value;
+		}else if(contador == 2){
+			printf("Contador == 2");
+			aux1 = list_get(listaDeReg,0);
+			aux2 = list_get(listaDeReg,1);
+			if(aux1->timeStamp > aux2->timeStamp){
+				value = aux1->value;
+			}else{
+				value = aux2->value;
+			}
+		}else{
+			aux1 = list_get(listaDeReg,0);
+			aux2 = list_get(listaDeReg,1);
+			for(int i=2;i<contador;i++){
+				if(aux1->timeStamp > aux2->timeStamp){
+					aux2 = list_get(listaDeReg,i);
+				}else{
+					aux1 = list_get(listaDeReg,i);
+				}
+			}
+			if(aux1->timeStamp > aux2->timeStamp){
+				value = aux1->value;
+			}else{
+				value = aux2->value;
+			}
+
+		}
+	}else{
+		printf("No hay registros con esa Key");
+	}
+
+
+	fclose(bin);
+	return value;
+}
 // ############### SOCKET SERVIDOR ###############
 
 void* servidor(uint16_t puerto_escucha){
@@ -291,21 +407,5 @@ t_config* leer_config() {
 
 t_log* iniciar_logger() {
 	return log_create("Lissandra.log", "Lissandra", 1, LOG_LEVEL_TRACE);
-}
-
-void push(Registro r){
-	NodoRegistro *q =(NodoRegistro *) malloc (sizeof(NodoRegistro));
-	q->r = r;
-	q->siguiente = memTable;
-	memTable = q;
-	return;
-}
-
-Registro pop(){
-	NodoRegistro *q = memTable;
-	Registro v = q->r;
-	memTable = q->siguiente;
-	free (q);
-	return v;
 }
 
