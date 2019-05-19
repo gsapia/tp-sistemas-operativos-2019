@@ -13,14 +13,6 @@
 #include <unistd.h>
 #include <netdb.h>
 
-/*
-#define SELECT "SELECT"
-#define INSERT "INSERT"
-#define CREATE "CREATE"
-#define DESCRIBE "DESCRIBE"
-#define DROP "DROP"
-#define JOURNAL "JOURNAL"*/
-
 struct Config{
 	int puerto_escucha;
 	char* ip_fs;

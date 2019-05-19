@@ -1,5 +1,7 @@
 #include "MemoriaPrincipal.h"
 
+bool* paginas_usadas; // Habria que modificar esto para usar LRU
+
 void initMemoriaPrincipal(){
 	log_trace(logger, "Inicializando la memoria principal con un tamanio de %d bytes", config.tamanio_memoria);
 	memoria_principal = malloc(config.tamanio_memoria);
@@ -14,9 +16,20 @@ void initMemoriaPrincipal(){
 
 	// Inicializo la tabla de segmentos
 	tabla_segmentos = list_create();
+
+	paginas_usadas = malloc(CANT_PAGINAS);
+	for(uint32_t marco = 0; marco < CANT_PAGINAS; marco++)
+		*(paginas_usadas + marco) = false;
 }
 
 t_marco getPagina(){
-	// TODO
-	return 0;
+	// TODO: Habria que modificar esto para usar LRU
+
+	uint32_t marco;
+	for(marco = 0; *(paginas_usadas + marco); marco++);
+
+	*(paginas_usadas + marco) = true;
+	printf("marco = %d", marco);
+
+	return memoria_principal + (tamanio_pagina * marco);
 }

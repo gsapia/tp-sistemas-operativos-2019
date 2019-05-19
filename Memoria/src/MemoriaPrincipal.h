@@ -11,15 +11,16 @@
 
 #define CANT_PAGINAS ( config.tamanio_memoria / tamanio_pagina )
 
-typedef uint16_t t_marco;
+typedef void* t_marco;
 
 void* memoria_principal;
 
-/*struct registro{
-	long int timestamp; // Revisar bien el tipo
-	u_int16_t key;
-	char valor[tam]; // El valor tiene un tamanio maximo informado por LFS desde el comienzo.
-};*/
+/*typedef struct{
+	uint64_t* timestamp;
+	u_int16_t* key;
+	char* valor; // El valor tiene un tamanio maximo informado por LFS desde el comienzo.
+}t_registrop;*/
+
 /*
  * Un registro va a tener lo siguiente:
  * uint64_t timestamp;
@@ -42,12 +43,14 @@ typedef struct{
 
 typedef struct{
 	uint numero;
-	t_marco marco;
+	void* marco;
 	bool modificado;
 }t_pagina;
 
 t_list* tabla_segmentos;
 
 void initMemoriaPrincipal();
+
+void* getPagina();
 
 #endif /* MEMORIAPRINCIPAL_H_ */
