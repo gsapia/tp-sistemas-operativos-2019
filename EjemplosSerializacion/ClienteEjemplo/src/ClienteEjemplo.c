@@ -16,6 +16,7 @@ int main(void) {
 	direccionServidor.sin_port = htons(8080); // PUERTO
 
 	int cliente = socket(AF_INET, SOCK_STREAM, 0);
+
 	puts("Conectando con servidor (FS)");
 	if (connect(cliente, (void*) &direccionServidor, sizeof(direccionServidor))) {
 		puts("No se pudo conectar con el servidor (FS)");

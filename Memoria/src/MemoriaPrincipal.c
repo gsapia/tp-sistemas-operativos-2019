@@ -29,7 +29,6 @@ t_marco getPagina(){
 	for(marco = 0; *(paginas_usadas + marco); marco++);
 
 	*(paginas_usadas + marco) = true;
-	printf("marco = %d", marco);
 
 	return memoria_principal + (tamanio_pagina * marco);
 }

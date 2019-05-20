@@ -4,8 +4,6 @@
 #include "Consola.h"
 #include "MemoriaPrincipal.h"
 
-//void* servidor();
-//void cliente();
 void leerConfig();
 void initMemoriaPrincipal();
 

@@ -23,6 +23,7 @@ int main(void) {
 	}
 
 	listen(servidor, SOMAXCONN);
+
 	puts("Escuchando");
 
 	struct sockaddr_in direccionCliente;

@@ -12,6 +12,7 @@ struct_select recibir_select(int socket){
 	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
 	free(buffer);
 
+
 	// Ahora recibo el nombre de la tabla
 	buffer = malloc(tamanio_string);
 	recv(socket, buffer, tamanio_string, 0);

@@ -8,10 +8,6 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include ServidorEjemplo/src/subdir.mk
--include ServidorEjemplo/Debug/src/subdir.mk
--include ClienteEjemplo/src/subdir.mk
--include ClienteEjemplo/Debug/src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
