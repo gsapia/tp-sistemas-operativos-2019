@@ -1,5 +1,5 @@
 #include "IPC.h"
-
+/*
 struct_select recibir_select(int cliente){
 	struct_select paquete;
 	void* buffer;
@@ -193,7 +193,7 @@ void enviar_describe(int cliente, struct_describe paquete){
 	send(cliente, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
 	free(buffer);
 }
-
+*/
 void cliente(){
 	log_trace(logger, "Iniciando cliente");
 

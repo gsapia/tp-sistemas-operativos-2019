@@ -9,7 +9,9 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include "Memoria.h"
+#include "serializacion.h"
 
+/*
 enum operaciones{
 	SELECT = 1,
 	INSERT,
@@ -39,7 +41,7 @@ typedef struct{
 typedef struct{
 	char* nombreTabla;
 }struct_describe;
-
+*/
 void cliente();
 void servidor();
 
