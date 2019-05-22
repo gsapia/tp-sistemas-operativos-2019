@@ -20,6 +20,7 @@
 #include<netdb.h>
 #include<sys/stat.h>
 #include<commons/bitarray.h>
+#include <dirent.h>
 
 #define SELECT "SELECT" 	//1
 #define INSERT "INSERT"	 	//2
@@ -31,7 +32,7 @@
 
 t_log* logger;
 t_config* config;
-
+char* puntoMontaje;
 // ##### MemTable #####
 typedef struct{
 	double timeStamp;
