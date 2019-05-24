@@ -15,6 +15,9 @@ FILE* obtenerBIN(int particion, char* nombreTabla);
 void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
+void dumpDeTablas(t_list *memTableAux);
+void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor);
+
 
 void* consola(){
 	char *linea;
@@ -204,6 +207,10 @@ char* selects(char* nombreTabla, u_int16_t key){
 		printf("Obtuve la cantidad de particiones: %d \n", particiones);
 		int particion = funcionModulo(key, particiones);
 		printf("La Particion a la que hay que ir a buscar es: %d \n", particion);
+
+//		obtenerRegistrosDeMemTable();
+//		obtenerRegistrosDeTable();
+
 		valueReturn = obtenerValue(nombreTabla, key, particion);
 
 		fclose(metadata);
@@ -217,19 +224,9 @@ char* selects(char* nombreTabla, u_int16_t key){
 }
 
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
-
 	if(existeTabla(nombreTabla)){
-		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
-		t_registro *registro = malloc(sizeof(t_registro));
-		registro->nombre_tabla = malloc(31);
-		registro->value = malloc(51);
-		strcpy(registro->nombre_tabla, nombreTabla);
-		registro->key = key;
-		strcpy(registro->value, valor);
-//		registro.timestamp;
-
-		list_add(memTable, registro);
-		cont++;
+		FILE* metadata = obtenerMetaDataLectura(nombreTabla); //Nose xq pide "obtener metadata"
+		agregarAMemTable(nombreTabla, key, valor);
 
 		fclose(metadata);
 		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s", nombreTabla, key, valor);
@@ -272,8 +269,24 @@ char* drop(char* nombreTabla){
 }
 
 //Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla). Luego se limpia la memtable.
-void dump(){
-	printf("Hago Dump\n");
+void* dump(int tiempo_dump){
+	int tiempo = tiempo_dump/1000;
+	t_list* memTableAux = list_create();
+
+	while(1){
+		sleep(tiempo);
+		if(!list_is_empty(memTable)){
+			memTableAux = list_duplicate(memTable);
+			list_destroy_and_destroy_elements(memTable, free); //Hago esto para que se puedan seguir efectuando insert sin complicar las cosas
+			dumpDeTablas(memTableAux); //
+			log_info(logger, "Dump realizado, numero: %d", cantDumps+1);
+		}else{
+			log_info(logger, "No se puede hacer Dump: Memtable vacía");
+		}
+	}
+
+
+	return 0;
 }
 
 //Distribuye las disitntas Key dentro de dicha tabla. Se dividirá la key por la cantidad de particiones y el resto de la operación será la partición a utilizar
@@ -346,75 +359,10 @@ char* obtenerValue(char* nombreTabla, u_int16_t key, int particion){
 		printf("No hay registros con esa Key");
 	}
 
-
+	free(reg);
 	fclose(bin);
 	return value;
 }
-// ############### SOCKET SERVIDOR ###############
-
-void* servidor(uint16_t puerto_escucha){
-	log_trace(logger, "Iniciando servidor");
-
-	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(puerto_escucha);
-
-	int servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-	int activado = 1;
-	setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
-
-	if(bind(servidor,&direccionServidor,sizeof(direccionServidor))){
-		log_error(logger, "Fallo el servidor");
-		exit(EXIT_FAILURE); ///
-	}
-
-	listen(servidor,SOMAXCONN);
-	log_trace(logger, "Escuchando");
-
-	struct sockaddr_in direccionCliente;
-	unsigned int tamanoDireccion = sizeof(direccionCliente);
-	int cliente = accept(servidor, &direccionCliente, &tamanoDireccion);
-	log_trace(logger, "Recibi una conexion en %d", cliente);
-
-
-	send(cliente, "Hola soy FS", sizeof("Hola soy FS"), 0);
-	while(1){
-		char* buffer = malloc(sizeof("Hola soy Memoria"));
-
-		int bytesRecibidos = recv(cliente, buffer, sizeof("Hola soy Memoria"), 0);
-		if(bytesRecibidos < 0){
-			log_error(logger, "El cliente se desconecto");
-			exit(EXIT_FAILURE);
-		}
-		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
-		if(!strcmp(buffer,"Hola soy Memoria")){
-			send(cliente, "Hola Memoria!", sizeof("Hola Memoria!"), 0);
-			free(buffer);
-			break;
-		}
-		free(buffer);
-	}
-
-	while(1){
-		char* buffer = malloc(100);
-
-		int bytesRecibidos = recv(cliente, buffer, 100, 0);
-		if(bytesRecibidos < 0){
-			log_error(logger, "El cliente se desconecto");
-			exit(EXIT_FAILURE); ///
-		}
-		buffer[bytesRecibidos-1] = '\0';
-		string_trim(&buffer);
-		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
-		char* resultado = apiLissandra(buffer);
-		send(cliente, resultado, string_length(resultado), 0);
-		free(buffer);
-		free(resultado);
-	}
-}
-
 // ############### Extras ###############
 
 t_config* leer_config() {
@@ -425,3 +373,13 @@ t_log* iniciar_logger() {
 	return log_create("Lissandra.log", "Lissandra", 1, LOG_LEVEL_TRACE);
 }
 
+void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor){
+	t_registro *registro = malloc(sizeof(t_registro));
+	registro->nombre_tabla = malloc(strlen(nombreTabla)+1);
+	registro->value = malloc(strlen(valor)+1);
+	strcpy(registro->nombre_tabla, nombreTabla);
+	registro->key = key;
+	strcpy(registro->value, valor);
+	registro->timeStamp = 0;
+	list_add(memTable, registro);
+}

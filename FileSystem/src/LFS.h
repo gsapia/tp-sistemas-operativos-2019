@@ -22,14 +22,6 @@
 #include<commons/bitarray.h>
 #include <dirent.h>
 
-#define SELECT "SELECT" 	//1
-#define INSERT "INSERT"	 	//2
-#define CREATE "CREATE" 	//3
-#define DESCRIBE "DESCRIBE"	//4
-#define DROP "DROP"			//5
-#define EXIT "EXIT"
-#define IP "127.0.0.1"
-
 t_log* logger;
 t_config* config;
 char* puntoMontaje;
@@ -48,5 +40,6 @@ typedef struct{
 }t_registroBusqueda;
 
 t_list *memTable;
-int cont;
+int cont; 			// Contador de cantidad de registros en Memtable
+int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
 #endif /* LFS_H_ */

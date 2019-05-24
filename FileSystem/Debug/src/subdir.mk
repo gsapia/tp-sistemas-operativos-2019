@@ -6,18 +6,21 @@
 C_SRCS += \
 ../src/Compactador.c \
 ../src/FileSystem.c \
+../src/IPC.c \
 ../src/LFS.c \
 ../src/Lissandra.c 
 
 OBJS += \
 ./src/Compactador.o \
 ./src/FileSystem.o \
+./src/IPC.o \
 ./src/LFS.o \
 ./src/Lissandra.o 
 
 C_DEPS += \
 ./src/Compactador.d \
 ./src/FileSystem.d \
+./src/IPC.d \
 ./src/LFS.d \
 ./src/Lissandra.d 
 

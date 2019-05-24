@@ -24,6 +24,12 @@ enum consistencias{
 	EC
 };
 
+enum id_proceso{
+	ID_KERNEL = 1,
+	ID_MEMORIA,
+	ID_FILESYSTEM
+};
+
 typedef struct{
 	char* nombreTabla;
 	uint16_t key;

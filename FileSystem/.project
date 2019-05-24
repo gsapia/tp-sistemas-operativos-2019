@@ -3,6 +3,7 @@
 	<name>FileSystem</name>
 	<comment></comment>
 	<projects>
+		<project>serializacion</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

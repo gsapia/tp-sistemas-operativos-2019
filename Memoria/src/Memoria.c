@@ -56,6 +56,7 @@ int main(void) {
 void leerConfig(){
 	t_config* configf = config_create("Memoria.config");
 	config.puerto_escucha = config_get_int_value(configf, "PUERTO");
+	config.ip_fs = config_get_string_value(configf, "IP_FS");
 	config.puerto_fs = config_get_int_value(configf, "PUERTO_FS");
 	config.ip_seeds = config_get_array_value(configf, "IP_SEEDS");
 
@@ -79,7 +80,7 @@ void leerConfig(){
 	config.tiempo_journal = config_get_int_value(configf, "RETARDO_JOURNAL");
 	config.tiempo_gossiping = config_get_int_value(configf, "RETARDO_GOSSIPING");
 	config.numero_memoria = config_get_int_value(configf, "MEMORY_NUMBER");
-	config_destroy(configf);
+	//config_destroy(configf); // Si lo uso, libera las referencias a los strings y los vectores...
 }
 
 
