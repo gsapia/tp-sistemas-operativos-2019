@@ -199,19 +199,44 @@ void cliente(){
 
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family= AF_INET;
-	direccionServidor.sin_addr.s_addr = inet_addr("127.0.0.1"); // Direccion IP
-	direccionServidor.sin_port = htons(8080); // PUERTO
+	direccionServidor.sin_addr.s_addr = inet_addr(config.ip_fs); // Direccion IP
+	direccionServidor.sin_port = htons(config.puerto_fs); // PUERTO
+
+	log_trace(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
 
 	int cliente = socket(AF_INET, SOCK_STREAM, 0);
-	log_trace(logger, "Conectando con servidor (FS)");
-	if (connect(cliente, (void*) &direccionServidor, sizeof(direccionServidor))) {
-		log_trace(logger, "No se pudo conectar con el servidor (FS)");
-		return; // No seria la manera mas prolija de atender esto. Habria que seguir intentando
+	while(connect(cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
+		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
+		sleep(5);
 	}
+
+	//----------------COMIENZO HANDSHAKE----------------
+
+	// Envio primer mensaje diciendo que soy Memoria
+	const uint8_t soy = ID_MEMORIA;
+	send(cliente, &soy, sizeof(soy), 0);
+
+	// Recibo confirmacion de que el otro extremo es FS
+	uint8_t *otro = malloc(sizeof(uint8_t));
+	if(!(recv(cliente, otro, sizeof(uint8_t), 0) && *otro == ID_FILESYSTEM)){ // Confirmo que el otro extremo es FS
+		// El otro extremo no es FS, asi que cierro la conexion / termino el programa
+		log_error(logger, "Error, no pudimos conectar con FileSystem");
+		exit(EXIT_FAILURE);
+	}
+	// El otro extremo es FS realmente asi que ahora enviamos/recibimos los datos necesarios
+
+	// En este caso recibimos el tamaño del value
+	uint16_t *tamanio_value = malloc(sizeof(uint16_t));
+	recv(cliente, tamanio_value, sizeof(tamanio_value), 0);
+
+	// * FALTA GUARDAR EL TAMANIO DE VALUE DONDE CORRESPONDA *
+
+	//-------------------FIN HANDSHAKE------------------
+
+	log_trace(logger, "Me conecte con FS!");
 
 	/*
 	 * TODO:
-	 * Hago handshake
 	 * Enviar datos
 	 */
 
@@ -224,7 +249,7 @@ void servidor() {
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
 	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(8080); // Puerto
+	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -234,16 +259,50 @@ void servidor() {
 	}
 
 	listen(servidor, SOMAXCONN);
-	log_trace(logger, "Escuchando");
+	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
 
-	struct sockaddr_in direccionCliente;
-	unsigned int tamanoDireccion = sizeof(direccionCliente);
-	int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-	printf("Recibi una conexion en %d\n", cliente);
+	bool conectado = false;
+
+	while(!conectado){
+		struct sockaddr_in direccionCliente;
+		unsigned int tamanoDireccion = sizeof(direccionCliente);
+		int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
+		printf("Recibi una conexion en %d\n", cliente);
+
+
+		//----------------COMIENZO HANDSHAKE----------------
+
+		// Recibo quien es el otro extremo
+		uint8_t *otro = malloc(sizeof(uint8_t));
+
+		if(!(recv(cliente, otro, sizeof(uint8_t), 0) && otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
+			// El otro extremo no es Kernel, cierro la conexion / termino el programa
+			log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
+			close(cliente);
+		}
+		else{
+			// El otro extremo es Kernel realmente
+			// Envio confirmacion de que soy Memoria
+			const uint8_t soy = ID_MEMORIA;
+			send(cliente, &soy, sizeof(soy), 0);
+
+			// Y ahora entonces le enviamos/recibimos los datos necesarios
+
+
+			//Y por ahora no necesito enviar/recibir mas nada
+			// Asi que el handshake termino y me quedo a la espera de solicitudes de Kernel
+
+			//-------------------FIN HANDSHAKE------------------
+
+			conectado = true;
+			log_trace(logger, "Me conecte con Kernel!");
+		}
+	}
+
 
 	/*
 	 * TODO:
-	 * Hago handshake
+	 * Esperar solicitudes
 	 */
 
 	while(1){
