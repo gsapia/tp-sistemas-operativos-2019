@@ -18,6 +18,7 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
 void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor);
 
+
 void* consola(){
 	char *linea;
 	char *resultado;
@@ -362,71 +363,6 @@ char* obtenerValue(char* nombreTabla, u_int16_t key, int particion){
 	fclose(bin);
 	return value;
 }
-// ############### SOCKET SERVIDOR ###############
-
-void* servidor(uint16_t puerto_escucha){
-	log_trace(logger, "Iniciando servidor");
-
-	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(puerto_escucha);
-
-	int servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-	int activado = 1;
-	setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
-
-	if(bind(servidor,&direccionServidor,sizeof(direccionServidor))){
-		log_error(logger, "Fallo el servidor");
-		exit(EXIT_FAILURE); ///
-	}
-
-	listen(servidor,SOMAXCONN);
-	log_trace(logger, "Escuchando");
-
-	struct sockaddr_in direccionCliente;
-	unsigned int tamanoDireccion = sizeof(direccionCliente);
-	int cliente = accept(servidor, &direccionCliente, &tamanoDireccion);
-	log_trace(logger, "Recibi una conexion en %d", cliente);
-
-
-	send(cliente, "Hola soy FS", sizeof("Hola soy FS"), 0);
-	while(1){
-		char* buffer = malloc(sizeof("Hola soy Memoria"));
-
-		int bytesRecibidos = recv(cliente, buffer, sizeof("Hola soy Memoria"), 0);
-		if(bytesRecibidos < 0){
-			log_error(logger, "El cliente se desconecto");
-			exit(EXIT_FAILURE);
-		}
-		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
-		if(!strcmp(buffer,"Hola soy Memoria")){
-			send(cliente, "Hola Memoria!", sizeof("Hola Memoria!"), 0);
-			free(buffer);
-			break;
-		}
-		free(buffer);
-	}
-
-	while(1){
-		char* buffer = malloc(100);
-
-		int bytesRecibidos = recv(cliente, buffer, 100, 0);
-		if(bytesRecibidos < 0){
-			log_error(logger, "El cliente se desconecto");
-			exit(EXIT_FAILURE); ///
-		}
-		buffer[bytesRecibidos-1] = '\0';
-		string_trim(&buffer);
-		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
-		char* resultado = apiLissandra(buffer);
-		send(cliente, resultado, string_length(resultado), 0);
-		free(buffer);
-		free(resultado);
-	}
-}
-
 // ############### Extras ###############
 
 t_config* leer_config() {
