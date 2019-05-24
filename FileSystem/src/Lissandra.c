@@ -41,6 +41,7 @@ void *fileSystem(t_config *config);
 int main(void){
 	memTable = list_create(); cont = 0;
 	config = leer_config();
+	puntoMontaje = config_get_string_value(config,"PUNTOMONTAJE");
 	int puerto_escucha = config_get_int_value(config, "PUERTOESCUCHA");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");

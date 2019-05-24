@@ -12,6 +12,9 @@ int funcionModulo(int key, int particiones);
 int obtenerParticiones(FILE* metadata);
 char* obtenerValue(char* nombreTabla, u_int16_t key, int particion);
 FILE* obtenerBIN(int particion, char* nombreTabla);
+void crearDirectiorioDeTabla(char* nombreTabla);
+void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
+void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 
 void* consola(){
 	char *linea;
@@ -29,6 +32,7 @@ void* consola(){
 		puts(resultado);
 		free(resultado);
 	}
+	return 0;
 }
 
 char *apiLissandra(char* mensaje){
@@ -204,10 +208,12 @@ char* selects(char* nombreTabla, u_int16_t key){
 
 		fclose(metadata);
 		log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
+		return string_from_format("El value es: %s",valueReturn);
 	}else{
-		log_debug(logger, "No existe en el File System la tabla: ",nombreTabla);
+		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
+		return string_from_format(" No existe la Tabla: %s",nombreTabla);
 	}
-	return string_from_format("El value es: %s",valueReturn);
+
 }
 
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
@@ -226,15 +232,25 @@ char* insert(char* nombreTabla, u_int16_t key, char* valor){
 		cont++;
 
 		fclose(metadata);
-		log_debug(logger, "INSERT: Recibi Tabla: %s Key: %d Valor: %s", nombreTabla, key, valor);
+		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s", nombreTabla, key, valor);
+		return string_from_format("Se realizo el INSERT");
 	}else{
-		log_debug(logger, "No existe en el File System la tabla: ",nombreTabla);
+		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
+		return string_from_format("No existe en el File System la tabla: %s",nombreTabla);
 	}
-	return string_from_format("Elegiste INSERT");
+
 
 }
 
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
+//	CREATE TABLA1 SC 4 60000
+	if(!existeTabla(nombreTabla)){
+		crearDirectiorioDeTabla(nombreTabla);
+		crearMetadataDeTabla(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+		crearBinDeTabla(nombreTabla, cantidadParticiones);
+	}else{
+		log_info(logger, "La tabla %s ya existe en el FS", nombreTabla);
+	}
 	log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 	return string_from_format("Elegiste CREATE");
 }

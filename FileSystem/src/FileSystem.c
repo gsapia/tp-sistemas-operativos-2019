@@ -16,92 +16,103 @@ Se encontrara en [Punto_Montaje]/Metadata/Bitmap.bin
 */
 
 #include "LFS.h"
-t_config *leer_config();
-void crearMetaDataFS(char path[]);
-void crearBitMapFS(char path[]);
-void crearTables(char path[]);
-void crearBloquesDatos(char path[]);
+void crearFicheroPadre();
+void crearMetaDataFS();
+void crearBitMapFS();
+void crearTables();
+void crearBloquesDatos();
 bool existeTabla(char* nombreTabla);
-FILE* obtenerMetaData(char* nombreTabla);
+char* u_intAString(u_int a);
+char* intToString(int a);
 
 void *fileSystem(t_config *config) {
 	puts("Soy FileSystem");
 
-	//Creacion del Fichero Padre
-	char path[100];
-	char *path_aux = config_get_string_value(config,"PUNTOMONTAJE");
-	strcpy(path,path_aux);
-	char nombreArchivo[100];
-	if(mkdir(path, 0777) != 0){
-//		printf("No se pudo crear Carpeta\n");
-	}
-	crearMetaDataFS(path);
-	crearBitMapFS(path);
-	crearTables(path);
-	crearBloquesDatos(path);
-	strcat(path, nombreArchivo);
-	//FILE *f = fopen(path, "w+");
+	crearFicheroPadre();
+	crearMetaDataFS();
+	crearBitMapFS();
+	crearTables();
+	crearBloquesDatos();
+	return 0;
 }
 
-void crearMetaDataFS(char path[]){
-	char path_aux[100];
-	strcpy(path_aux,path);
-	strcat(path_aux, "Metadata/");
-	if(mkdir(path_aux, 0777) != 0){
-//			printf("No se pudo crear la carpeta /Metadata (Puede que ya este creada)\n");
-	}
-	strcat(path_aux,"Metadata.bin");
-	FILE *f = fopen(path_aux, "w+");
+void crearFicheroPadre(){
+	if(mkdir(puntoMontaje, 0777) != 0){}
 }
-void crearBitMapFS(char path[]){
-	char path_aux[100];
-	strcpy(path_aux,path);
-	strcat(path_aux, "Metadata/");
-	if(mkdir(path_aux, 0777) != 0){
-//			printf("No se pudo crear la carpeta /Metadata (Puede que ya este creada)\n");
-	}
-	strcat(path_aux,"Bitmap.bin");
-	FILE *f = fopen(path_aux, "w+");
+void crearMetaDataFS(){
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Metadata/")+strlen("Metadata.bin");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path, "Metadata/");
+	if(mkdir(path, 0777) != 0){}
+	strcat(path,"Metadata.bin");
+	FILE *f = fopen(path, "w+");
+	fclose (f);
+	free(path);
+}
+void crearBitMapFS(){
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Metadata/Bitmap.bin");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path, "Metadata/Bitmap.bin");
+	FILE *f = fopen(path, "w+");
 	//<commons/bitarray.h>
+	fclose(f);
+	free(path);
 }
-void crearTables(char path[]){
-	char path_aux[100];
-	strcpy(path_aux,path);
-	strcat(path_aux, "Table/");
-	if(mkdir(path_aux, 0777) != 0){
-//		printf("No se pudo crear la carpeta /Tables.\n");
-	}
+void crearTables(){
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Table/");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path, "Table/");
+	if(mkdir(path, 0777) != 0){}
+	free(path);
 }
-void crearBloquesDatos(char path[]){
-	char path_aux[100];
-	strcpy(path_aux,path);
-	strcat(path_aux, "Bloques/");
-	if(mkdir(path_aux, 0777) != 0){
-//		printf("No se pudo crear /Bloques\n");
-	}
+void crearBloquesDatos(){
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Bloques/");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path, "Bloques/");
+	if(mkdir(path, 0777) != 0){}
+	free(path);
 }
 
 bool existeTabla(char* nombreTabla){
-	char pathaux[100];
-	char *path_aux = config_get_string_value(config,"PUNTOMONTAJE");
-	strcpy(pathaux,path_aux);
-	strcat(pathaux,"Table/");
-	strcat(pathaux,nombreTabla);
-	printf("%s EXISTE \n",pathaux);
-	//Chequear si esa tabla ya existe
-	return true;
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Table/");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path,"Table/");
+
+	int flag = 0;
+	DIR* path_buscado = opendir(path);
+	free(path);
+	struct dirent* carpeta = readdir(path_buscado);;
+
+	do{
+		if(strcmp(nombreTabla, carpeta->d_name) == 0){
+			flag = 1;
+			break;
+		}
+		carpeta = readdir(path_buscado);
+	}while(carpeta && flag == 0);
+
+	if(flag == 1){
+		return 1;
+	}else{
+		return 0;
+	}
 }
 
 FILE* obtenerMetaDataLectura(char* nombreTabla){
 	FILE* metadata;
-	char pathaux[100];
-	char *path_aux = config_get_string_value(config,"PUNTOMONTAJE");
-	strcpy(pathaux,path_aux);
-	strcat(pathaux,"Table/");
-	strcat(pathaux, nombreTabla);
-	strcat(pathaux, "/Metadata");
-	printf("%s\n", pathaux);
-	metadata = fopen(pathaux, "r");
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Table/")+strlen(nombreTabla)+strlen("Metadata/");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path,"Table/");
+	strcat(path, nombreTabla);
+	strcat(path,"Metadata");
+	metadata = fopen(path, "r");
+	free(path);
 	return metadata;
 }
 
@@ -121,15 +132,95 @@ FILE* obtenerBIN(int particion, char* nombreTabla){
 	snprintf(nombre_bin, length + 1, "%d", particion);
 	strcat(nombre_bin, ".bin");
 
-	char pathaux[100];
-	char *path_aux = config_get_string_value(config,"PUNTOMONTAJE");
-	strcpy(pathaux,path_aux);
-	strcat(pathaux,"Table/");
-	strcat(pathaux, nombreTabla);
-	strcat(pathaux, "/");
-	strcat(pathaux, nombre_bin);
-	printf("%s\n", pathaux);
-	bin = fopen(pathaux, "r+");
+	char path_aux[100];
+	char *path = config_get_string_value(config,"PUNTOMONTAJE");
+	strcpy(path_aux,path);
+	strcat(path_aux,"Table/");
+	strcat(path_aux, nombreTabla);
+	strcat(path_aux, "/");
+	strcat(path_aux, nombre_bin);
+	printf("%s\n", path_aux);
+	bin = fopen(path_aux, "r+");
 	free(nombre_bin);
 	return bin;
+}
+
+void crearDirectiorioDeTabla(char* nombreTabla){
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Table/")+strlen(nombreTabla);
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path,"Table/");
+	strcat(path, nombreTabla);
+	if(mkdir(path, 0777) != 0){}
+	free(path);
+}
+
+void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Table/")+strlen(nombreTabla)+strlen("/Metadata");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path,"Table/");
+	strcat(path, nombreTabla);
+	strcat(path, "/");
+	strcat(path,"Metadata");
+	FILE* metadata = fopen(path, "w");
+
+	fputs("CONSISTENCY=", metadata);
+	fputs(tipoConsistencia, metadata);fputs("\n", metadata);
+
+	fputs("PARTITIONS=", metadata);
+	char* cantPart = u_intAString(cantidadParticiones); //ROMPE
+	fputs(cantPart, metadata);
+	fputs("\n", metadata);
+	free(cantPart);
+
+	fputs("COMPACTION_TIME=", metadata);
+	char* compactTime = u_intAString(compactionTime); //ROMPE
+	fputs(compactTime, metadata);
+	free(compactTime);
+	free(path);
+	fclose(metadata);
+}
+
+void crearBinDeTabla(char* nombreTabla, int cantParticiones){
+	FILE* f;
+	int tamanioTotal = strlen(puntoMontaje)+strlen("Table/")+strlen(nombreTabla)+strlen("10.bin");
+	char* path = malloc(tamanioTotal);
+	strcpy(path, puntoMontaje);
+	strcat(path,"Table/");
+	strcat(path, nombreTabla);
+	strcat(path, "/");
+	printf("%s \n", path);
+	char *particion;
+	for(int i=0;i<cantParticiones;i++){
+		particion = intToString(i);
+		strcat(particion,".bin");
+		char* path_aux = malloc(tamanioTotal+ strlen(particion));
+		strcpy(path_aux, path);
+		strcat(path_aux, particion);
+		f = fopen(path_aux, "w");
+		fclose(f);
+		free(path_aux);
+	}
+	free(path);
+	free(particion);
+
+}
+
+// ##### FUNCIONES SECUNDARIAS #####
+
+char* u_intAString(u_int a){
+	u_int someInt = a; char str[12];
+	char* string = malloc(sizeof(12));
+	sprintf(str, "%u", someInt);
+	strcpy(string,str);
+	return string;
+}
+
+char* intToString(int a){
+	int num = a; char str[12];
+	char* string = malloc(strlen(str));
+	sprintf(str, "%d", num);
+	strcpy(string,str);
+	return string;
 }
