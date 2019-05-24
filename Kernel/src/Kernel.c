@@ -36,6 +36,7 @@
 			puts(resultado);
 			free(resultado);
 		}
+
 	}
 
 	//API Kernel
@@ -249,7 +250,8 @@
 			printf("Hola soy un hilo \n");
 				}
 
-		void despedir(){
+		void despedir()
+		{
 			printf("Adios hilo!\n");
 		}
 
@@ -260,21 +262,26 @@ int main(void) {
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
     log_info (logger, "Hola soy KKernel \n");
 
-    printf("Prueba de hilo\n");
+    printf ( "Prueba de hilo \n" );
 
 
+   /*
+    *
     pthread_t hiloAConsola;
-	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL)){
+	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL))
+	{
 		log_error(logger,"Hilo consola: error en la creacion pthread_create");
 		exit(EXIT_FAILURE);
 	}
+
+	*/
 
 
 
 
 	// Algoritmo Plani RR SuperIncompleto
 
-
+/*
 	int quantum= 4; // Aca deberia ir "QUANTUM" .
 	int contador,cantScripts,time,remain,flag=0;
 	int tiempoEspera =0, tiempoRetorno=0, arrivosVec[10],rafagasVec[10],rt[10];
@@ -324,7 +331,7 @@ int main(void) {
 		  printf("Avg Tiempo De Retorno Time = %f",tiempoRetorno*1.0/cantScripts);
 
 	}
-
+*/
 	// Fin RR
 
 
@@ -341,49 +348,8 @@ int main(void) {
 
 
 
-	//SOCKET CLIENTE KERNEL
-
-	/*int cliente;
-		struct sockaddr_in direccionServidor;
-		direccionServidor.sin_family = AF_INET;
-		direccionServidor.sin_addr.s_addr = INADDR_ANY;
-		direccionServidor.sin_port = htons(8082); //Puerto al que me conecto ?
-
-
-	    cliente = socket (AF_INET ,SOCK_STREAM ,0); //Pedimos un socket enviandole parametros que especifica que utilizamos protocolo TCP/ IP
-
-	    if (connect (cliente, (void*) &direccionServidor, sizeof(direccionServidor)) !=0 ) //
-	    {
-	    	perror("No se pudo conectar ");
-	    	return 1;
-
-
-	    send(cliente, "Hola soy Kernel", sizeof("Hola soy Kernel"), 0);
-	    	while(1){
-	    		char* buffer = malloc(sizeof("Hola soy Memoria"));
-
-	    		int bytesRecibidos = recv(cliente, buffer, sizeof("Hola soy Memoria"), 0);
-	    		if(bytesRecibidos < 0){
-	    			log_error(logger, "El cliente se desconecto");
-	    			exit(EXIT_FAILURE);
-	    		}
-	    		log_trace(logger, "Me llegaron %d bytes con el mensaje: %s", bytesRecibidos, buffer);
-	    		if(!strcmp(buffer,"Hola soy Memoria")){
-	    			send(cliente, "Hola Memoria!", sizeof("Hola Memoria!"), 0);
-	    			free(buffer);
-	    			break;
-	    		}
-	    		free(buffer);
-
-	    	}
-
-	*/return EXIT_SUCCESS;
-
-}//End Socket Cliente Kernel*/
-
-
 
 
  //End Main
-
+}
 
