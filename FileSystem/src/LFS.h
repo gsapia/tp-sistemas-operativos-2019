@@ -48,5 +48,6 @@ typedef struct{
 }t_registroBusqueda;
 
 t_list *memTable;
-int cont;
+int cont; 			// Contador de cantidad de registros en Memtable
+int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
 #endif /* LFS_H_ */

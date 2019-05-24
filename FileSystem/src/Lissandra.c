@@ -36,20 +36,22 @@ void *consola();
 t_config *leer_config();
 t_log* iniciar_logger();
 void* servidor(int puerto_escucha);
-void *fileSystem(t_config *config);
+void* fileSystem(t_config *config);
+void* dump(int tiempo_dump);
 
 int main(void){
-	memTable = list_create(); cont = 0;
+	memTable = list_create(); cont = 0; cantDumps = 0;
 	config = leer_config();
 	puntoMontaje = config_get_string_value(config,"PUNTOMONTAJE");
+	int tiempo_dump = config_get_int_value(config, "TIEMPODUMP");
 	int puerto_escucha = config_get_int_value(config, "PUERTOESCUCHA");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 
 	//Creo las Tablas del FileSystem necesarias
 	pthread_t hiloFS;
-	if(pthread_create(&hiloFS, NULL, fileSystem, config)){
-		log_error(logger, "Hilo consola: Error - pthread_create()");
+	if(pthread_create(&hiloFS, NULL, fileSystem, NULL)){
+		log_error(logger, "Hilo FileSystem: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 	pthread_join(hiloFS,NULL);
@@ -58,6 +60,12 @@ int main(void){
 	pthread_t hiloConsola;
 	if(pthread_create(&hiloConsola, NULL, consola, NULL)){
 		log_error(logger, "Hilo consola: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+
+	pthread_t hiloDump;
+	if(pthread_create(&hiloDump, NULL, dump, tiempo_dump)){
+		log_error(logger, "Hilo Dump: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 	/*Servidor
@@ -69,6 +77,7 @@ int main(void){
 */
 	pthread_join(hiloConsola, NULL);
 //	pthread_join(hiloServidor,NULL);
+	pthread_join(hiloDump, NULL);
 	log_destroy(logger);
 
 
