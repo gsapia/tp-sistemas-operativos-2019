@@ -204,8 +204,8 @@ void cliente(){
 
 	log_trace(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
 
-	int cliente = socket(AF_INET, SOCK_STREAM, 0);
-	while(connect(cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
+	int socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
+	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
 		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
 		sleep(5);
 	}
@@ -214,11 +214,11 @@ void cliente(){
 
 	// Envio primer mensaje diciendo que soy Memoria
 	const uint8_t soy = ID_MEMORIA;
-	send(cliente, &soy, sizeof(soy), 0);
+	send(socket_cliente, &soy, sizeof(soy), 0);
 
 	// Recibo confirmacion de que el otro extremo es FS
 	uint8_t *otro = malloc(sizeof(uint8_t));
-	if(!(recv(cliente, otro, sizeof(uint8_t), 0) && *otro == ID_FILESYSTEM)){ // Confirmo que el otro extremo es FS
+	if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_FILESYSTEM)){ // Confirmo que el otro extremo es FS
 		// El otro extremo no es FS, asi que cierro la conexion / termino el programa
 		log_error(logger, "Error, no pudimos conectar con FileSystem");
 		exit(EXIT_FAILURE);
@@ -227,7 +227,7 @@ void cliente(){
 
 	// En este caso recibimos el tamaño del value
 	uint16_t *tamanio_value = malloc(sizeof(uint16_t));
-	recv(cliente, tamanio_value, sizeof(tamanio_value), 0);
+	recv(socket_cliente, tamanio_value, sizeof(tamanio_value), 0);
 
 	// * FALTA GUARDAR EL TAMANIO DE VALUE DONDE CORRESPONDA *
 
@@ -240,7 +240,7 @@ void cliente(){
 	 * Enviar datos
 	 */
 
-	close(cliente); // No me olvido de cerrar el socket que ya no voy a usar
+	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 
 void servidor() {
@@ -251,23 +251,25 @@ void servidor() {
 	direccionServidor.sin_addr.s_addr = INADDR_ANY;
 	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
 
-	int servidor = socket(AF_INET, SOCK_STREAM, 0);
+	int socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
 
-	if (bind(servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
+	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
 		log_trace(logger, "Fallo el servidor");
 		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
 	}
 
-	listen(servidor, SOMAXCONN);
+	listen(socket_servidor, SOMAXCONN);
 	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
 
 	bool conectado = false;
 
+	int socket_cliente;
+
 	while(!conectado){
 		struct sockaddr_in direccionCliente;
 		unsigned int tamanoDireccion = sizeof(direccionCliente);
-		int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-		printf("Recibi una conexion en %d\n", cliente);
+		socket_cliente = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
+		printf("Recibi una conexion en %d\n", socket_cliente);
 
 
 		//----------------COMIENZO HANDSHAKE----------------
@@ -275,16 +277,16 @@ void servidor() {
 		// Recibo quien es el otro extremo
 		uint8_t *otro = malloc(sizeof(uint8_t));
 
-		if(!(recv(cliente, otro, sizeof(uint8_t), 0) && otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
+		if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
 			// El otro extremo no es Kernel, cierro la conexion / termino el programa
 			log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
-			close(cliente);
+			close(socket_cliente);
 		}
 		else{
 			// El otro extremo es Kernel realmente
 			// Envio confirmacion de que soy Memoria
 			const uint8_t soy = ID_MEMORIA;
-			send(cliente, &soy, sizeof(soy), 0);
+			send(socket_cliente, &soy, sizeof(soy), 0);
 
 			// Y ahora entonces le enviamos/recibimos los datos necesarios
 
@@ -308,7 +310,7 @@ void servidor() {
 	while(1){
 		// Recibo el codigo de op
 		uint8_t cod_op;
-		if(!recv(cliente, &cod_op, sizeof(uint8_t), 0)){ // Problema, recv es no bloqueante, asi que estoy en espera activa hasta
+		if(!recv(socket_cliente, &cod_op, sizeof(uint8_t), 0)){ // Problema, recv es no bloqueante, asi que estoy en espera activa hasta
 													  	 // que se desconecte el cliente o reciba algo. Deberiamos usar select()?
 			log_trace(logger, "El cliente se desconecto");
 			break;
@@ -318,7 +320,7 @@ void servidor() {
 			case SELECT:
 			{
 				log_trace(logger, "Recibi un SELECT");
-				struct_select paquete = recibir_select(cliente);
+				struct_select paquete = recibir_select(socket_cliente);
 
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
@@ -332,7 +334,7 @@ void servidor() {
 			case INSERT:
 			{
 				log_trace(logger, "Recibi un INSERT");
-				struct_insert paquete = recibir_insert(cliente);
+				struct_insert paquete = recibir_insert(socket_cliente);
 
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
@@ -349,7 +351,7 @@ void servidor() {
 			case DESCRIBE:
 			{
 				log_trace(logger, "Recibi un DESCRIBE");
-				struct_describe paquete = recibir_describe(cliente);
+				struct_describe paquete = recibir_describe(socket_cliente);
 
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
@@ -368,6 +370,6 @@ void servidor() {
 				log_trace(logger, "Recibi una operacion invalida...");
 		}
 	}
-	close(cliente); // No me olvido de cerrar el socket que ya no voy a usar mas
-	close(servidor); // No me olvido de cerrar el socket que ya no voy a usar mas
+	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar mas
+	close(socket_servidor); // No me olvido de cerrar el socket que ya no voy a usar mas
 }
