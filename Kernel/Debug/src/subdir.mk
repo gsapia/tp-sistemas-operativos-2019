@@ -4,14 +4,17 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/ApiKernel.c \
 ../src/IPC.c \
 ../src/Kernel.c 
 
 OBJS += \
+./src/ApiKernel.o \
 ./src/IPC.o \
 ./src/Kernel.o 
 
 C_DEPS += \
+./src/ApiKernel.d \
 ./src/IPC.d \
 ./src/Kernel.d 
 

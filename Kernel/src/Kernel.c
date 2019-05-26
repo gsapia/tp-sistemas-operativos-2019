@@ -1,26 +1,11 @@
 #include "Kernel.h"
 
-	//char* apiMemoria(char*);
 
     void* consola();
     char* apiKernel(char*);
-	char* selects(char* nombreTabla, u_int16_t key);
-	char* insert(char* nombreTabla, u_int16_t key, char* valor);
-	char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
-	char* describe(char* nombreTabla);
-	char* drop(char* nombreTabla);
-	char* journal();
 
 
-	//Funciones propias del Kernel
-
-	char* add();
-	char* run();
-	void metrics();
-
-
-
-	void* consola(){
+     void* consola(){
 		char *linea;
 		char *resultado;
 		while(1) {
@@ -42,7 +27,7 @@
 	//API Kernel
 
 	char *apiKernel(char* mensaje){
-		char** comando = string_split(mensaje, " ");
+		char** comando = string_split(mensaje, " "); // Separa el mensaje por espacios " ", y los mete en un array de char.
 		if(comando[0]){
 			u_int16_t cantArgumentos = 0;
 			while(comando[cantArgumentos+1]){
@@ -58,9 +43,9 @@
 					char* nombreTabla = comando[1];
 					char* keystr = comando[2];
 					char* endptr;
-					ulong key = strtoul(keystr, &endptr, 10);
-					if(*endptr == '\0'&& key < 65536){
-						char* resultado = selects(nombreTabla, key);
+					ulong key = strtoul(keystr, &endptr, 10); //String To Unsigned Long, le paso un String y me retorna un ulong con ese numero.
+					if(*endptr == '\0'&& key < 65536){       // Atoi era otra opcion pero no maneja errores como strtoul o strtol
+						char* resultado = selects(nombreTabla, key); // Como deben ser Keys de 16 bits debe se < 65536
 						free(nombreTabla);
 						free(keystr);
 						free(comando);
@@ -80,7 +65,7 @@
 
 				free(comando[0]);
 				if (cantArgumentos >= 3) {
-					char** argumentos = string_n_split(mensaje, 4, " ");
+					char** argumentos = string_n_split(mensaje, 4, " "); // Separa el mensaje por " ", y los mete en un array de 4 espacios, el ultimo es NULL
 					char** ultimoArgumento = string_split(argumentos[3], "\"");
 					free(argumentos[0]);
 					free(argumentos[1]);
@@ -215,35 +200,10 @@
 		free(comando);
 		return string_from_format("Comando invalido");
 
-	}//END ApiKernel
-
-
-	char* selects(char* nombreTabla, u_int16_t key){
-		log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
-		return string_duplicate("Elegiste SELECT");
-	}
-	char* insert(char* nombreTabla, u_int16_t key, char* valor){
-		log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, key, valor);
-		return string_from_format("Elegiste INSERT");
-	}
-	char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
-		log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%s CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
-		return string_from_format("Elegiste CREATE");
-	}
-	char* describe(char* nombreTabla){
-		log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
-		return string_from_format("Elegiste DESCRIBE");
 	}
 
-	char* drop(char* nombreTabla){
-		log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
-		return string_from_format("Elegiste DROP");
-	}
 
-	char* journal(){
-		return string_from_format("Elegiste JOURNAL");
 
-	}
 
 
 	void saludar(){
@@ -265,8 +225,8 @@ int main(void) {
     printf ( "Prueba de hilo \n" );
 
 
-   /*
-    *
+
+ /*
     pthread_t hiloAConsola;
 	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL))
 	{
