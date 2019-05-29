@@ -51,6 +51,18 @@ int main(void) {
 				 */
 				printf("Comando recibido: SELECT %s %d\n\n", paquete.nombreTabla, paquete.key);
 
+
+				// Para el ejemplo, respondo con un registro inventado cualquiera:
+				puts("Respondiendo SELECT");
+				struct_registro registro;
+				registro.nombreTabla = paquete.nombreTabla;
+				registro.key = paquete.key;
+				registro.valor = "Test";
+				registro.timestamp = 123456789;
+
+				// Y lo mando:
+				enviar_registro(cliente, registro);
+
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
 			}

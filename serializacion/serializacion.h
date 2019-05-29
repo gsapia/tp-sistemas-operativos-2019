@@ -40,7 +40,7 @@ typedef struct{
 	uint16_t key;
 	char* valor;
 	uint64_t timestamp;
-}struct_insert;
+}struct_insert, struct_registro;
 
 typedef struct{
 	char* nombreTabla;
@@ -91,6 +91,11 @@ void enviar_describe(int socket, struct_describe paquete);
 void enviar_drop(int socket, struct_describe paquete);
 
 void enviar_journal(int socket);
+
+
+struct_registro recibir_registro(int socket);
+
+void enviar_registro(int socket, struct_registro registro);
 
 
 #endif /* SERIALIZACION_H_ */

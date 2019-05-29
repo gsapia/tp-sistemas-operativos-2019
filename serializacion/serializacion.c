@@ -419,3 +419,92 @@ void enviar_journal(int socket){
 	const uint8_t cod_op = JOURNAL;
 	send(socket, &cod_op, sizeof(cod_op), 0);
 }
+
+void enviar_registro(int socket, struct_registro registro){
+	uint16_t tamanio_nombre = strlen(registro.nombreTabla) + 1; // Calculo el tamanio del nombre
+	uint16_t tamanio_valor = strlen(registro.valor) + 1; // Calculo el tamanio del valor
+
+	// Armo paquete con los datos
+	size_t tamanio_paquete = sizeof(uint16_t)*2 + sizeof(registro.key) + sizeof(registro.timestamp) + tamanio_nombre + tamanio_valor; // Calculo el tamanio del paquete
+	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
+
+	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
+
+	// Primero el nombre de la tabla
+	memcpy(buffer + desplazamiento, &tamanio_nombre, sizeof(tamanio_nombre)); // En el comienzo del buffer copio el tamanio del nombre de la tabla
+	desplazamiento += sizeof(tamanio_nombre); // Me corro 2 bytes del uint16
+	memcpy(buffer + desplazamiento, registro.nombreTabla, tamanio_nombre); // En la nueva posicion copio el nombre de la tabla
+	desplazamiento += tamanio_nombre; // Me corro la longitud del string
+
+	// Lo mismo para la clave
+	memcpy(buffer + desplazamiento, &registro.key, sizeof(registro.key));
+	desplazamiento += sizeof(registro.key);
+
+	// Lo mismo para el valor
+	memcpy(buffer + desplazamiento, &tamanio_valor, sizeof(tamanio_valor));
+	desplazamiento += sizeof(tamanio_valor);
+	memcpy(buffer + desplazamiento, registro.valor, tamanio_valor);
+	desplazamiento += tamanio_valor;
+
+	// Por ultimo el timestamp
+	memcpy(buffer + desplazamiento, &registro.timestamp, sizeof(registro.timestamp));
+	// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
+
+	// Por ultimo envio el paquete y libero el buffer.
+	send(socket, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
+	free(buffer);
+}
+
+struct_registro recibir_registro(int socket){
+	struct_registro paquete;
+	void* buffer = NULL;
+	uint16_t tamanio_string; // Uso esta variable para almacenar los tamanios de los string que vaya a ir recibiendo
+
+	// Recibo tamanio del nombre de tabla
+	buffer = malloc(sizeof(tamanio_string));
+	recv(socket, buffer, sizeof(tamanio_string), 0);
+	tamanio_string = *((uint16_t*)buffer);
+	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
+	free(buffer);
+
+	// Ahora recibo el nombre de la tabla
+	buffer = malloc(tamanio_string);
+	recv(socket, buffer, tamanio_string, 0);
+	paquete.nombreTabla = malloc(tamanio_string);
+	memcpy(paquete.nombreTabla, buffer, tamanio_string);
+	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
+	free(buffer);
+
+	// Ahora recibo la key
+	buffer = malloc(sizeof(paquete.key));
+	recv(socket, buffer, sizeof(uint16_t), 0);
+	paquete.key = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
+	printf("La key es %d\n", paquete.key);
+	free(buffer);
+
+	// Ahora el valor
+	buffer = malloc(sizeof(uint16_t));
+	recv(socket, buffer, sizeof(uint16_t), 0);
+	tamanio_string = *((uint16_t*)buffer);
+	printf("El valor es de %d bytes\n", tamanio_string);
+	free(buffer);
+
+	buffer = malloc(tamanio_string);
+	recv(socket, buffer, tamanio_string, 0);
+	paquete.valor = malloc(tamanio_string);
+	memcpy(paquete.valor, buffer, tamanio_string);
+	printf("El valor es \"%s\"\n", paquete.valor);
+	free(buffer);
+
+	// Por ultimo el timestamp
+	buffer = malloc(sizeof(paquete.timestamp));
+	recv(socket, buffer, sizeof(uint64_t), 0);
+	paquete.timestamp = *((uint64_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
+	printf("El timestamp es %lld\n", paquete.timestamp);
+	free(buffer);
+
+
+	puts("Listo, recibi el paquete completo!\n");
+
+	return paquete;
+}

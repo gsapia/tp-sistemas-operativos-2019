@@ -45,6 +45,10 @@ int main(void) {
 	enviar_select(cliente, paquete2);
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
 
+	// Ahora me quedo esperando la respuesta
+	struct_registro registro = recibir_registro(cliente);
+	printf("Respuesta SELECT: Valor:%s Timestamp:%lld\n",registro.valor, registro.timestamp);
+
 	// Armo un CREATE SC 4
 	struct_create paquete3;
 	paquete3.nombreTabla = "TABLA1";
