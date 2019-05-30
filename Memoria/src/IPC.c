@@ -207,7 +207,7 @@ void cliente(){
 	int socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
 		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
-		sleep(5);
+		sleep(95); // TODO CAMBIAR POR 5
 	}
 
 	//----------------COMIENZO HANDSHAKE----------------

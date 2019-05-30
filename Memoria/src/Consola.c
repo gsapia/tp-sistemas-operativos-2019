@@ -20,11 +20,20 @@ char *apiMemoria(char* mensaje){
 				char* endptr;
 				ulong key = strtoul(keystr, &endptr, 10);
 				if(*endptr == '\0'&& key < 65536){
-					char* resultado = selects(nombreTabla, key);
+					struct_select_respuesta resultado = selects(nombreTabla, key);
 					free(nombreTabla);
 					free(keystr);
 					free(comando);
-					return resultado;
+					switch (resultado.estado) {
+						case ESTADO_SELECT_OK:
+							return strdup(resultado.valor);
+						case ESTADO_SELECT_ERROR_TABLA:
+							return strdup("ERROR: La tabla solicitada no existe.");
+						case ESTADO_SELECT_ERROR_KEY:
+							return strdup("ERROR: Esa tabla no contiene ningun registro con la clave solicitada.");
+						default:
+							return strdup("ERROR: Ocurrio un error desconocido.");
+					}
 				}
 			}
 			while(cantArgumentos){
