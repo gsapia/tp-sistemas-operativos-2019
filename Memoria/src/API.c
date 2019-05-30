@@ -71,10 +71,10 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		log_debug(logger, "Todavia no existe una pagina para esa clave");
 
 		// Hago el SELECT a FS
-		/*struct_select paquete;
-			paquete.key = key;
-			paquete.nombreTabla = nombreTabla;
-			struct_select_respuesta respuesta = enviar_select(socekt, paquete);*/
+		struct_select paquete;
+		paquete.key = key;
+		paquete.nombreTabla = nombreTabla;
+		//struct_select_respuesta respuesta = enviar_select(socekt, paquete);
 
 		// ----- Provisoriamente uso una respuesta por defecto: -----
 		struct_select_respuesta respuesta;
@@ -147,9 +147,22 @@ char* insert(char* nombreTabla, u_int16_t clave, char* valor){
 
 	return string_from_format("Valor insertado!");
 }
-char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
-	log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%s CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
-	return string_from_format("Elegiste CREATE");
+enum estados_create create(char* nombreTabla, enum consistencias tipoConsistencia, uint16_t cantidadParticiones, uint32_t compactionTime){
+	// Hago el CREATE a FS
+	struct_create paquete;
+	paquete.nombreTabla = nombreTabla;
+	paquete.consistencia = tipoConsistencia;
+	paquete.particiones = cantidadParticiones;
+	paquete.tiempoCompactacion = compactionTime;
+
+
+	//uint16_t resultado = enviar_create(socket, paquete);
+
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+	uint16_t resultado = ESTADO_CREATE_OK;
+	// ----- Fin parte provisoria -----
+
+	return resultado;
 }
 char* describe(char* nombreTabla){
 	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);

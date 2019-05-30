@@ -95,7 +95,18 @@ char *apiMemoria(char* mensaje){
 			free(comando[0]);
 			if(cantArgumentos == 4){
 				char* nombreTabla = comando[1];
-				char* tipoConsistencia = comando[2];
+				char* tipoConsistenciaStr = comando[2];
+
+				enum consistencias tipoConsistencia;
+
+				if(!strcmp(tipoConsistenciaStr, "SC"))
+					tipoConsistencia = SC;
+				else if(!strcmp(tipoConsistenciaStr, "SHC"))
+					tipoConsistencia = SHC;
+				else if(!strcmp(tipoConsistenciaStr, "EC"))
+					tipoConsistencia = EC;
+				else
+					return string_from_format("Tipo de consistencia invalido.");
 
 				char* cantidadParticionesstr = comando[3];
 				char* compactionTimestr = comando[4];
@@ -105,14 +116,21 @@ char *apiMemoria(char* mensaje){
 				if(*endptr == '\0')
 					compactionTime = strtoul(compactionTimestr, &endptr, 10);
 				if(*endptr == '\0'){
-					// Faltaria revisar si el tipo de consistencia es valido ^
-					char* resultado = create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+					enum estados_create resultado = create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 					free(nombreTabla);
-					free(tipoConsistencia);
+					free(tipoConsistenciaStr);
 					free(cantidadParticionesstr);
 					free(compactionTimestr);
 					free(comando);
-					return resultado;
+
+					switch (resultado) {
+						case ESTADO_CREATE_OK:
+							return strdup("Tabla creada");
+						case ESTADO_CREATE_ERROR_TABLAEXISTENTE:
+							return strdup("ERROR: Esa tabla ya existe.");
+						default:
+							return strdup("ERROR: Ocurrio un error desconocido.");
+					}
 				}
 			}
 			while(cantArgumentos){
