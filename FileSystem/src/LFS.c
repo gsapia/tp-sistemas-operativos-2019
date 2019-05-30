@@ -1,8 +1,9 @@
 #include "LFS.h"
+#include "serializacion.h"
 void* consola();
 char* apiLissandra(char*);
 char* selects(char* nombreTabla, u_int16_t key);
-char* insert(char* nombreTabla, u_int16_t key, char* valor);
+char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp);
 char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
@@ -16,8 +17,8 @@ void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
-void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor);
-
+void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, double timeStamp);
+uint64_t getTimestamp();
 
 void* consola(){
 	char *linea;
@@ -29,7 +30,6 @@ void* consola(){
 			free(linea);
 			break;
 		}
-
 		resultado = apiLissandra(linea);
 		free(linea);
 		puts(resultado);
@@ -46,10 +46,9 @@ char *apiLissandra(char* mensaje){
 			cantArgumentos++;
 		}
 
-		if(!strcmp(comando[0],SELECT)){
+		if(!strcmp(comando[0],"SELECT")){
 			//SELECT [NOMBRE_TABLA] [KEY]
 			//SELECT TABLA1 3
-
 			free(comando[0]);
 			if(cantArgumentos == 2){
 				char* nombreTabla = comando[1];
@@ -71,14 +70,16 @@ char *apiLissandra(char* mensaje){
 			free(comando);
 			return string_from_format("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
 		}
-		else if(!strcmp(comando[0],INSERT)){
-			//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”
+		else if(!strcmp(comando[0],"INSERT")){
+			//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]” [Timestamp]
 			//INSERT TABLA1 3 "Mi nombre es Lissandra"
+			//INSERT TABLA1 3 "Mi nombre es Lissandra" 1548421507
 
 			free(comando[0]);
-			if (cantArgumentos >= 3) {
+
+			if (cantArgumentos == 6) {//Si viene SIN timestamp
 				char** argumentos = string_n_split(mensaje, 4, " ");
-				char** ultimoArgumento = string_split(argumentos[3], "\"");
+				char** ultimoArgumento = string_split(argumentos[3], "\""); //Sirve para el value
 				free(argumentos[0]);
 				free(argumentos[1]);
 				free(argumentos[2]);
@@ -91,8 +92,44 @@ char *apiLissandra(char* mensaje){
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
+					double timestamp = getTimestamp();
+
 					if (*endptr == '\0' && key < 65536) {
-						char* resultado = insert(nombreTabla, key, valor);
+						char* resultado = insert(nombreTabla, key, valor, timestamp);
+						while(cantArgumentos){
+							free(comando[cantArgumentos]);
+							cantArgumentos--;
+						}
+						free(valor);
+						free(ultimoArgumento);
+						free(comando);
+						return resultado;
+					}
+				}
+
+				for(int i = 0; ultimoArgumento[i]; i++){
+					free(ultimoArgumento[i]);
+				}
+				free(ultimoArgumento);
+			}else if (cantArgumentos == 7) { // Si viene CON timestamp
+				char** argumentos = string_n_split(mensaje, 5, " ");
+				char** ultimoArgumento = string_split(argumentos[3], "\""); //Sirve para el value
+				free(argumentos[0]);
+				free(argumentos[1]);
+				free(argumentos[2]);
+				free(argumentos[3]);
+				free(argumentos);
+
+				if(!ultimoArgumento[1]){ // Si hay un solo argumento sigo, sino es que hay argumentos de mas...
+					char* nombreTabla = comando[1];
+					char* keystr = comando[2];
+					char* endptr;
+					ulong key = strtoul(keystr, &endptr, 10);
+					char* valor = ultimoArgumento[0];
+					char* timestampptr = comando[7];
+					double timestamp = strtod(timestampptr, NULL);
+					if (*endptr == '\0' && key < 65536) {
+						char* resultado = insert(nombreTabla, key, valor, timestamp);
 						while(cantArgumentos){
 							free(comando[cantArgumentos]);
 							cantArgumentos--;
@@ -109,6 +146,7 @@ char *apiLissandra(char* mensaje){
 				}
 				free(ultimoArgumento);
 			}
+
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
 				cantArgumentos--;
@@ -116,7 +154,7 @@ char *apiLissandra(char* mensaje){
 			free(comando);
 			return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
 		}
-		else if(!strcmp(comando[0],CREATE)){
+		else if(!strcmp(comando[0],"CREATE")){
 			//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
 			//CREATE TABLA1 SC 4 60000
 
@@ -150,16 +188,18 @@ char *apiLissandra(char* mensaje){
 			free(comando);
 			return string_from_format("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
 		}
-		else if(!strcmp(comando[0],DESCRIBE)){
+		else if(!strcmp(comando[0],"DESCRIBE")){
 			//DESCRIBE [NOMBRE_TABLA]
 			//DESCRIBE TABLA1
-
 			free(comando[0]);
 			if(cantArgumentos == 1){
 				char* nombreTabla = comando[1];
 				char* resultado = describe(nombreTabla);
 				free(nombreTabla);
 				free(comando);
+				return resultado;
+			} else if(cantArgumentos == 0){
+				char* resultado = describe(NULL);
 				return resultado;
 			}
 			while(cantArgumentos){
@@ -169,7 +209,7 @@ char *apiLissandra(char* mensaje){
 			free(comando);
 			return string_from_format("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
 		}
-		else if(!strcmp(comando[0],DROP)){
+		else if(!strcmp(comando[0],"DROP")){
 			//DROP [NOMBRE_TABLA]
 			//DROP TABLA1
 
@@ -223,13 +263,13 @@ char* selects(char* nombreTabla, u_int16_t key){
 
 }
 
-char* insert(char* nombreTabla, u_int16_t key, char* valor){
+char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp){
 	if(existeTabla(nombreTabla)){
 		FILE* metadata = obtenerMetaDataLectura(nombreTabla); //Nose xq pide "obtener metadata"
-		agregarAMemTable(nombreTabla, key, valor);
+		agregarAMemTable(nombreTabla, key, valor, timeStamp);
 
 		fclose(metadata);
-		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s", nombreTabla, key, valor);
+		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %f", nombreTabla, key, valor, timeStamp);
 		return string_from_format("Se realizo el INSERT");
 	}else{
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
@@ -245,15 +285,20 @@ char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticione
 		crearDirectiorioDeTabla(nombreTabla);
 		crearMetadataDeTabla(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 		crearBinDeTabla(nombreTabla, cantidadParticiones);
+		log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 	}else{
 		log_info(logger, "La tabla %s ya existe en el FS", nombreTabla);
 	}
-	log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 	return string_from_format("Elegiste CREATE");
 }
 
 char* describe(char* nombreTabla){
-	log_debug(logger, "DESCRIBE: Recibi Tabla: %s", nombreTabla);
+	if(nombreTabla){
+		log_debug(logger, "DESCRIBE: Recibi Tabla: %s", nombreTabla);
+	}else{
+		log_info(logger, "NO me pasaron una tabla con DESCRIBE");
+	}
+
 	return string_from_format("Elegiste DESCRIBE");
 }
 
@@ -373,13 +418,19 @@ t_log* iniciar_logger() {
 	return log_create("Lissandra.log", "Lissandra", 1, LOG_LEVEL_TRACE);
 }
 
-void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor){
+void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, double timeStamp){
 	t_registro *registro = malloc(sizeof(t_registro));
 	registro->nombre_tabla = malloc(strlen(nombreTabla)+1);
 	registro->value = malloc(strlen(valor)+1);
 	strcpy(registro->nombre_tabla, nombreTabla);
 	registro->key = key;
 	strcpy(registro->value, valor);
-	registro->timeStamp = 0;
+	registro->timeStamp = timeStamp;
 	list_add(memTable, registro);
+}
+
+uint64_t getTimestamp() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 }

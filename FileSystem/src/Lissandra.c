@@ -50,12 +50,12 @@ int main(void){
 	log_info(logger, "Hola, soy Lissandra");
 
 //	Servidor
-	pthread_t hiloServidor;
+/*	pthread_t hiloServidor;
 	if(pthread_create(&hiloServidor, NULL, servidor, (puerto_escucha, tamValue))){
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-
+*/
 
 	//Creo las Tablas del FileSystem necesarias
 	pthread_t hiloFS;
@@ -71,16 +71,16 @@ int main(void){
 		log_error(logger, "Hilo consola: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-
+/*
 	pthread_t hiloDump;
 	if(pthread_create(&hiloDump, NULL, dump, tiempo_dump)){
 		log_error(logger, "Hilo Dump: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-
+*/
 	pthread_join(hiloConsola, NULL);
 //	pthread_join(hiloServidor,NULL);
-	pthread_join(hiloDump, NULL);
+//	pthread_join(hiloDump, NULL);
 	log_destroy(logger);
 
 

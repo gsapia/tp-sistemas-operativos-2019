@@ -11,10 +11,10 @@
 
 enum operaciones{
 	SELECT = 1,
-	INSERT,
-	CREATE,
-	DESCRIBE,
-	DROP,
+	INSERT = 2,
+	CREATE = 3,
+	DESCRIBE = 4,
+	DROP = 5,
 	JOURNAL
 };
 
