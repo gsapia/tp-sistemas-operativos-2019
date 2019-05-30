@@ -52,13 +52,17 @@ int main(void) {
 				printf("Comando recibido: SELECT %s %d\n\n", paquete.nombreTabla, paquete.key);
 
 
-				// Para el ejemplo, respondo con un registro inventado cualquiera:
+				// Para el ejemplo, respondo con un registro inventado cualquiera solo si la key es 5:
 				puts("Respondiendo SELECT");
-				struct_registro registro;
-				registro.nombreTabla = paquete.nombreTabla;
-				registro.key = paquete.key;
-				registro.valor = "Test";
-				registro.timestamp = 123456789;
+				struct_select_respuesta registro;
+				if(paquete.key == 5){
+					registro.estado = ESTADO_SELECT_OK;
+					registro.valor = "Test";
+					registro.timestamp = 123456789;
+				}
+				else{
+					registro.estado = ESTADO_SELECT_ERROR_KEY;
+				}
 
 				// Y lo mando:
 				enviar_registro(cliente, registro);

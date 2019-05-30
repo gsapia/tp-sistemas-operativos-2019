@@ -35,12 +35,25 @@ typedef struct{
 	uint16_t key;
 }struct_select;
 
+enum estados_select{
+	ESTADO_SELECT_OK,
+	ESTADO_SELECT_ERROR_TABLA, // No existe la tabla
+	ESTADO_SELECT_ERROR_KEY, // No existe esa key en la tabla
+	ESTADO_SELECT_ERROR_OTRO
+};
+
+typedef struct{
+	uint16_t estado;
+	char* valor;
+	uint64_t timestamp;
+}struct_select_respuesta;
+
 typedef struct{
 	char* nombreTabla;
 	uint16_t key;
 	char* valor;
 	uint64_t timestamp;
-}struct_insert, struct_registro;
+}struct_insert;
 
 typedef struct{
 	char* nombreTabla;
@@ -93,9 +106,9 @@ void enviar_drop(int socket, struct_describe paquete);
 void enviar_journal(int socket);
 
 
-struct_registro recibir_registro(int socket);
+struct_select_respuesta recibir_registro(int socket);
 
-void enviar_registro(int socket, struct_registro registro);
+void enviar_registro(int socket, struct_select_respuesta registro);
 
 
 #endif /* SERIALIZACION_H_ */

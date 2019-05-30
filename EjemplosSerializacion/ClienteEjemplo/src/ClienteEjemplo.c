@@ -35,19 +35,49 @@ int main(void) {
 	enviar_insert_ts(cliente, paquete); // Usar enviar_insert si no hace falta el timestamp (Kernel)
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
 
-	// Armo un SELECT TABLA1 KEY1
+	// Armo un SELECT TABLA1 5
 	struct_select paquete2;
 	paquete2.nombreTabla = "TABLA1";
-	paquete2.key = 1;
+	paquete2.key = 5;
 
 	// Lo envio
-	puts("Enviando SELECT");
+	puts("Enviando SELECT TABLA1 5");
 	enviar_select(cliente, paquete2);
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
 
 	// Ahora me quedo esperando la respuesta
-	struct_registro registro = recibir_registro(cliente);
-	printf("Respuesta SELECT: Valor:%s Timestamp:%lld\n",registro.valor, registro.timestamp);
+	struct_select_respuesta registro = recibir_registro(cliente);
+	switch (registro.estado) {
+		case ESTADO_SELECT_OK:
+			printf("Respuesta SELECT: Valor:%s Timestamp:%lld\n",registro.valor, registro.timestamp);
+			break;
+		case ESTADO_SELECT_ERROR_KEY:
+			printf("Respuesta SELECT: ERROR No existe un registro con esa clave\n");
+			break;
+		// Paja hacer los demas case
+	}
+
+	// Armo un SELECT TABLA1 2 (Deberia fallar)
+	struct_select paquete2_fail;
+	paquete2_fail.nombreTabla = "TABLA1";
+	paquete2_fail.key = 2;
+
+	// Lo envio
+	puts("Enviando SELECT TABLA1 2");
+	enviar_select(cliente, paquete2_fail);
+	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
+
+	// Ahora me quedo esperando la respuesta
+	struct_select_respuesta registro2 = recibir_registro(cliente);
+	switch (registro2.estado) {
+			case ESTADO_SELECT_OK:
+				printf("Respuesta SELECT: Valor:%s Timestamp:%lld\n",registro2.valor, registro2.timestamp);
+				break;
+			case ESTADO_SELECT_ERROR_KEY:
+				printf("Respuesta SELECT: ERROR No existe un registro con esa clave\n");
+				break;
+			// Paja hacer los demas case
+		}
 
 	// Armo un CREATE SC 4
 	struct_create paquete3;
