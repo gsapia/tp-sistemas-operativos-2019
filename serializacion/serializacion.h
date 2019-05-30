@@ -62,6 +62,12 @@ typedef struct{
 	uint32_t tiempoCompactacion;
 }struct_create;
 
+enum estados_create{
+	ESTADO_CREATE_OK,
+	ESTADO_CREATE_ERROR_TABLAEXISTENTE, // La tabla a crear ya existia
+	ESTADO_CREATE_ERROR_OTRO
+};
+
 typedef struct{
 	char* nombreTabla;
 }struct_describe, struct_drop;
@@ -110,5 +116,9 @@ struct_select_respuesta recibir_registro(int socket);
 
 void enviar_registro(int socket, struct_select_respuesta registro);
 
+
+void responder_create(int socket, uint16_t estado);
+
+uint16_t recibir_respuesta_create(int socket);
 
 #endif /* SERIALIZACION_H_ */

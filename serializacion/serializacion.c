@@ -492,3 +492,13 @@ struct_select_respuesta recibir_registro(int socket){
 
 	return paquete;
 }
+
+void responder_create(int socket, uint16_t estado){
+	send(socket, &estado, sizeof(estado), 0); // Simplemente mando el estado
+}
+
+uint16_t recibir_respuesta_create(int socket){
+	uint16_t estado;
+	recv(socket, &estado, sizeof(estado), 0);
+	return estado;
+}

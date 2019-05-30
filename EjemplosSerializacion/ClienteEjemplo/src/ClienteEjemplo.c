@@ -79,7 +79,7 @@ int main(void) {
 			// Paja hacer los demas case
 		}
 
-	// Armo un CREATE SC 4
+	// Armo un CREATE TABLA1 SC 4
 	struct_create paquete3;
 	paquete3.nombreTabla = "TABLA1";
 	paquete3.consistencia = SC;
@@ -90,6 +90,42 @@ int main(void) {
 	puts("Enviando CREATE");
 	enviar_create(cliente, paquete3);
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
+
+	// Ahore me quedo esperando la respuesta
+	uint16_t estado = recibir_respuesta_create(cliente);
+	switch (estado) {
+		case ESTADO_CREATE_OK:
+			printf("La tabla se creo\n");
+			break;
+		case ESTADO_CREATE_ERROR_TABLAEXISTENTE:
+			printf("La tabla ya existia\n");
+			break;
+		// Paja hacer los demas case
+	}
+
+	// Armo un CREATE TABLA2 SC 4 (Deberia fallar)
+	struct_create paquete3_fail;
+	paquete3_fail.nombreTabla = "TABLA2";
+	paquete3_fail.consistencia = SC;
+	paquete3_fail.particiones = 4;
+	paquete3_fail.tiempoCompactacion = 60000;
+
+	// Lo envio
+	puts("Enviando CREATE");
+	enviar_create(cliente, paquete3_fail);
+	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
+
+	// Ahore me quedo esperando la respuesta
+	uint16_t estado2 = recibir_respuesta_create(cliente);
+	switch (estado2) {
+	case ESTADO_CREATE_OK:
+		printf("La tabla se creo\n");
+		break;
+	case ESTADO_CREATE_ERROR_TABLAEXISTENTE:
+		printf("ERROR: La tabla ya existia\n");
+		break;
+		// Paja hacer los demas case
+	}
 
 
 	// Armo un DESCRIBE TABLA1

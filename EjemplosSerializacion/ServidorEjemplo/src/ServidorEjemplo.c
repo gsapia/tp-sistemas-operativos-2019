@@ -96,6 +96,19 @@ int main(void) {
 				 */
 				printf("Comando recibido: CREATE %s %d %d %d\n\n", paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
 
+				// Para el ejemplo, respondo con un estado OK solo si la tabla es TABLA1:
+				puts("Respondiendo SELECT");
+				uint16_t estado;
+				if(!strcmp(paquete.nombreTabla, "TABLA1")){
+					estado = ESTADO_CREATE_OK;
+				}
+				else{
+					estado = ESTADO_CREATE_ERROR_TABLAEXISTENTE;
+				}
+
+				// Y lo mando:
+				responder_create(cliente, estado);
+
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
 			}
