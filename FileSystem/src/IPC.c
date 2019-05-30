@@ -1,5 +1,5 @@
-#include "IPC.h"
-
+#include "LFS.h"
+#include "serializacion.c"
 void* servidor(uint16_t puerto_escucha, int tamValue){
 	log_trace(logger, "Iniciando servidor");
 
@@ -104,7 +104,6 @@ void* servidor(uint16_t puerto_escucha, int tamValue){
 					break;
 		}
 	}
-	close(cliente);
 	close(servidor);
 }
 

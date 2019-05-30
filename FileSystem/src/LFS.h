@@ -20,7 +20,9 @@
 #include<netdb.h>
 #include<sys/stat.h>
 #include<commons/bitarray.h>
-#include <dirent.h>
+#include<dirent.h>
+#include<arpa/inet.h>
+#include <sys/time.h>
 
 t_log* logger;
 t_config* config;
