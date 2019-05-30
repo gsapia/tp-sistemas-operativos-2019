@@ -188,8 +188,8 @@ FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp){
 }
 
 FILE* obtenerMetaDataLectura(char* nombreTabla){
-	char* path = string_from_format("%sTable/%s/MetaData", puntoMontaje, nombreTabla);
-	FILE* metadata = fopen(path, "w");
+	char* path = string_from_format("%sTable/%s/Metadata", puntoMontaje, nombreTabla);
+	FILE* metadata = fopen(path, "r");
 	free(path);
 	return metadata;
 }
@@ -207,12 +207,8 @@ int obtenerParticiones(FILE* metadata){
 
 //Devuelve un el archivo ".bin" que corresponde a la particion enviada por parametro
 FILE* obtenerBIN(int particion, char* nombreTabla){
-	int length = snprintf( NULL, 0, "%d", particion);
-	char* nombre_bin = malloc( length + 1 );
-	snprintf(nombre_bin, length + 1, "%d", particion);
-	strcat(nombre_bin, ".bin");
-
-	char* path = string_from_format("%sTable/%s/%s", puntoMontaje, nombreTabla, nombre_bin);
+	char* nombre_bin = intToString(particion);
+	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, nombre_bin);
 	FILE *bin = fopen(path, "r+");
 	free(path);
 	free(nombre_bin);

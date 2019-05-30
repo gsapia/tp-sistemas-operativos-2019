@@ -2,9 +2,9 @@
 #include "serializacion.h"
 void* consola();
 char* apiLissandra(char*);
-char* selects(char* nombreTabla, u_int16_t key);
+struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp);
-char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
+uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
 bool existeTabla(char* nombreTabla);
@@ -19,6 +19,11 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
 void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, double timeStamp);
 uint64_t getTimestamp();
+void filtrarKeyRegDeMemTable(t_list *listaFiltro, u_int16_t key);
+void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
+struct_select_respuesta regMayorTimestamp(t_list* listaFiltro);
+t_registro* convertirARegistroPuntero(t_registro r);
+struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
 
 void* consola(){
 	char *linea;
@@ -56,11 +61,20 @@ char *apiLissandra(char* mensaje){
 				char* endptr;
 				ulong key = strtoul(keystr, &endptr, 10);
 				if(*endptr == '\0'&& key < 65536){
-					char* resultado = selects(nombreTabla, key);
+					struct_select_respuesta resultado = selects(nombreTabla, key);
 					free(nombreTabla);
 					free(keystr);
 					free(comando);
-					return resultado;
+					switch (resultado.estado){
+						case ESTADO_SELECT_OK:
+							return strdup(resultado.valor);
+						case ESTADO_SELECT_ERROR_TABLA:
+							return strdup("ERROR: La tabla solicitada no existe.");
+						case ESTADO_SELECT_ERROR_KEY:
+							return strdup("ERROR: Esa tabla no contiene ningun registro con la clave solicitada.");
+						default:
+							return strdup("ERROR: Ocurrio un error desconocido.");
+					}
 				}
 			}
 			while(cantArgumentos){
@@ -76,17 +90,17 @@ char *apiLissandra(char* mensaje){
 			//INSERT TABLA1 3 "Mi nombre es Lissandra" 1548421507
 
 			free(comando[0]);
-
-			if (cantArgumentos == 6) {//Si viene SIN timestamp
+			if (cantArgumentos > 2){
 				char** argumentos = string_n_split(mensaje, 4, " ");
 				char** ultimoArgumento = string_split(argumentos[3], "\""); //Sirve para el value
+
 				free(argumentos[0]);
 				free(argumentos[1]);
 				free(argumentos[2]);
 				free(argumentos[3]);
 				free(argumentos);
 
-				if(!ultimoArgumento[1]){ // Si hay un solo argumento sigo, sino es que hay argumentos de mas...
+				if(!ultimoArgumento[1]){ // Si viene SIN TIMESTAMP
 					char* nombreTabla = comando[1];
 					char* keystr = comando[2];
 					char* endptr;
@@ -105,29 +119,13 @@ char *apiLissandra(char* mensaje){
 						free(comando);
 						return resultado;
 					}
-				}
-
-				for(int i = 0; ultimoArgumento[i]; i++){
-					free(ultimoArgumento[i]);
-				}
-				free(ultimoArgumento);
-			}else if (cantArgumentos == 7) { // Si viene CON timestamp
-				char** argumentos = string_n_split(mensaje, 5, " ");
-				char** ultimoArgumento = string_split(argumentos[3], "\""); //Sirve para el value
-				free(argumentos[0]);
-				free(argumentos[1]);
-				free(argumentos[2]);
-				free(argumentos[3]);
-				free(argumentos);
-
-				if(!ultimoArgumento[1]){ // Si hay un solo argumento sigo, sino es que hay argumentos de mas...
+				}else{ // Si viene CON TIMESTAMP
 					char* nombreTabla = comando[1];
 					char* keystr = comando[2];
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
-					char* timestampptr = comando[7];
-					double timestamp = strtod(timestampptr, NULL);
+					double timestamp = atof(ultimoArgumento[1]);
 					if (*endptr == '\0' && key < 65536) {
 						char* resultado = insert(nombreTabla, key, valor, timestamp);
 						while(cantArgumentos){
@@ -140,7 +138,6 @@ char *apiLissandra(char* mensaje){
 						return resultado;
 					}
 				}
-
 				for(int i = 0; ultimoArgumento[i]; i++){
 					free(ultimoArgumento[i]);
 				}
@@ -152,7 +149,7 @@ char *apiLissandra(char* mensaje){
 				cantArgumentos--;
 			}
 			free(comando);
-			return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
+			return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]” TIMESTAMP* ");
 		}
 		else if(!strcmp(comando[0],"CREATE")){
 			//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
@@ -162,7 +159,6 @@ char *apiLissandra(char* mensaje){
 			if(cantArgumentos == 4){
 				char* nombreTabla = comando[1];
 				char* tipoConsistencia = comando[2];
-
 				char* cantidadParticionesstr = comando[3];
 				char* compactionTimestr = comando[4];
 				char* endptr = 0;
@@ -172,13 +168,22 @@ char *apiLissandra(char* mensaje){
 					compactionTime = strtoul(compactionTimestr, &endptr, 10);
 				if(*endptr == '\0'){
 					// Faltaria revisar si el tipo de consistencia es valido ^
-					char* resultado = create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+					uint16_t resultado = create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 					free(nombreTabla);
 					free(tipoConsistencia);
 					free(cantidadParticionesstr);
 					free(compactionTimestr);
 					free(comando);
-					return resultado;
+
+
+					switch(resultado){
+						case ESTADO_CREATE_OK:
+							return strdup("OK: Se creo la carpeta solicitada");
+						case ESTADO_CREATE_ERROR_TABLAEXISTENTE:
+							return strdup("ERROR: La tabla solicitada ya existe.");
+						default:
+							return strdup("ERROR: Ocurrio un error desconocido.");
+					}
 				}
 			}
 			while(cantArgumentos){
@@ -191,6 +196,8 @@ char *apiLissandra(char* mensaje){
 		else if(!strcmp(comando[0],"DESCRIBE")){
 			//DESCRIBE [NOMBRE_TABLA]
 			//DESCRIBE TABLA1
+			//DESCRIBE
+
 			free(comando[0]);
 			if(cantArgumentos == 1){
 				char* nombreTabla = comando[1];
@@ -239,26 +246,30 @@ char *apiLissandra(char* mensaje){
 	return string_from_format("Comando invalido");
 }
 
-char* selects(char* nombreTabla, u_int16_t key){
-	char* valueReturn;
+struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
+	struct_select_respuesta select_respuesta;
+	t_list *listaFiltro = list_create();
+
 	if(existeTabla(nombreTabla)){
 		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
 		int particiones = obtenerParticiones(metadata);
-		printf("Obtuve la cantidad de particiones: %d \n", particiones);
-		int particion = funcionModulo(key, particiones);
-		printf("La Particion a la que hay que ir a buscar es: %d \n", particion);
+		int particion_busqueda = funcionModulo(key, particiones);
 
-//		obtenerRegistrosDeMemTable();
-//		obtenerRegistrosDeTable();
-
-		valueReturn = obtenerValue(nombreTabla, key, particion);
+//		### Meto a todos los registros con la misma key en en una lista ###
+		filtrarKeyRegDeMemTable(listaFiltro, key);
+		obtenerRegistrosDeTable(listaFiltro, key, particion_busqueda, nombreTabla);
+//		obtenerRegDeArchivosTemp();
+		select_respuesta = regMayorTimestamp(listaFiltro);
 
 		fclose(metadata);
+		list_destroy_and_destroy_elements(listaFiltro, free);
 		log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
-		return string_from_format("El value es: %s",valueReturn);
+		return select_respuesta;
 	}else{
+		select_respuesta.estado = ESTADO_SELECT_ERROR_TABLA;
+		list_destroy_and_destroy_elements(listaFiltro, free);
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
-		return string_from_format(" No existe la Tabla: %s",nombreTabla);
+		return select_respuesta;
 	}
 
 }
@@ -267,7 +278,6 @@ char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp){
 	if(existeTabla(nombreTabla)){
 		FILE* metadata = obtenerMetaDataLectura(nombreTabla); //Nose xq pide "obtener metadata"
 		agregarAMemTable(nombreTabla, key, valor, timeStamp);
-
 		fclose(metadata);
 		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %f", nombreTabla, key, valor, timeStamp);
 		return string_from_format("Se realizo el INSERT");
@@ -275,21 +285,22 @@ char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp){
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
 		return string_from_format("No existe en el File System la tabla: %s",nombreTabla);
 	}
-
-
 }
 
-char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
+uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
 //	CREATE TABLA1 SC 4 60000
+	uint16_t estado;
 	if(!existeTabla(nombreTabla)){
 		crearDirectiorioDeTabla(nombreTabla);
 		crearMetadataDeTabla(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 		crearBinDeTabla(nombreTabla, cantidadParticiones);
 		log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+		estado = ESTADO_CREATE_OK;
 	}else{
 		log_info(logger, "La tabla %s ya existe en el FS", nombreTabla);
+		estado = ESTADO_CREATE_ERROR_TABLAEXISTENTE;
 	}
-	return string_from_format("Elegiste CREATE");
+	return estado;
 }
 
 char* describe(char* nombreTabla){
@@ -350,7 +361,7 @@ char* obtenerValue(char* nombreTabla, u_int16_t key, int particion){
 	reg->timeStamp = 400;
 	reg->value = "Value 1";
 	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
-/*	reg->key = 10;
+	reg->key = 10;
 	reg->timeStamp = 100;
 	reg->value = "Value 2";
 	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
@@ -358,7 +369,7 @@ char* obtenerValue(char* nombreTabla, u_int16_t key, int particion){
 	reg->timeStamp = 200;
 	reg->value = "Value 3";
 	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
-*/
+
 	while(!feof(bin)){
 		t_registroBusqueda *reg2;
 		fread(&reg2, sizeof(t_registroBusqueda), 1, bin);
@@ -426,11 +437,90 @@ void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, double time
 	registro->key = key;
 	strcpy(registro->value, valor);
 	registro->timeStamp = timeStamp;
-	list_add(memTable, registro);
+	list_add(memTable, registro);;
 }
 
 uint64_t getTimestamp() {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
+}
+
+// Devuelve una lista con todos los registros de la Memtable que tengan dicha key
+void filtrarKeyRegDeMemTable(t_list *listaFiltro, u_int16_t key){
+	int cant = list_size(memTable);
+	t_registro *aux = malloc(sizeof(t_registro));
+	for(int i=0;i<cant;i++){
+		aux = list_get(memTable, i);
+		if(aux->key == key){
+			list_add(listaFiltro, aux);
+		}
+	}
+}
+
+// Dado un archivo bin, busca en el archivo los registros que tengan la key igual a la pasada
+//  por parametro y los agrega a listaFiltro
+void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla){
+	FILE* bin = obtenerBIN(particion_busqueda, nombreTabla);
+	t_registro reg;
+	t_registro* aux;
+	while(!feof(bin)){
+		fread(&reg, sizeof(reg),1,bin);
+		if(reg.key == key){
+			aux = convertirARegistroPuntero(reg);
+			list_add(listaFiltro, aux);
+		}
+	}
+}
+
+// Busca dentro de una lista, el registro con mayor timestamp y lo devuelve en modo de select
+struct_select_respuesta regMayorTimestamp(t_list* listaFiltro){
+	struct_select_respuesta regSelect;
+	t_registro *mayor = malloc(sizeof(t_registro));
+	t_registro *aux = malloc(sizeof(t_registro));
+	mayor->timeStamp = -1;
+	mayor->nombre_tabla =malloc(50);
+	mayor->value = malloc(50);
+
+	if(!list_is_empty(listaFiltro)){
+		while(!list_is_empty(listaFiltro)){
+			aux = list_remove(listaFiltro, 0);
+			if(aux->timeStamp > mayor->timeStamp){
+				mayor->key = aux->key;
+
+				strcpy(mayor->nombre_tabla,aux->nombre_tabla);
+				mayor->timeStamp = aux->timeStamp;
+				strcpy(mayor->value,aux->value);
+			}
+		}
+		regSelect = convertirARespuestaSelect(mayor);
+		free(mayor);
+		free(aux);
+		return regSelect;
+	}else{
+		regSelect.estado = ESTADO_SELECT_ERROR_KEY;
+		return regSelect;
+	}
+}
+
+//Convierte un t_registro a un t_registro*
+t_registro* convertirARegistroPuntero(t_registro r){
+	t_registro* registro = malloc(sizeof(t_registro));
+	registro->key = r.key;
+	registro->value = malloc(strlen(r.value)+1);
+	strcpy(registro->value, r.value);
+	registro->timeStamp = r.timeStamp;
+	registro->nombre_tabla = malloc(strlen(r.nombre_tabla)+1);
+	strcpy(registro->nombre_tabla, r.nombre_tabla);
+	return registro;
+}
+
+//Convierte a un t_registro* a un struct_select_respuesta
+struct_select_respuesta convertirARespuestaSelect(t_registro* registro){
+	struct_select_respuesta select_respuesta;
+	select_respuesta.estado = ESTADO_SELECT_OK;
+	select_respuesta.timestamp = registro->timeStamp;
+	select_respuesta.valor = malloc(strlen(registro->value)+1);
+	strcpy(select_respuesta.valor,registro->value);
+	return select_respuesta;
 }

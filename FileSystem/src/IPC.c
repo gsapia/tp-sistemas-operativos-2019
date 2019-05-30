@@ -1,5 +1,8 @@
 #include "LFS.h"
 #include "serializacion.c"
+
+struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
+
 void* servidor(uint16_t puerto_escucha, int tamValue){
 	log_trace(logger, "Iniciando servidor");
 
@@ -53,55 +56,78 @@ void* servidor(uint16_t puerto_escucha, int tamValue){
 		int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 		log_trace(logger, "Recibi una conexion en %d", cliente);
 		uint8_t cod_op;
+
 		if(!recv(cliente, &cod_op, sizeof(uint8_t), 0)){
 			log_trace(logger, "El cliente se desconecto");
 			break;
 		}
+
 		switch(cod_op){
 			case SELECT:
 			{
 				log_trace(logger, "Recibi un SELECT");
 				struct_select paquete = recibir_select(cliente);
 
-
+				struct_select_respuesta registro;
+				registro = selects(paquete.nombreTabla, paquete.key);
 
 				printf("Comando recibido: SELECT %s %d\n\n", paquete.nombreTabla, paquete.key);
 
+				enviar_registro(cliente, registro);
+
 				free(paquete.nombreTabla);
-				}
-				break;
+			}
+			break;
 			case INSERT:
 			{
 				log_trace(logger, "Recibi un INSERT");
 				struct_insert paquete = recibir_insert(cliente);
 
-
-				//Depues haria lo que tenga que hacer con esta struct ya cargada
+				//Hacer algo con el paquete
 
 				printf("Comando recibido: INSERT %s %d \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
 
 				free(paquete.nombreTabla);
 				free(paquete.valor);
 			}
-				break;
+			break;
 			case CREATE:
-				break;
+			{
+				puts("Recibi un CREATE");
+				struct_create paquete = recibir_create(cliente);
+
+
+
+				printf("Comando recibido: CREATE %s %d %d %d\n\n", paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
+				free(paquete.nombreTabla);
+			}
+			break;
 			case DESCRIBE:
 				{
 				log_trace(logger, "Recibi un DESCRIBE");
 				struct_describe paquete = recibir_describe(cliente);
 
-				/*
-				 * Depues haria lo que tenga que hacer con esta struct ya cargada
-				 */
+				//Hacer algo con el paquete
+
 				printf("Comando recibido: DESCRIBE %s\n\n", paquete.nombreTabla);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
 				}
 				break;
-				case DROP:
-					break;
+			case DROP:
+			{
+				puts("Recibi un DROP");
+				struct_drop paquete = recibir_drop(cliente);
+
+				//Hacer algo con el paquete
+
+				printf("Comando recibido: DROP %s\n\n", paquete.nombreTabla);
+
+				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
+				free(paquete.nombreTabla);
+			}
+			break;
 		}
 	}
 	close(servidor);
