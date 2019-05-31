@@ -28,15 +28,21 @@ t_log* logger;
 t_config* config;
 char* puntoMontaje;
 // ##### MemTable #####
+
 typedef struct{
-	double timeStamp;
+	uint16_t puerto_escucha;
+	int tamValue;
+}argumentos;
+
+typedef struct{
+	uint64_t timeStamp;
 	uint16_t key;
 	char* value;
 	char* nombre_tabla;
 }t_registro;
 
 typedef struct{
-	double timeStamp;
+	uint64_t timeStamp;
 	uint16_t key;
 	char* value;
 }t_registroBusqueda;

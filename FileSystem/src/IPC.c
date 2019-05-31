@@ -3,8 +3,12 @@
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 
-void* servidor(uint16_t puerto_escucha, int tamValue){
-	log_trace(logger, "Iniciando servidor");
+void* servidor(argumentos* args){
+	uint16_t puerto_escucha = args->puerto_escucha;
+	int tamValue = args->tamValue;
+	free(args);
+	log_trace(logger, "Iniciando servidor...");
+	log_trace(logger, "Puerto: %u, Tamanio: %d", puerto_escucha, tamValue);
 
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
@@ -22,7 +26,7 @@ void* servidor(uint16_t puerto_escucha, int tamValue){
 	}
 
 	listen(servidor,SOMAXCONN);
-	log_trace(logger, "Escuchandoen el puerto &d...", puerto_escucha);
+	log_trace(logger, "Escuchandoen el puerto %d...", puerto_escucha);
 
 	bool conectado = false;
 
@@ -35,7 +39,7 @@ void* servidor(uint16_t puerto_escucha, int tamValue){
 		//COMIENZO HANDSHAKE
 
 		uint8_t *otro = malloc(sizeof(uint8_t));
-		if(!(recv(cliente, otro, sizeof(uint8_t), 0) && otro == 2)){ // Confirmo si es Memoria
+		if(!(recv(cliente, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo si es Memoria
 			log_error(logger, "Recibi una conexion de alguien que no es Memoria.");
 			close(cliente);
 		}else{

@@ -3,7 +3,7 @@
 void* consola();
 char* apiLissandra(char*);
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
-char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp);
+char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
@@ -17,7 +17,7 @@ void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
-void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, double timeStamp);
+void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 uint64_t getTimestamp();
 void filtrarKeyRegDeMemTable(t_list *listaFiltro, u_int16_t key);
 void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
@@ -106,7 +106,7 @@ char *apiLissandra(char* mensaje){
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
-					double timestamp = getTimestamp();
+					uint64_t timestamp = getTimestamp();
 
 					if (*endptr == '\0' && key < 65536) {
 						char* resultado = insert(nombreTabla, key, valor, timestamp);
@@ -125,7 +125,7 @@ char *apiLissandra(char* mensaje){
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
-					double timestamp = atof(ultimoArgumento[1]);
+					uint64_t timestamp = atof(ultimoArgumento[1]);
 					if (*endptr == '\0' && key < 65536) {
 						char* resultado = insert(nombreTabla, key, valor, timestamp);
 						while(cantArgumentos){
@@ -274,11 +274,9 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 
 }
 
-char* insert(char* nombreTabla, u_int16_t key, char* valor, double timeStamp){
+char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
 	if(existeTabla(nombreTabla)){
-		FILE* metadata = obtenerMetaDataLectura(nombreTabla); //Nose xq pide "obtener metadata"
 		agregarAMemTable(nombreTabla, key, valor, timeStamp);
-		fclose(metadata);
 		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %f", nombreTabla, key, valor, timeStamp);
 		return string_from_format("Se realizo el INSERT");
 	}else{
@@ -429,7 +427,7 @@ t_log* iniciar_logger() {
 	return log_create("Lissandra.log", "Lissandra", 1, LOG_LEVEL_TRACE);
 }
 
-void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, double timeStamp){
+void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
 	t_registro *registro = malloc(sizeof(t_registro));
 	registro->nombre_tabla = malloc(strlen(nombreTabla)+1);
 	registro->value = malloc(strlen(valor)+1);
@@ -506,12 +504,7 @@ struct_select_respuesta regMayorTimestamp(t_list* listaFiltro){
 //Convierte un t_registro a un t_registro*
 t_registro* convertirARegistroPuntero(t_registro r){
 	t_registro* registro = malloc(sizeof(t_registro));
-	registro->key = r.key;
-	registro->value = malloc(strlen(r.value)+1);
-	strcpy(registro->value, r.value);
-	registro->timeStamp = r.timeStamp;
-	registro->nombre_tabla = malloc(strlen(r.nombre_tabla)+1);
-	strcpy(registro->nombre_tabla, r.nombre_tabla);
+	*registro = r;
 	return registro;
 }
 

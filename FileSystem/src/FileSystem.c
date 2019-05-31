@@ -22,8 +22,7 @@ void crearBitMapFS();
 void crearTables();
 void crearBloquesDatos();
 bool existeTabla(char* nombreTabla);
-char* u_intAString(u_int a);
-char* intToString(int a);
+char* intToString(long a);
 char* encontreTabla(char* nombreTabla, DIR* path_buscado);
 FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp);
 t_list* tieneDatosParaDump(t_list *memTableAux, char* carpetaNombre);
@@ -32,14 +31,12 @@ t_registro convertirAStruct(t_registro *registro);
 
 // Hilo del FILESYSTEM (Crea las carpetas necesarias)
 void *fileSystem() {
-	log_info(logger, "> FileSystem iniciado.");
-
 	crearFicheroPadre();
 	crearMetaDataFS();
 	crearBitMapFS();
 	crearTables();
 	crearBloquesDatos();
-	log_info(logger, "> FileSystem finalizado.");
+	log_trace(logger, "FileSystem ha creado las carpetas necesarias.");
 	return 0;
 }
 
@@ -231,13 +228,13 @@ void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int canti
 	fputs(tipoConsistencia, metadata);fputs("\n", metadata);
 
 	fputs("PARTITIONS=", metadata);
-	char* cantPart = u_intAString(cantidadParticiones); //ROMPE
+	char* cantPart = intToString(cantidadParticiones); //ROMPE
 	fputs(cantPart, metadata);
 	fputs("\n", metadata);
 	free(cantPart);
 
 	fputs("COMPACTION_TIME=", metadata);
-	char* compactTime = u_intAString(compactionTime); //ROMPE
+	char* compactTime = intToString(compactionTime); //ROMPE
 	fputs(compactTime, metadata);
 	free(compactTime);
 	free(path);
@@ -264,21 +261,8 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 // ##### FUNCIONES SECUNDARIAS #####
 
 // Convierte un u_int en un string
-char* u_intAString(u_int a){
-	u_int someInt = a; char str[12];
-	char* string = malloc(sizeof(12));
-	sprintf(str, "%u", someInt);
-	strcpy(string,str);
-	return string;
-}
-
-// Convierte un entero en un string
-char* intToString(int a){
-	int num = a; char str[12];
-	char* string = malloc(strlen(str));
-	sprintf(str, "%d", num);
-	strcpy(string,str);
-	return string;
+char* intToString(long a){
+	return string_from_format("%ld", a);
 }
 
 // Convierte un t_registro* a un t_registro
