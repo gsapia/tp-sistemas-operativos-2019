@@ -1,200 +1,28 @@
 #include "IPC.h"
-/*
-struct_select recibir_select(int cliente){
-	struct_select paquete;
-	void* buffer;
+#include "MemoriaPrincipal.h"
 
-	// Recibo tamanio del nombre de tabla
-	buffer = malloc(sizeof(uint16_t));
-	recv(cliente, buffer, sizeof(uint16_t), 0);
-	paquete.tamanio_nombre = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El nombre de tabla es de %d bytes\n", paquete.tamanio_nombre);
-	free(buffer);
+int socket_cliente;
 
-	// Ahora recibo el nombre de la tabla
-	buffer = malloc(paquete.tamanio_nombre);
-	recv(cliente, buffer, paquete.tamanio_nombre, 0);
-	paquete.nombreTabla = malloc(paquete.tamanio_nombre);
-	memcpy(paquete.nombreTabla, buffer, paquete.tamanio_nombre);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
-	free(buffer);
-
-	// Ahora recibo la key
-	buffer = malloc(sizeof(paquete.key));
-	recv(cliente, buffer, sizeof(paquete.key), 0);
-	paquete.key = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("La key es %d\n", paquete.key);
-	free(buffer);
-
-	puts("Listo, recibi el paquete completo!\n");
-
-	return paquete;
-
-	// Para tener en cuenta: El recv recibe un maximo de bytes como diga el tercer parametro,
-	// pero puede recibir menos por alguna circunstancia no esperada (si llegaron menos bytes de los que esperaba).
-	// La cantidad de bytes recibidos es el valor que devuelve recv, por lo que podemos almacenar y usar ese valor
-	// para controlar posibles errores y abortar la operacion.
+struct_select_respuesta selectAFS(struct_select paquete){
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+	struct_select_respuesta respuesta;
+	respuesta.estado = ESTADO_SELECT_OK;
+	respuesta.valor = strdup("VALOR");
+	respuesta.timestamp = 123456;
+	return respuesta;
+	// ----- Fin parte provisoria -----
+	enviar_select(socket_cliente, paquete);
+	return recibir_registro(socket_cliente);
+}
+enum estados_create createAFS(struct_create paquete){
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+	return ESTADO_CREATE_OK;
+	// ----- Fin parte provisoria -----
+	enviar_create(socket_cliente, paquete);
+	return recibir_respuesta_create(socket_cliente);
 }
 
-struct_insert recibir_insert(int cliente){
-	struct_insert paquete;
-	void* buffer = NULL;
-
-	// Recibo tamanio del nombre de tabla
-	buffer = malloc(sizeof(paquete.tamanio_nombre));
-	recv(cliente, buffer, sizeof(paquete.tamanio_nombre), 0);
-	paquete.tamanio_nombre = *((uint16_t*)buffer);
-	printf("El nombre de tabla es de %d bytes\n", paquete.tamanio_nombre);
-	free(buffer);
-
-	// Ahora recibo el nombre de la tabla
-	buffer = malloc(paquete.tamanio_nombre);
-	recv(cliente, buffer, paquete.tamanio_nombre, 0);
-	paquete.nombreTabla = malloc(paquete.tamanio_nombre);
-	memcpy(paquete.nombreTabla, buffer, paquete.tamanio_nombre);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
-	free(buffer);
-
-	// Ahora recibo la key
-	buffer = malloc(sizeof(paquete.key));
-	recv(cliente, buffer, sizeof(uint16_t), 0);
-	paquete.key = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("La key es %d\n", paquete.key);
-	free(buffer);
-
-	// Por ultimo el valor
-	buffer = malloc(sizeof(uint16_t));
-	recv(cliente, buffer, sizeof(uint16_t), 0);
-	paquete.tamanio_valor = *((uint16_t*)buffer);
-	printf("El valor es de %d bytes\n", paquete.tamanio_valor);
-	free(buffer);
-
-	buffer = malloc(paquete.tamanio_valor);
-	recv(cliente, buffer, paquete.tamanio_valor, 0);
-	paquete.valor = malloc(paquete.tamanio_valor);
-	memcpy(paquete.valor, buffer, paquete.tamanio_valor);
-	printf("El valor es \"%s\"\n", paquete.valor);
-	free(buffer);
-
-	puts("Listo, recibi el paquete completo!\n");
-
-	return paquete;
-}
-
-struct_describe recibir_describe(int cliente){
-	struct_describe paquete;
-	void* buffer;
-	uint16_t tamanio_string; // Uso esta variable para almacenar los tamanios de los string que vaya a ir recibiendo
-
-	// Recibo tamanio del nombre de tabla
-	buffer = malloc(sizeof(uint16_t));
-	recv(cliente, buffer, sizeof(uint16_t), 0);
-	tamanio_string = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
-	free(buffer);
-
-	// Ahora recibo el nombre de la tabla
-	buffer = malloc(tamanio_string);
-	recv(cliente, buffer,tamanio_string, 0);
-	paquete.nombreTabla = malloc(tamanio_string);
-	memcpy(paquete.nombreTabla, buffer, tamanio_string);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
-	free(buffer);
-
-	puts("Listo, recibi el paquete completo!\n");
-
-	return paquete;
-}
-
-void enviar_select(int cliente, struct_select paquete){
-	const uint8_t cod_op = SELECT;
-
-	// Armo paquete con los datos
-	size_t tamanio_paquete = sizeof(cod_op) + sizeof(uint16_t) + sizeof(paquete.key) + paquete.tamanio_nombre; // Calculo el tamanio del paquete
-	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
-
-	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
-
-	// Primero codigo de operacion
-	memcpy(buffer, &cod_op, sizeof(cod_op)); // En el comienzo del buffer copio el codigo de operacion
-	desplazamiento += sizeof(cod_op); // Me corro 1 byte del uint8_t
-
-	// Ahora el nombre de la tabla
-	memcpy(buffer + desplazamiento, &paquete.tamanio_nombre, sizeof(paquete.tamanio_nombre)); // En el comienzo del buffer copio el tamanio del nombre de la tabla
-	desplazamiento += sizeof(paquete.tamanio_nombre); // Me corro 2 bytes del uint16
-	memcpy(buffer + desplazamiento, paquete.nombreTabla, paquete.tamanio_nombre); // En la nueva posicion copio el nombre de la tabla
-	desplazamiento += paquete.tamanio_nombre; // Me corro la longitud del string
-
-	// Lo mismo para la clave
-	memcpy(buffer + desplazamiento, &paquete.key, sizeof(paquete.key));
-	// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
-
-	// Por ultimo envio el paquete y libero el buffer.
-	send(cliente, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
-	free(buffer);
-}
-
-void enviar_insert(int cliente, struct_insert paquete){
-	const uint8_t cod_op = INSERT;
-
-	// Armo paquete con los datos
-	size_t tamanio_paquete = sizeof(cod_op) + sizeof(uint16_t)*2 + sizeof(paquete.key) + paquete.tamanio_nombre + paquete.tamanio_valor; // Calculo el tamanio del paquete
-	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
-
-	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
-
-	// Primero codigo de operacion
-	memcpy(buffer, &cod_op, sizeof(cod_op)); // En el comienzo del buffer copio el codigo de operacion
-	desplazamiento += sizeof(cod_op); // Me corro 1 byte del uint8_t
-
-	// Ahora el nombre de la tabla
-	memcpy(buffer + desplazamiento, &paquete.tamanio_nombre, sizeof(paquete.tamanio_nombre)); // En el comienzo del buffer copio el tamanio del nombre de la tabla
-	desplazamiento += sizeof(paquete.tamanio_nombre); // Me corro 2 bytes del uint16
-	memcpy(buffer + desplazamiento, paquete.nombreTabla, paquete.tamanio_nombre); // En la nueva posicion copio el nombre de la tabla
-	desplazamiento += paquete.tamanio_nombre; // Me corro la longitud del string
-
-	// Lo mismo para la clave
-	memcpy(buffer + desplazamiento, &paquete.key, sizeof(paquete.key));
-	desplazamiento += sizeof(paquete.key);
-
-	// Lo mismo para el valor
-	memcpy(buffer + desplazamiento, &paquete.tamanio_valor, sizeof(paquete.tamanio_valor));
-	desplazamiento += sizeof(paquete.tamanio_valor);
-	memcpy(buffer + desplazamiento, paquete.valor, paquete.tamanio_valor);
-	// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
-
-	// Por ultimo envio el paquete y libero el buffer.
-	send(cliente, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
-	free(buffer);
-}
-
-void enviar_describe(int cliente, struct_describe paquete){
-	const uint8_t cod_op = DESCRIBE;
-
-	uint16_t tamanio_nombre = strlen(paquete.nombreTabla)+1; // Calculo el tamanio del nombre
-
-	// Armo paquete con los datos
-	size_t tamanio_paquete = sizeof(cod_op) + sizeof(uint16_t) + tamanio_nombre; // Calculo el tamanio del paquete
-	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
-
-	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
-
-	// Primero codigo de operacion
-	memcpy(buffer, &cod_op, sizeof(cod_op)); // En el comienzo del buffer copio el codigo de operacion
-	desplazamiento += sizeof(cod_op); // Me corro 1 byte del uint8_t
-
-	// Ahora el nombre de la tabla
-	memcpy(buffer + desplazamiento, &tamanio_nombre, sizeof(tamanio_nombre)); // En el comienzo del buffer copio el tamanio del nombre de la tabla
-	desplazamiento += sizeof(tamanio_nombre); // Me corro 2 bytes del uint16
-	memcpy(buffer + desplazamiento, paquete.nombreTabla, tamanio_nombre); // En la nueva posicion copio el nombre de la tabla
-	// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
-
-	// Por ultimo envio el paquete y libero el buffer.
-	send(cliente, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
-	free(buffer);
-}
-*/
-void cliente(){
+void initCliente(){
 	log_trace(logger, "Iniciando cliente");
 
 	struct sockaddr_in direccionServidor;
@@ -204,7 +32,7 @@ void cliente(){
 
 	log_trace(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
 
-	int socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
+	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
 		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
 		sleep(95); // TODO CAMBIAR POR 5
@@ -226,10 +54,7 @@ void cliente(){
 	// El otro extremo es FS realmente asi que ahora enviamos/recibimos los datos necesarios
 
 	// En este caso recibimos el tamaño del value
-	uint16_t *tamanio_value = malloc(sizeof(uint16_t));
-	recv(socket_cliente, tamanio_value, sizeof(tamanio_value), 0);
-
-	// * FALTA GUARDAR EL TAMANIO DE VALUE DONDE CORRESPONDA *
+	recv(socket_cliente, &tamanio_value, sizeof(tamanio_value), 0);
 
 	//-------------------FIN HANDSHAKE------------------
 
@@ -239,7 +64,9 @@ void cliente(){
 	 * TODO:
 	 * Enviar datos
 	 */
+}
 
+void closeCliente(){
 	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 

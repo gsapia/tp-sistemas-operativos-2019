@@ -42,7 +42,12 @@ typedef struct{
 	char* nombreTabla;
 }struct_describe;
 */
-void cliente();
+
+void initCliente();
+void closeCliente();
 void servidor();
+
+struct_select_respuesta selectAFS(struct_select paquete);
+enum estados_create createAFS(struct_create paquete);
 
 #endif /* IPC_H_ */

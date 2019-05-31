@@ -1,5 +1,6 @@
 #include "API.h"
 #include "MemoriaPrincipal.h"
+#include "IPC.h"
 
 t_pagina* agregar_registro(uint16_t clave, char* valor, t_list *tabla_paginas){
 	// Truncamos el valor al tamanio maximo posible para evitar problemas
@@ -74,14 +75,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		struct_select paquete;
 		paquete.key = key;
 		paquete.nombreTabla = nombreTabla;
-		//struct_select_respuesta respuesta = enviar_select(socekt, paquete);
-
-		// ----- Provisoriamente uso una respuesta por defecto: -----
-		struct_select_respuesta respuesta;
-		respuesta.estado = ESTADO_SELECT_OK;
-		respuesta.valor = strdup("VALOR");
-		respuesta.timestamp = 123456;
-		// ----- Fin parte provisoria -----
+		struct_select_respuesta respuesta = selectAFS(paquete);
 
 		if(respuesta.estado != ESTADO_SELECT_OK){ // Si el resultado no fue el esperado, no guardo nada y devuelvo lo que recibi
 			return respuesta;
@@ -155,12 +149,7 @@ enum estados_create create(char* nombreTabla, enum consistencias tipoConsistenci
 	paquete.particiones = cantidadParticiones;
 	paquete.tiempoCompactacion = compactionTime;
 
-
-	//uint16_t resultado = enviar_create(socket, paquete);
-
-	// ----- Provisoriamente uso una respuesta por defecto: -----
-	uint16_t resultado = ESTADO_CREATE_OK;
-	// ----- Fin parte provisoria -----
+	enum estados_create resultado = createAFS(paquete);
 
 	return resultado;
 }

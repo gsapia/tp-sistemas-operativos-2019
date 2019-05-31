@@ -13,9 +13,9 @@ int main(void) {
 
 	leerConfig();
 
-	pthread_t hiloConsola;
-	if (pthread_create(&hiloConsola, NULL, (void*)consola, NULL)) {
-		log_error(logger, "Hilo consola: Error - pthread_create()");
+	pthread_t hiloCliente;
+	if (pthread_create(&hiloCliente, NULL, (void*)initCliente, NULL)) {
+		log_error(logger, "Hilo cliente: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 
@@ -25,15 +25,17 @@ int main(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	// Para probar, supongo un valor de longitud 4 bytes. Pero habria que usar el valor enviado por LFS
+	// pthread_join(hiloCliente, NULL); // Hasta que no este el handhake con FS hecho no deberiamos poder hacer mas nada
+
+	// ----- Provisoriamente supongo un valor de longitud 4 bytes. Pero habria que usar el valor enviado por LFS -----
 	tamanio_value = 4;
+	// ----- Fin parte provisoria -----
 
 	initMemoriaPrincipal();
 
-
-	pthread_t hiloCliente;
-	if (pthread_create(&hiloCliente, NULL, (void*)cliente, NULL)) {
-		log_error(logger, "Hilo cliente: Error - pthread_create()");
+	pthread_t hiloConsola;
+	if (pthread_create(&hiloConsola, NULL, (void*)consola, NULL)) {
+		log_error(logger, "Hilo consola: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 	pthread_join(hiloConsola, NULL);
