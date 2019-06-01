@@ -27,3 +27,20 @@
 		return string_from_format("Elegiste JOURNAL");
 
 	}
+
+	char* run(char* runPath){
+		return string_from_format("Elegiste RUN ");
+	}
+
+	char* metrics()
+	{
+		return string_from_format("Elegiste METRICS");
+	}
+
+	char* add(char* numeroMemoria, char* criterio){
+	    return string_from_format("Elegiste ADD");
+	}
+
+
+
+

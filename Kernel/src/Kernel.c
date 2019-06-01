@@ -1,6 +1,8 @@
 #include "Kernel.h"
 
 
+//Consola
+
     void* consola();
     char* apiKernel(char*);
 
@@ -34,7 +36,7 @@
 				cantArgumentos++;
 			}
 
-			if(!strcmp(comando[0],SELECT)){
+			if(!strcmp(comando[0],"SELECT")){
 				//SELECT [NOMBRE_TABLA] [KEY]
 				//SELECT TABLA1 3
 
@@ -45,7 +47,7 @@
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10); //String To Unsigned Long, le paso un String y me retorna un ulong con ese numero.
 					if(*endptr == '\0'&& key < 65536){       // Atoi era otra opcion pero no maneja errores como strtoul o strtol
-						char* resultado = selects(nombreTabla, key); // Como deben ser Keys de 16 bits debe se < 65536
+						char* resultado = selects(nombreTabla, key); // Como deben ser Keys de 16 bits debe ser < 65536
 						free(nombreTabla);
 						free(keystr);
 						free(comando);
@@ -59,7 +61,7 @@
 				free(comando);
 				return string_from_format("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
 			}
-			else if(!strcmp(comando[0],INSERT)){
+			else if(!strcmp(comando[0],"INSERT")){
 				//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”
 				//INSERT TABLA1 3 "Mi nombre es Lissandra"
 
@@ -104,7 +106,7 @@
 				free(comando);
 				return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
 			}
-			else if(!strcmp(comando[0],CREATE)){
+			else if(!strcmp(comando[0],"CREATE")){
 				//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
 				//CREATE TABLA1 SC 4 60000
 
@@ -138,7 +140,7 @@
 				free(comando);
 				return string_from_format("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
 			}
-			else if(!strcmp(comando[0],DESCRIBE)){
+			else if(!strcmp(comando[0],"DESCRIBE")){
 				//DESCRIBE [NOMBRE_TABLA]
 				//DESCRIBE TABLA1
 
@@ -176,7 +178,8 @@
 				free(comando);
 				return string_from_format("Sintaxis invalida. Uso: DROP [NOMBRE_TABLA]");
 			}
-			else if(!strcmp(comando[0],JOURNAL)){
+
+			else if(!strcmp(comando[0],"JOURNAL")){
 				//JOURNAL
 
 				free(comando[0]);
@@ -191,16 +194,89 @@
 				free(comando);
 				return string_from_format("Sintaxis invalida. Uso: JOURNAL");
 			}
+
+			else if(! strcmp(comando[0],RUN)){
+				//RUN <path> -> ruta del archivo LQL que se encuentra en el FileSystem local del Kernel y No en el proceso LFS del tp.
+				free(comando[0]);
+				if (cantArgumentos == 1)
+				{
+					char* rutaPath = comando[1];
+					char* resultado = run(rutaPath);
+					free(rutaPath);
+					free(comando);
+					return resultado;
+				}
+
+				while(cantArgumentos){
+					free(comando[cantArgumentos]);
+					cantArgumentos--;
+				}
+
+				free(comando);
+				return string_from_format("Sintaxis invalida. Uso: RUN <PATH>");
+
+			}
+
+			else if(! strcmp(comando[0], "METRICS")){
+				//METRICS Informa las metricas actuales por consola
+				free(comando[0]);
+				if (cantArgumentos == 0)
+				{
+					free(comando);
+					return metrics();
+				}
+
+				while(cantArgumentos){
+					free(comando[cantArgumentos]);
+					cantArgumentos--;
+				}
+
+				free(comando);
+				return string_from_format("Sintaxis invalida. Uso: METRICS");
+
+			}
+
+			else if( (! strcmp(comando[0],"ADD") ) && ((! strcmp(comando[1],"MEMORY") ))  ){
+				// ADD MEMORY [NUMERO] TO [CRITERIO]
+				// ADD MEMORY 3 TO SC
+				free(comando[0]);
+				free(comando[1]);
+				if( cantArgumentos == 3 && (!strcmp(comando[3],"TO")) ){
+					char* numerostr = comando[2];
+					char* criterio = comando[4];
+					char* endptr = 0;
+					ulong numeroMemoria = strtoul(numeroMemoria, &endptr, 10);
+					if(*endptr == '\0'&& numeroMemoria < 65536){
+						char* resultado = add(numeroMemoria,criterio);
+						free(numerostr);
+						free(criterio);
+						free(comando);
+					}
+
+				}
+				while(cantArgumentos){
+					free(comando[cantArgumentos]);
+					cantArgumentos--;
+				}
+				free(comando);
+				return string_from_format("Sintaxis invalida. Uso: ADD");
+			}
+
+
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
 				cantArgumentos--;
 			}
 			free(comando[0]);
-		}
+
+
 		free(comando);
 		return string_from_format("Comando invalido");
 
-	}
+		}
+
+
+	} //end Char* apiKernel ..
 
 
 
@@ -237,16 +313,16 @@ int main(void) {
 	*/
 
 
-
+/*
 
 	// Algoritmo Plani RR SuperIncompleto
 
-/*
+
 	int quantum= 4; // Aca deberia ir "QUANTUM" .
 	int contador,cantScripts,time,remain,flag=0;
 	int tiempoEspera =0, tiempoRetorno=0, arrivosVec[10],rafagasVec[10],rt[10];
-	printf("Ingrese la cantidad de scripts");
-	scanf ("%d",&cantScripts);
+	//printf("Ingrese la cantidad de scripts");
+	//scanf ("%d",&cantScripts);
 	remain = cantScripts;
 
 	for (contador=0; contador < cantScripts ; contador++)
@@ -290,12 +366,17 @@ int main(void) {
 		  printf("\nAverage Waiting Time= %f\n",tiempoEspera*1.0/cantScripts);
 		  printf("Avg Tiempo De Retorno Time = %f",tiempoRetorno*1.0/cantScripts);
 
-	}
-*/
-	// Fin RR
+
+	}// Fin RR
 
 
-    /*//Pruebas de hilos
+
+
+
+
+
+    //Pruebas de hilos
+
     pthread_t unHilo;
 	pthread_create(&unHilo,NULL, (void*)saludar,NULL);
 
@@ -304,12 +385,16 @@ int main(void) {
     pthread_t otroHilo;
 	pthread_create (&otroHilo, NULL, (void*)despedir,NULL);
 
-    pthread_join (otroHilo,NULL);*/
+    pthread_join (otroHilo,NULL);
 
 
+
+
+*/
 
 
 
  //End Main
+
 }
 
