@@ -9,9 +9,10 @@ char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
 bool existeTabla(char* nombreTabla);
 FILE* obtenerMetaDataLectura(char* nombreTabla);
+int obtenerParticion(char *nombreTabla, u_int16_t key);
 int funcionModulo(int key, int particiones);
 int obtenerParticiones(FILE* metadata);
-char* obtenerValue(char* nombreTabla, u_int16_t key, int particion);
+void agregarRegDeBinYTemps(t_list *listaFiltro, char* nombreTabla, u_int16_t key, int particion_busqueda);
 FILE* obtenerBIN(int particion, char* nombreTabla);
 void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
@@ -19,11 +20,11 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
 void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 uint64_t getTimestamp();
-void filtrarKeyRegDeMemTable(t_list *listaFiltro, u_int16_t key);
+bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2);
 void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
-struct_select_respuesta regMayorTimestamp(t_list* listaFiltro);
 t_registro* convertirARegistroPuntero(t_registro r);
 struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
+void agregarRegistrosDeArchivo(FILE* f, t_list *lista, u_int16_t key);
 
 void* consola(){
 	char *linea;
@@ -125,7 +126,8 @@ char *apiLissandra(char* mensaje){
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
-					uint64_t timestamp = atof(ultimoArgumento[1]);
+					char* endptr2;
+					uint64_t timestamp = strtoull(ultimoArgumento[1], &endptr2, 10);
 					if (*endptr == '\0' && key < 65536) {
 						char* resultado = insert(nombreTabla, key, valor, timestamp);
 						while(cantArgumentos){
@@ -248,26 +250,32 @@ char *apiLissandra(char* mensaje){
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	struct_select_respuesta select_respuesta;
+	t_registro *aux, *aux2;
 	t_list *listaFiltro = list_create();
 
 	if(existeTabla(nombreTabla)){
-		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
-		int particiones = obtenerParticiones(metadata);
-		int particion_busqueda = funcionModulo(key, particiones);
+		int particion_busqueda = obtenerParticion(nombreTabla, key);
+		log_trace(logger, "Particion buscada: %d", particion_busqueda);
 
-//		### Meto a todos los registros con la misma key en en una lista ###
-		filtrarKeyRegDeMemTable(listaFiltro, key);
-		obtenerRegistrosDeTable(listaFiltro, key, particion_busqueda, nombreTabla);
-//		obtenerRegDeArchivosTemp();
-		select_respuesta = regMayorTimestamp(listaFiltro);
+		bool registro_IgualKey(t_registro *registro){return registro->key == key;}
 
-		fclose(metadata);
-		list_destroy_and_destroy_elements(listaFiltro, free);
+		listaFiltro = list_filter(memTable, (_Bool (*)(void*))registro_IgualKey);
+		agregarRegDeBinYTemps(listaFiltro, nombreTabla, key, particion_busqueda);
+
+		if(!list_is_empty(listaFiltro)){
+			list_sort(listaFiltro, (_Bool (*)(void*))ordenarDeMayorAMenorTimestamp);
+			aux = list_get(listaFiltro, 0);
+			select_respuesta = convertirARespuestaSelect(aux);
+		}else{
+			select_respuesta.estado = ESTADO_SELECT_ERROR_KEY;
+		}
+
+		list_destroy(listaFiltro);
 		log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
 		return select_respuesta;
 	}else{
 		select_respuesta.estado = ESTADO_SELECT_ERROR_TABLA;
-		list_destroy_and_destroy_elements(listaFiltro, free);
+		list_destroy(listaFiltro);
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
 		return select_respuesta;
 	}
@@ -348,75 +356,6 @@ int funcionModulo(int key, int particiones){
 	return key % particiones;
 }
 
-char* obtenerValue(char* nombreTabla, u_int16_t key, int particion){
-	char* value = "Valor Default";
-	int contador = 0;
-	void *listaDeReg = list_create();
-	t_registroBusqueda *reg = malloc(sizeof(t_registroBusqueda));
-	FILE* bin = obtenerBIN(particion, nombreTabla);
-
-	reg->key = 10;
-	reg->timeStamp = 400;
-	reg->value = "Value 1";
-	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
-	reg->key = 10;
-	reg->timeStamp = 100;
-	reg->value = "Value 2";
-	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
-	reg->key = 10;
-	reg->timeStamp = 200;
-	reg->value = "Value 3";
-	fwrite(&reg, sizeof(t_registroBusqueda), 1, bin);
-
-	while(!feof(bin)){
-		t_registroBusqueda *reg2;
-		fread(&reg2, sizeof(t_registroBusqueda), 1, bin);
-		if(reg->key == key){
-			list_add(listaDeReg, reg2);
-			contador++;
-		}
-	}
-	printf("Contador = %d \n", contador);
-	t_registroBusqueda *aux1;
-	t_registroBusqueda *aux2;
-	if(contador > 0){
-		if(contador == 1){
-			aux1 = list_get(listaDeReg,0);
-			value = aux1->value;
-		}else if(contador == 2){
-			printf("Contador == 2");
-			aux1 = list_get(listaDeReg,0);
-			aux2 = list_get(listaDeReg,1);
-			if(aux1->timeStamp > aux2->timeStamp){
-				value = aux1->value;
-			}else{
-				value = aux2->value;
-			}
-		}else{
-			aux1 = list_get(listaDeReg,0);
-			aux2 = list_get(listaDeReg,1);
-			for(int i=2;i<contador;i++){
-				if(aux1->timeStamp > aux2->timeStamp){
-					aux2 = list_get(listaDeReg,i);
-				}else{
-					aux1 = list_get(listaDeReg,i);
-				}
-			}
-			if(aux1->timeStamp > aux2->timeStamp){
-				value = aux1->value;
-			}else{
-				value = aux2->value;
-			}
-
-		}
-	}else{
-		printf("No hay registros con esa Key");
-	}
-
-	free(reg);
-	fclose(bin);
-	return value;
-}
 // ############### Extras ###############
 
 t_config* leer_config() {
@@ -444,18 +383,6 @@ uint64_t getTimestamp() {
 	return (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 }
 
-// Devuelve una lista con todos los registros de la Memtable que tengan dicha key
-void filtrarKeyRegDeMemTable(t_list *listaFiltro, u_int16_t key){
-	int cant = list_size(memTable);
-	t_registro *aux = malloc(sizeof(t_registro));
-	for(int i=0;i<cant;i++){
-		aux = list_get(memTable, i);
-		if(aux->key == key){
-			list_add(listaFiltro, aux);
-		}
-	}
-}
-
 // Dado un archivo bin, busca en el archivo los registros que tengan la key igual a la pasada
 //  por parametro y los agrega a listaFiltro
 void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla){
@@ -468,36 +395,6 @@ void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_b
 			aux = convertirARegistroPuntero(reg);
 			list_add(listaFiltro, aux);
 		}
-	}
-}
-
-// Busca dentro de una lista, el registro con mayor timestamp y lo devuelve en modo de select
-struct_select_respuesta regMayorTimestamp(t_list* listaFiltro){
-	struct_select_respuesta regSelect;
-	t_registro *mayor = malloc(sizeof(t_registro));
-	t_registro *aux = malloc(sizeof(t_registro));
-	mayor->timeStamp = -1;
-	mayor->nombre_tabla =malloc(50);
-	mayor->value = malloc(50);
-
-	if(!list_is_empty(listaFiltro)){
-		while(!list_is_empty(listaFiltro)){
-			aux = list_remove(listaFiltro, 0);
-			if(aux->timeStamp > mayor->timeStamp){
-				mayor->key = aux->key;
-
-				strcpy(mayor->nombre_tabla,aux->nombre_tabla);
-				mayor->timeStamp = aux->timeStamp;
-				strcpy(mayor->value,aux->value);
-			}
-		}
-		regSelect = convertirARespuestaSelect(mayor);
-		free(mayor);
-		free(aux);
-		return regSelect;
-	}else{
-		regSelect.estado = ESTADO_SELECT_ERROR_KEY;
-		return regSelect;
 	}
 }
 
@@ -516,4 +413,47 @@ struct_select_respuesta convertirARespuestaSelect(t_registro* registro){
 	select_respuesta.valor = malloc(strlen(registro->value)+1);
 	strcpy(select_respuesta.valor,registro->value);
 	return select_respuesta;
+}
+
+//Obtiene la particion sobre la cual debe actuar
+int obtenerParticion(char* nombreTabla, u_int16_t key){
+	FILE* metadata = obtenerMetaDataLectura(nombreTabla);
+	int particiones = obtenerParticiones(metadata);
+	int particion_busqueda = funcionModulo(key, particiones);
+	fclose(metadata);
+	return particion_busqueda;
+}
+
+bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2){
+	return r1->timeStamp>r2->timeStamp;
+}
+
+void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int particion_busqueda){
+	char* particion = intToString(particion_busqueda);
+	char* path1 = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
+
+	log_trace(logger, "%s", path1);
+	FILE* f = fopen(path1, "rb");
+
+	agregarRegistrosDeArchivo(f, lista, key);
+
+	for(int i=0;i<cantDumps;i++){
+		path1 = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
+		f = fopen(path1, "rb");
+		agregarRegistrosDeArchivo(f, lista, key);
+	}
+
+}
+
+void agregarRegistrosDeArchivo(FILE* f, t_list *lista, u_int16_t key){
+	t_registro reg;
+	t_registro *aux;
+	while(!feof(f)){
+		fread(&reg, sizeof(reg), 1, f);
+		if(reg.key==key){
+			aux = convertirARegistroPuntero(reg);
+			list_add(lista, aux);
+		}
+	}
+	fclose(f);;
 }

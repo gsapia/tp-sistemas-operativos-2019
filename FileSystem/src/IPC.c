@@ -29,11 +29,11 @@ void* servidor(argumentos* args){
 	log_trace(logger, "Escuchandoen el puerto %d...", puerto_escucha);
 
 	bool conectado = false;
-
+	int cliente;
 	while(!conectado){
 		struct sockaddr_in direccionCliente;
 		unsigned int tamanoDireccion = sizeof(direccionCliente);
-		int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
+		cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 		log_trace(logger, "Recibi una conexion en %d", cliente);
 
 		//COMIENZO HANDSHAKE
@@ -43,7 +43,7 @@ void* servidor(argumentos* args){
 			log_error(logger, "Recibi una conexion de alguien que no es Memoria.");
 			close(cliente);
 		}else{
-			const uint8_t soy = 3;
+			const uint8_t soy = ID_FILESYSTEM;
 			send(cliente, &soy, sizeof(soy), 0); // Le hacemos saber que somos FS
 			send(cliente, &tamValue, sizeof(tamValue), 0); // Le envio a memoria el valor que necesita (Tamaño del Value)
 			//TERMINO HANSHAKE
@@ -55,10 +55,6 @@ void* servidor(argumentos* args){
 
 	//Espero Solicitudes
 	while(1){
-		struct sockaddr_in direccionCliente;
-		unsigned int tamanoDireccion = sizeof(direccionCliente);
-		int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-		log_trace(logger, "Recibi una conexion en %d", cliente);
 		uint8_t cod_op;
 
 		if(!recv(cliente, &cod_op, sizeof(uint8_t), 0)){

@@ -48,19 +48,19 @@ int main(void){
 	int tamValue = config_get_int_value(config, "TAMAÑOVALUE");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
-
+/*
 	argumentos *args = malloc(sizeof(argumentos));
 	args->puerto_escucha = puerto_escucha;
 	args->tamValue = tamValue;
 
-//	Servidor
+	Servidor
 	pthread_t hiloServidor;
 	if(pthread_create(&hiloServidor, NULL, servidor, args)){
 		free(args);
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-
+*/
 
 	//Creo las Tablas del FileSystem necesarias
 	pthread_t hiloFS;
