@@ -1,4 +1,6 @@
 #include "Kernel.h"
+#include "ApiKernel.h"
+
 
 
 //Consola
@@ -159,7 +161,7 @@
 				free(comando);
 				return string_from_format("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
 			}
-			else if(!strcmp(comando[0],DROP)){
+			else if(!strcmp(comando[0],"DROP")){
 				//DROP [NOMBRE_TABLA]
 				//DROP TABLA1
 
@@ -195,7 +197,7 @@
 				return string_from_format("Sintaxis invalida. Uso: JOURNAL");
 			}
 
-			else if(! strcmp(comando[0],RUN)){
+			else if(! strcmp(comando[0],"RUN")){
 				//RUN <path> -> ruta del archivo LQL que se encuentra en el FileSystem local del Kernel y No en el proceso LFS del tp.
 				free(comando[0]);
 				if (cantArgumentos == 1)
@@ -236,21 +238,37 @@
 
 			}
 
-			else if( (! strcmp(comando[0],"ADD") ) && ((! strcmp(comando[1],"MEMORY") ))  ){
+			else if( (! strcmp(comando[0],"ADD") ) && (cantArgumentos > 0 && (! strcmp(comando[1],"MEMORY") ))  ){
 				// ADD MEMORY [NUMERO] TO [CRITERIO]
 				// ADD MEMORY 3 TO SC
 				free(comando[0]);
 				free(comando[1]);
 				if( cantArgumentos == 3 && (!strcmp(comando[3],"TO")) ){
+
 					char* numerostr = comando[2];
-					char* criterio = comando[4];
+					char* criterioStr = comando[4]; //Agarro el criterio como un string
+
+					enum consistencias criterio;    // Declaro "criterio" de tipo consistencias sacado de la serializacion.h
+					                                // para luego saber de que tipo es con un if debajo..
+
+					if(!strcmp(criterioStr, "SC"))
+						criterio = SC;
+					else if(!strcmp(criterioStr, "SHC"))
+						criterio = SHC;
+					else if(!strcmp(criterioStr, "EC"))
+						criterio = EC;
+					else
+
+						return string_from_format("Tipo de consistencia invalido.");
+
 					char* endptr = 0;
 					ulong numeroMemoria = strtoul(numeroMemoria, &endptr, 10);
 					if(*endptr == '\0'&& numeroMemoria < 65536){
 						char* resultado = add(numeroMemoria,criterio);
 						free(numerostr);
-						free(criterio);
+						free(criterioStr);
 						free(comando);
+						return resultado;
 					}
 
 				}
@@ -259,7 +277,7 @@
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: ADD");
+				return string_from_format("Sintaxis invalida. Uso: ADD MEMORY [NUMERO] TO [CRITERIO]");
 			}
 
 
@@ -270,8 +288,8 @@
 			free(comando[0]);
 
 
-		free(comando);
-		return string_from_format("Comando invalido");
+			free(comando);
+			return string_from_format("Comando invalido");
 
 		}
 

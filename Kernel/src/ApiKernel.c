@@ -1,5 +1,6 @@
 #include "ApiKernel.h"
 #include "Kernel.h"
+#include "serializacion.h"
 
 	char* selects(char* nombreTabla, u_int16_t key){
 		log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
@@ -37,7 +38,7 @@
 		return string_from_format("Elegiste METRICS");
 	}
 
-	char* add(char* numeroMemoria, char* criterio){
+	char* add(uint16_t numeroMemoria,enum consistencias criterio){
 	    return string_from_format("Elegiste ADD");
 	}
 

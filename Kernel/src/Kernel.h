@@ -16,15 +16,9 @@
 #include<readline/history.h>
 
 
-#define SELECT "SELECT"
-#define INSERT "INSERT"
-#define CREATE "CREATE"
-#define DESCRIBE "DESCRIBE"
-#define DROP "DROP"
-#define JOURNAL "JOURNAL"
-#define ADD "ADD"
-#define RUN "RUN"
-#define METRICS "METRICS"
+
+//Borre los define de kernel.h dado que estan definidos en serializacion.h
+
 
 t_log* logger;
 

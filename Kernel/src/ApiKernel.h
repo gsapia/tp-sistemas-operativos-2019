@@ -1,6 +1,7 @@
 #ifndef APIKERNEL_H_
 #define APIKERNEL_H_
 
+#include "serializacion.h"
 #include "Kernel.h"
 
 char* selects(char* nombreTabla, u_int16_t key);
@@ -9,8 +10,8 @@ char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticione
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
 char* journal();
-char* run();
+char* run(char* runPath);
 char* metrics();
-char* add();
+char* add(uint16_t numeroMemoria, enum consistencias criterio);
 
 #endif /* APIKERNEL_H_ */
