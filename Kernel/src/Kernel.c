@@ -243,7 +243,7 @@
 				// ADD MEMORY 3 TO SC
 				free(comando[0]);
 				free(comando[1]);
-				if( cantArgumentos == 3 && (!strcmp(comando[3],"TO")) ){
+				if( cantArgumentos == 4 && (!strcmp(comando[3],"TO")) ){
 
 					char* numerostr = comando[2];
 					char* criterioStr = comando[4]; //Agarro el criterio como un string
@@ -262,7 +262,7 @@
 						return string_from_format("Tipo de consistencia invalido.");
 
 					char* endptr = 0;
-					ulong numeroMemoria = strtoul(numeroMemoria, &endptr, 10);
+					ulong numeroMemoria = strtoul(numerostr, &endptr, 10);
 					if(*endptr == '\0'&& numeroMemoria < 65536){
 						char* resultado = add(numeroMemoria,criterio);
 						free(numerostr);
@@ -316,11 +316,9 @@ int main(void) {
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
     log_info (logger, "Hola soy KKernel \n");
 
-    printf ( "Prueba de hilo \n" );
+    printf ("Prueba de hilo \n");
 
 
-
- /*
     pthread_t hiloAConsola;
 	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL))
 	{
@@ -328,7 +326,7 @@ int main(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	*/
+     pthread_join (hiloAConsola,NULL);
 
 
 /*
