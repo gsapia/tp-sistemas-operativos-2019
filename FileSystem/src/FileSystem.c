@@ -25,7 +25,6 @@ bool existeTabla(char* nombreTabla);
 char* intToString(long a);
 char* encontreTabla(char* nombreTabla, DIR* path_buscado);
 FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp);
-t_list* tieneDatosParaDump(t_list *memTableAux, char* carpetaNombre);
 void dumpear(t_list *datosParaDump, char* carpetaNombre);
 t_registro convertirAStruct(t_registro *registro);
 
@@ -117,11 +116,15 @@ void dumpDeTablas(t_list *memTableAux){
 	struct dirent* carpeta = readdir(path_buscado);
 
 
+
+
 	while(carpeta){
 		if(strcmp(carpeta->d_name, ".") && strcmp(carpeta->d_name, "..")){ //Si el nombre de la carpeta es distinto a "." y ".."
-			datosParaDump = tieneDatosParaDump(memTableAux, carpeta->d_name);
+			bool tieneDatosParaDump(t_registro* reg){return !strcmp(reg->nombre_tabla, carpeta->d_name);}
+			datosParaDump = list_filter(memTableAux, (_Bool (*)(void*))tieneDatosParaDump);
+
 			if(!list_is_empty(datosParaDump)){
-				log_info(logger, "%s tiene datos para Dumpear", carpeta->d_name);
+				log_trace(logger, "%s tiene %d datos para Dumpear", carpeta->d_name, list_size(datosParaDump));
 				dumpear(datosParaDump, carpeta->d_name);
 				flag = 1;
 			}else{
@@ -133,29 +136,12 @@ void dumpDeTablas(t_list *memTableAux){
 	if(flag==1){
 		cantDumps++;
 	}
-}
 
-// Se fija si una carpeta tiene datos para dumpear en la MemTable. Si los tiene, los devuelve
-// Sino, devuelve NULL
-t_list* tieneDatosParaDump(t_list *memTableAux, char* carpetaNombre){
-	t_list* datosDump = list_create();
-	t_registro *registro;
-
-	while(!list_is_empty(memTableAux)){
-		registro = list_remove(memTableAux, 0);
-		if(!strcmp(registro->nombre_tabla, carpetaNombre)){
-			log_info(logger, "Añado el value: %s", registro->value);
-			list_add(datosDump, registro);
-		}else{
-			list_add(memTableAux, registro);
-		}
-	}
-	return datosDump;
 }
 
 //Dumpeo los datos dentro de un archivo ".tmp" que se encuentra dentro de "/Table/carpetaNombre"
 void dumpear(t_list *datosParaDump, char* carpetaNombre){
-	char* particionTemp = malloc(12);
+	char* particionTemp = malloc(4);
 	particionTemp = intToString(cantDumps);
 	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
 	t_registro *registro; t_registro aux;
@@ -269,6 +255,7 @@ char* intToString(long a){
 t_registro convertirAStruct(t_registro *registro){
 	t_registro r;
 	r.key = registro->key;
+	r.value = malloc(strlen(registro->value));
 	strcpy(r.value, registro->value);
 	r.timeStamp = registro->timeStamp;
 	return r;

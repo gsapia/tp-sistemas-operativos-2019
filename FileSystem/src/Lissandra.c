@@ -45,7 +45,7 @@ int main(void){
 	puntoMontaje = config_get_string_value(config,"PUNTOMONTAJE");
 	int tiempo_dump = config_get_int_value(config, "TIEMPODUMP");
 	uint16_t puerto_escucha = config_get_int_value(config, "PUERTOESCUCHA");
-	int tamValue = config_get_int_value(config, "TAMAÑOVALUE");
+	tamValue = config_get_int_value(config, "TAMAÑOVALUE");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 /*
@@ -76,16 +76,16 @@ int main(void){
 		log_error(logger, "Hilo consola: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-/*
+
 	pthread_t hiloDump;
 	if(pthread_create(&hiloDump, NULL, dump, tiempo_dump)){
 		log_error(logger, "Hilo Dump: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-*/
+
 	pthread_join(hiloConsola, NULL);
 //	pthread_join(hiloServidor,NULL);
-//	pthread_join(hiloDump, NULL);
+	pthread_join(hiloDump, NULL);
 	log_destroy(logger);
 
 

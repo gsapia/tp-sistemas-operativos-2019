@@ -24,7 +24,7 @@ bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2);
 void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
 t_registro* convertirARegistroPuntero(t_registro r);
 struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
-void agregarRegistrosDeArchivo(FILE* f, t_list *lista, u_int16_t key);
+void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key);
 
 void* consola(){
 	char *linea;
@@ -250,14 +250,14 @@ char *apiLissandra(char* mensaje){
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	struct_select_respuesta select_respuesta;
-	t_registro *aux, *aux2;
+	t_registro *aux;
 	t_list *listaFiltro = list_create();
 
 	if(existeTabla(nombreTabla)){
 		int particion_busqueda = obtenerParticion(nombreTabla, key);
 		log_trace(logger, "Particion buscada: %d", particion_busqueda);
 
-		bool registro_IgualKey(t_registro *registro){return registro->key == key;}
+		bool registro_IgualKey(t_registro *registro){return registro->key == key && !strcmp(registro->nombre_tabla,nombreTabla);}
 
 		listaFiltro = list_filter(memTable, (_Bool (*)(void*))registro_IgualKey);
 		agregarRegDeBinYTemps(listaFiltro, nombreTabla, key, particion_busqueda);
@@ -284,9 +284,13 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 
 char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
 	if(existeTabla(nombreTabla)){
-		agregarAMemTable(nombreTabla, key, valor, timeStamp);
-		log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %f", nombreTabla, key, valor, timeStamp);
-		return string_from_format("Se realizo el INSERT");
+//		if(sizeof(timeStamp) <= tamValue){
+			agregarAMemTable(nombreTabla, key, valor, timeStamp);
+			log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %ul", nombreTabla, key, valor, timeStamp);
+			return string_from_format("Se realizo el INSERT");
+//		}else{
+//			return string_from_format("Tamaño de timestamp mayor al tamaño maximo");
+//		}
 	}else{
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
 		return string_from_format("No existe en el File System la tabla: %s",nombreTabla);
@@ -339,15 +343,15 @@ void* dump(int tiempo_dump){
 		sleep(tiempo);
 		if(!list_is_empty(memTable)){
 			memTableAux = list_duplicate(memTable);
-			list_destroy_and_destroy_elements(memTable, free); //Hago esto para que se puedan seguir efectuando insert sin complicar las cosas
-			dumpDeTablas(memTableAux); //
-			log_info(logger, "Dump realizado, numero: %d", cantDumps+1);
+			list_destroy(memTable); //Hago esto para que se puedan seguir efectuando insert sin complicar las cosas
+			memTable = list_create();
+			log_trace(logger, "FLAG");
+			dumpDeTablas(memTableAux);
+			log_info(logger, "Dump realizado, numero: %d", cantDumps);
 		}else{
 			log_info(logger, "No se puede hacer Dump: Memtable vacía");
 		}
 	}
-
-
 	return 0;
 }
 
@@ -431,29 +435,33 @@ bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2){
 void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int particion_busqueda){
 	char* particion = intToString(particion_busqueda);
 	char* path1 = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
-
-	log_trace(logger, "%s", path1);
 	FILE* f = fopen(path1, "rb");
 
-	agregarRegistrosDeArchivo(f, lista, key);
+	agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
 
 	for(int i=0;i<cantDumps;i++){
 		path1 = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
+		log_trace(logger, "%s", path1);
 		f = fopen(path1, "rb");
-		agregarRegistrosDeArchivo(f, lista, key);
+		agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
 	}
-
 }
 
-void agregarRegistrosDeArchivo(FILE* f, t_list *lista, u_int16_t key){
-	t_registro reg;
-	t_registro *aux;
+void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key){
+	t_registro reg, mayor;
+	mayor.timeStamp = 0;
+	t_registro *aux = malloc(sizeof(t_registro));
+	fread(&reg, sizeof(reg), 1, f);
 	while(!feof(f)){
-		fread(&reg, sizeof(reg), 1, f);
-		if(reg.key==key){
-			aux = convertirARegistroPuntero(reg);
-			list_add(lista, aux);
+		if(reg.key==key && reg.timeStamp>mayor.timeStamp){
+			mayor = reg;
 		}
+		fread(&reg, sizeof(reg), 1, f);
 	}
-	fclose(f);;
+	if(mayor.timeStamp != 0){
+		aux = convertirARegistroPuntero(mayor);
+		list_add(lista, aux);
+		log_trace(logger, "Agregue el valor: %s", aux->value);
+	}
+	fclose(f);
 }

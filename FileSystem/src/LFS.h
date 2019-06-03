@@ -50,4 +50,5 @@ typedef struct{
 t_list *memTable;
 int cont; 			// Contador de cantidad de registros en Memtable
 int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
+int tamValue;
 #endif /* LFS_H_ */
