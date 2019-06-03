@@ -388,8 +388,8 @@ uint64_t getTimestamp() {
 }
 
 // Dado un archivo bin, busca en el archivo los registros que tengan la key igual a la pasada
-//  por parametro y los agrega a listaFiltro
-void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla){
+//  por parametro y los agrega a lista.
+void obtenerRegistrosDeTable(t_list *lista, u_int16_t key, int particion_busqueda, char* nombreTabla){
 	FILE* bin = obtenerBIN(particion_busqueda, nombreTabla);
 	t_registro reg;
 	t_registro* aux;
@@ -397,10 +397,40 @@ void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_b
 		fread(&reg, sizeof(reg),1,bin);
 		if(reg.key == key){
 			aux = convertirARegistroPuntero(reg);
-			list_add(listaFiltro, aux);
+			list_add(lista, aux);
 		}
 	}
 }
+
+/*
+void obtenerRegistrosDeTable(t_list *lista, u_int16_t key, int particion_buscada, char* nombreTabla){
+	FILE* bin = obtenerBIN(particion_busqueda, nombreTabla);
+	size_t buffer_size = 80;
+	char* buffer = malloc(buffer_size * sizeof(char));
+	t_registro* aux = malloc(sizeof(t_registro));
+	while(-1 != getline(&buffer, &buffer_size, bin){ // [TIMESTAMP;KEY;VALUE]
+		char** linea= string_split(buffer, ";");
+		if(linea[1]==key){
+			aux = creadorRegistroPuntero(key, nombreTabla, linea[0], linea[2]);
+			list_add(lista,aux);
+		}
+	}
+	free(buffer);
+	fclose(bin);
+}
+
+t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value){
+	t_registro* retornado = malloc(sizeof(t_registro));
+	retornado->key = key;
+	retornado->nombre_tabla = malloc(strlen(nombreTabla));
+	strcpy(retornado->nombre_tabla, nombreTabla);
+	retornado->timeStamp = timeStamp;
+	retornado->value = malloc(strlen(value));
+	strcpy(retornado->value, value);	
+	return retornado;
+}
+
+*/
 
 //Convierte un t_registro a un t_registro*
 t_registro* convertirARegistroPuntero(t_registro r){
@@ -435,19 +465,42 @@ bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2){
 void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int particion_busqueda){
 	char* particion = intToString(particion_busqueda);
 	char* path1 = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
-	FILE* f = fopen(path1, "rb");
+	FILE* f = fopen(path1, "r");
 
-	agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
+	agregarRegistroMayorTimeStamDeArchivo(f, lista, key); // agrego del .bin, el registro con el mayor timestamp a la lista
 
-	for(int i=0;i<cantDumps;i++){
+	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
 		path1 = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
 		log_trace(logger, "%s", path1);
-		f = fopen(path1, "rb");
+		f = fopen(path1, "r");
 		agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
 	}
+	free(path1);
 }
 
 void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key){
+	t_registro* aux = malloc(sizeof(t_registro));
+	size_t buffer_size = 80;
+	char* buffer = malloc(buffer_size * sizeof(char));
+	uint64_t timestamp_mayor = 0; u_int16_t key_mayor; char* value_mayor;
+	while(1 != getline(&buffer, &buffer_size, f)){ // [TIMESTAMP;KEY;VALUE]
+		char* keystr = buffer[1];
+		char* endptr;
+		ulong key_buffer = strtoul(keystr, &endptr, 10);
+		if(buffer[0] > timestamp_mayor && key_buffer == key){
+			key_mayor = key_buffer;
+			timestamp_mayor = buffer[0];
+			value_mayor = string_from_format("%s", buffer[2]);
+		}
+	}
+	if(timestamp_mayor!=0){
+		aux = creadorRegistroPuntero(key_mayor, nombreTabla, timestamp_mayor, value_mayor);
+		list_add(lista,aux);
+	}
+	fclose(f);
+	free(buffer);
+}
+/*
 	t_registro reg, mayor;
 	mayor.timeStamp = 0;
 	t_registro *aux = malloc(sizeof(t_registro));
@@ -464,4 +517,5 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 		log_trace(logger, "Agregue el valor: %s", aux->value);
 	}
 	fclose(f);
-}
+
+*/
