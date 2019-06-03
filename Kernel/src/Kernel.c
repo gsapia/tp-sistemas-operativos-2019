@@ -2,11 +2,23 @@
 #include "ApiKernel.h"
 
 
-
-//Consola
-
+    void leerConfig();
     void* consola();
     char* apiKernel(char*);
+
+
+    void leerConfig(){
+
+    t_config* configk = config_create("Kernel.config");
+
+		config.ip_memoria = config_get_string_value(configk,"IP_MEMORIA");
+        config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
+        config.quantum = config_get_int_value(configk,"QUANTUM");
+        config.multiprocesamiento = config_get_int_value(configk,"MULTIPROCESAMIENTO");
+        config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
+        config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
+
+    }
 
 
      void* consola(){
@@ -314,7 +326,13 @@ int main(void) {
 
 
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
-    log_info (logger, "Hola soy KKernel \n");
+    log_info (logger, "Hola soy Kernel \n");
+
+
+    if (leerConfig){
+        	 log_info (logger, "Pude leer config ! \n");
+         }
+
 
     printf ("Prueba de hilo \n");
 
@@ -327,6 +345,7 @@ int main(void) {
 	}
 
      pthread_join (hiloAConsola,NULL);
+
 
 
 /*
