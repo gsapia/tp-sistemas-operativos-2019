@@ -1,5 +1,6 @@
 #include "IPC.h"
 #include "MemoriaPrincipal.h"
+#include "API.h"
 
 int socket_cliente;
 
@@ -51,6 +52,7 @@ void initCliente(){
 		log_error(logger, "Error, no pudimos conectar con FileSystem");
 		exit(EXIT_FAILURE);
 	}
+	free(otro);
 	// El otro extremo es FS realmente asi que ahora enviamos/recibimos los datos necesarios
 
 	// En este caso recibimos el tamaño del value
@@ -90,13 +92,13 @@ void servidor() {
 
 	bool conectado = false;
 
-	int socket_cliente;
+	int socket_kernel;
 
 	while(!conectado){
 		struct sockaddr_in direccionCliente;
 		unsigned int tamanoDireccion = sizeof(direccionCliente);
-		socket_cliente = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
-		printf("Recibi una conexion en %d\n", socket_cliente);
+		socket_kernel = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
+		printf("Recibi una conexion en %d\n", socket_kernel);
 
 
 		//----------------COMIENZO HANDSHAKE----------------
@@ -104,16 +106,16 @@ void servidor() {
 		// Recibo quien es el otro extremo
 		uint8_t *otro = malloc(sizeof(uint8_t));
 
-		if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
+		if(!(recv(socket_kernel, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
 			// El otro extremo no es Kernel, cierro la conexion / termino el programa
 			log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
-			close(socket_cliente);
+			close(socket_kernel);
 		}
 		else{
 			// El otro extremo es Kernel realmente
 			// Envio confirmacion de que soy Memoria
 			const uint8_t soy = ID_MEMORIA;
-			send(socket_cliente, &soy, sizeof(soy), 0);
+			send(socket_kernel, &soy, sizeof(soy), 0);
 
 			// Y ahora entonces le enviamos/recibimos los datos necesarios
 
@@ -137,7 +139,7 @@ void servidor() {
 	while(1){
 		// Recibo el codigo de op
 		uint8_t cod_op;
-		if(!recv(socket_cliente, &cod_op, sizeof(uint8_t), 0)){ // Problema, recv es no bloqueante, asi que estoy en espera activa hasta
+		if(!recv(socket_kernel, &cod_op, sizeof(uint8_t), 0)){ // Problema, recv es no bloqueante, asi que estoy en espera activa hasta
 													  	 // que se desconecte el cliente o reciba algo. Deberiamos usar select()?
 			log_trace(logger, "El cliente se desconecto");
 			break;
@@ -147,12 +149,15 @@ void servidor() {
 			case SELECT:
 			{
 				log_trace(logger, "Recibi un SELECT");
-				struct_select paquete = recibir_select(socket_cliente);
+				struct_select paquete = recibir_select(socket_kernel);
 
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
 				 */
 				printf("Comando recibido: SELECT %s %d\n\n", paquete.nombreTabla, paquete.key);
+
+				struct_select_respuesta registro = selects(paquete.nombreTabla, paquete.key);
+				enviar_registro(socket_kernel, registro);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
@@ -161,7 +166,7 @@ void servidor() {
 			case INSERT:
 			{
 				log_trace(logger, "Recibi un INSERT");
-				struct_insert paquete = recibir_insert(socket_cliente);
+				struct_insert paquete = recibir_insert(socket_kernel);
 
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
@@ -174,11 +179,26 @@ void servidor() {
 			}
 			break;
 			case CREATE:
-				break;
+			{
+				puts("Recibi un CREATE");
+				struct_create paquete = recibir_create(socket_kernel);
+
+				/*
+				 * Depues haria lo que tenga que hacer con esta struct ya cargada
+				 */
+				printf("Comando recibido: CREATE %s %d %d %d\n\n", paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
+
+
+				uint16_t estado = create(paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
+				responder_create(socket_kernel, estado);
+
+				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
+				free(paquete.nombreTabla);
+			}
 			case DESCRIBE:
 			{
 				log_trace(logger, "Recibi un DESCRIBE");
-				struct_describe paquete = recibir_describe(socket_cliente);
+				struct_describe paquete = recibir_describe(socket_kernel);
 
 				/*
 				 * Depues haria lo que tenga que hacer con esta struct ya cargada
@@ -197,6 +217,6 @@ void servidor() {
 				log_trace(logger, "Recibi una operacion invalida...");
 		}
 	}
-	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar mas
+	close(socket_kernel); // No me olvido de cerrar el socket que ya no voy a usar mas
 	close(socket_servidor); // No me olvido de cerrar el socket que ya no voy a usar mas
 }

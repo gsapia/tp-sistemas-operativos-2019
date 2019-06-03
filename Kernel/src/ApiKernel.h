@@ -6,7 +6,7 @@
 
 char* selects(char* nombreTabla, u_int16_t key);
 char* insert(char* nombreTabla, u_int16_t key, char* valor);
-char* create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
+char* create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 char* describe(char* nombreTabla);
 char* drop(char* nombreTabla);
 char* journal();

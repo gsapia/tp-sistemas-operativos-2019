@@ -19,6 +19,16 @@
 
 //Borre los define de kernel.h dado que estan definidos en serializacion.h
 
+struct ConfigKernel{
+
+	char* ip_memoria;
+	int puerto_memoria;
+	int quantum;
+	int multiprocesamiento;
+	int refresh_metadata;
+	int retardo_ciclico;
+
+}config;
 
 t_log* logger;
 

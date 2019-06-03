@@ -1,13 +1,25 @@
 #include "Kernel.h"
 #include "ApiKernel.h"
+#include "IPC.h"
 
 
-
-//Consola
+void leerConfig();
 
     void* consola();
     char* apiKernel(char*);
 
+    void leerConfig(){
+
+        t_config* configk = config_create("Kernel.config");
+
+    		config.ip_memoria = config_get_string_value(configk,"IP_MEMORIA");
+            config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
+            config.quantum = config_get_int_value(configk,"QUANTUM");
+            config.multiprocesamiento = config_get_int_value(configk,"MULTIPROCESAMIENTO");
+            config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
+            config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
+
+        }
 
      void* consola(){
 		char *linea;
@@ -115,7 +127,20 @@
 				free(comando[0]);
 				if(cantArgumentos == 4){
 					char* nombreTabla = comando[1];
-					char* tipoConsistencia = comando[2];
+					char* tipoConsistenciaStr = comando[2];
+
+					enum consistencias consistencia;    // Declaro "criterio" de tipo consistencias sacado de la serializacion.h
+					// para luego saber de que tipo es con un if debajo..
+
+					if(!strcmp(tipoConsistenciaStr, "SC"))
+						consistencia = SC;
+					else if(!strcmp(tipoConsistenciaStr, "SHC"))
+						consistencia = SHC;
+					else if(!strcmp(tipoConsistenciaStr, "EC"))
+						consistencia = EC;
+					else
+
+						return string_from_format("Tipo de consistencia invalido.");
 
 					char* cantidadParticionesstr = comando[3];
 					char* compactionTimestr = comando[4];
@@ -126,9 +151,9 @@
 						compactionTime = strtoul(compactionTimestr, &endptr, 10);
 					if(*endptr == '\0'){
 						// Faltaria revisar si el tipo de consistencia es valido ^
-						char* resultado = create(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
+						char* resultado = create(nombreTabla, consistencia, cantidadParticiones, compactionTime);
 						free(nombreTabla);
-						free(tipoConsistencia);
+						free(tipoConsistenciaStr);
 						free(cantidadParticionesstr);
 						free(compactionTimestr);
 						free(comando);
@@ -314,10 +339,21 @@ int main(void) {
 
 
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
-    log_info (logger, "Hola soy KKernel \n");
+    log_info (logger, "Hola soy Kernel \n");
+
+    leerConfig();
+    log_info (logger, "Pude leer config ! \n");
 
     printf ("Prueba de hilo \n");
 
+
+    pthread_t hiloCliente;
+   	if(pthread_create(&hiloCliente, NULL,(void*)initCliente , NULL))
+   	{
+   		log_error(logger,"Hilo cliente: error en la creacion pthread_create");
+   		exit(EXIT_FAILURE);
+   	}
+    pthread_join (hiloCliente,NULL);
 
     pthread_t hiloAConsola;
 	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL))

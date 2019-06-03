@@ -10,9 +10,13 @@
 #include <netdb.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include "Kernel.h"
+#include "serializacion.h"
 
-void cliente();
+void initCliente();
+void closeCliente();
+
+struct_select_respuesta selectAMemoria(struct_select paquete);
+enum estados_create createAMemoria(struct_create paquete);
 
 
 #endif /* IPC_H_ */
