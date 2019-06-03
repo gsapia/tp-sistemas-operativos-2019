@@ -365,9 +365,37 @@ int main(void) {
      pthread_join (hiloAConsola,NULL);
 
 
+
+
+
+
 /*
 
-	// Algoritmo Plani RR SuperIncompleto
+	// Planificacion RR SuperIncompleto
+
+    typedef struct Script {
+    	char* request1;
+    	char* request2;
+    	char* request3;
+    }Script;
+
+
+    typedef struct Nodo {
+    	Script script;
+    	struct Nodo*sgte;
+    }Nodo ;
+
+
+    typedef struct ListaReady{
+    	Nodo* inicio;
+    }ListaReady;
+
+
+    typedef struct ListaExec{
+    	Nodo* sgte;
+    }ListaExec;
+
+
 
 
 	int quantum= 4; // Aca deberia ir "QUANTUM" .
@@ -422,10 +450,10 @@ int main(void) {
 	}// Fin RR
 
 
+*/
 
 
-
-
+/*
 
     //Pruebas de hilos
 
