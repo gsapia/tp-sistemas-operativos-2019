@@ -165,7 +165,7 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 
 FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp){
 	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
-	FILE* f = fopen(path, "wb+");
+	FILE* f = fopen(path, "w+");
 	free(path);
 	return f;
 }
@@ -235,7 +235,7 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 	for(int i=0;i<cantParticiones;i++){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
-		f = fopen(path_aux, "wb");
+		f = fopen(path_aux, "w");
 		fclose(f);
 		free(path_aux);
 	}
