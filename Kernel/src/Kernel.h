@@ -30,6 +30,18 @@ struct ConfigKernel{
 
 }config;
 
+struct ConfigKernel{
+
+	char* ip_memoria;
+	int puerto_memoria;
+	int quantum;
+	int multiprocesamiento;
+	int refresh_metadata;
+	int retardo_ciclico;
+
+}config;
+
+
 t_log* logger;
 
 #endif /* KERNEL_H_ */
