@@ -50,6 +50,37 @@ void initCliente(){
 
 	log_trace(logger,"Contectado a Memoria !");
 
+	// Recibimos IPs del resto de memorias
+	memorias = list_create();
+
+	// Primero aniadimos la que conocemos
+	t_memoria* memoria = malloc(sizeof(t_memoria));
+	memoria->ip = config.ip_memoria;
+	memoria->puerto = config.puerto_memoria;
+	list_add(memorias, memoria);
+
+	// Ahora el resto
+	uint16_t cantidad_memorias;
+	recv(socket_cliente, &cantidad_memorias, sizeof(cantidad_memorias), 0); // Recibo la cantidad de memorias
+	list_add(memorias, memoria);
+
+	for(int i = 0; i < cantidad_memorias; i++){
+		uint16_t tamanio_ip;
+		recv(socket_cliente, &tamanio_ip, sizeof(tamanio_ip), 0); // Recibo el tamanio de la IP
+		char* ip = malloc(tamanio_ip);
+		recv(socket_cliente, ip, tamanio_ip, 0); // Recibo la IP
+		uint16_t puerto;
+		recv(socket_cliente, &puerto, sizeof(puerto), 0); // Recibo el puerto
+
+		memoria = malloc(sizeof(t_memoria));
+		memoria->ip = ip;
+		memoria->puerto = puerto;
+
+		list_add(memorias, memoria);
+		log_trace(logger, "Recibi memoria %s:%d", ip, puerto);
+	}
+
+
 	//Fin de HandShake - Ahora podemos realizar solicitudes a Memoria.
 
 

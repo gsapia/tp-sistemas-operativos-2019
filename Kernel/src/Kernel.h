@@ -14,6 +14,7 @@
 #include<netdb.h>
 #include <pthread.h>
 #include<readline/history.h>
+#include <commons/collections/list.h>
 
 
 
@@ -30,6 +31,12 @@ struct ConfigKernel{
 
 }config;
 
+typedef struct{
+	char* ip;
+	int puerto;
+}t_memoria;
+
+t_list *memorias;
 
 t_log* logger;
 

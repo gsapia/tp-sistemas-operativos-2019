@@ -119,6 +119,27 @@ void servidor() {
 
 			// Y ahora entonces le enviamos/recibimos los datos necesarios
 
+			uint16_t cantidadSeeds;
+			for(cantidadSeeds = 0; config.ip_seeds[cantidadSeeds]; cantidadSeeds++);
+
+			send(socket_kernel, &cantidadSeeds, sizeof(cantidadSeeds), 0); // Mando la cantidad de seeds
+
+			for(int i = 0; i < cantidadSeeds; i++){
+				uint16_t tamanio_ip = strlen(config.ip_seeds[i])+1;
+				size_t tamanio_paquete = sizeof(tamanio_ip) + tamanio_ip + sizeof(config.puertos_seeds[i]);
+
+				void* paquete = malloc(tamanio_paquete);
+				int despl = 0;
+
+				memcpy(paquete, &tamanio_ip, sizeof(tamanio_ip)); // Primero el tamanio del string IP
+				despl += sizeof(tamanio_ip);
+				memcpy(paquete + despl, config.ip_seeds[i], tamanio_ip); // Ahora la IP
+				despl += tamanio_ip;
+				memcpy(paquete + despl, &config.puertos_seeds[i], sizeof(config.puertos_seeds[i])); // Por ultimo el puerto
+
+				send(socket_kernel, paquete, tamanio_paquete, 0);
+				free(paquete);
+			}
 
 			//Y por ahora no necesito enviar/recibir mas nada
 			// Asi que el handshake termino y me quedo a la espera de solicitudes de Kernel

@@ -18,7 +18,7 @@ struct Config{
 	char* ip_fs;
 	int puerto_fs;
 	char** ip_seeds;
-	int* puertos_seeds;
+	uint16_t* puertos_seeds;
 	int retardo_acc_mp;
 	int retardo_acc_fs;
 	int tamanio_memoria;
