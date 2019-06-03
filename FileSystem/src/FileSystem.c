@@ -115,13 +115,11 @@ void dumpDeTablas(t_list *memTableAux){
 	free(path);
 	struct dirent* carpeta = readdir(path_buscado);
 
-
-
-
 	while(carpeta){
 		if(strcmp(carpeta->d_name, ".") && strcmp(carpeta->d_name, "..")){ //Si el nombre de la carpeta es distinto a "." y ".."
+			
 			bool tieneDatosParaDump(t_registro* reg){return !strcmp(reg->nombre_tabla, carpeta->d_name);}
-			datosParaDump = list_filter(memTableAux, (_Bool (*)(void*))tieneDatosParaDump);
+			datosParaDump = list_filter(memTableAux, (_Bool (*)(void*))tieneDatosParaDump); //Filtro de la memtable los registros tiene que ser dumpeados en cada Tabla/.
 
 			if(!list_is_empty(datosParaDump)){
 				log_trace(logger, "%s tiene %d datos para Dumpear", carpeta->d_name, list_size(datosParaDump));
@@ -151,18 +149,31 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 		aux = convertirAStruct(registro);
 	    fwrite(&aux, sizeof(t_registro), 1, temp);
 	}
-/*	fseek(temp, 0, SEEK_SET);
-	while(fread(&aux2, sizeof(t_registro), 1, temp)){
-		log_info(logger, "%d", aux2.key);
-		log_info(logger, "%s", aux2.value);
-		log_info(logger, "%lf", aux2.timeStamp);
-
-	}
-*/
 	fclose(temp);
 	free(particionTemp);
 }
+/*
+void dumpear(t_list *datosParaDump, char* carpetaNombre){
+	char* particionTemp = malloc(4);
+	particionTemp = intToString(cantDumps);
+	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
+	t_registro *registro = malloc(sizeof(t_registro));
 
+	while(!list_is_empty(datosParaDump)){
+		registro = list_remove(datosParaDump,0);
+		escribirEnArchivo(temp, registro);
+	}
+	free(particionTemp);
+	free(registro);
+	fclose(f);
+}
+
+void escribirEnArchivo(FILE* f, t_registro* r){
+	char linea = string_from_format("%s;%s;%s", r->timeStamp, r->key, r->value); // [TIMESTAMP];[KEY];[VALUE]
+	fputs(linea, f);
+	free(linea);
+}
+*/
 FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp){
 	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
 	FILE* f = fopen(path, "w+");
