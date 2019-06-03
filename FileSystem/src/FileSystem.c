@@ -49,7 +49,20 @@ void crearMetaDataFS(){
 	char* path = string_from_format("%sMetadata/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
 	path = string_from_format("%sMetadata.bin", path);
-	FILE *f = fopen(path, "w+");
+	FILE *f = fopen(path, "w");
+	
+	fputs("BLOCK_SIZE=", f);
+	fputs("64", f);
+	fputs("\n", f);
+	
+	fputs("BLOCKS=", f);
+	fputs("5192", f);
+	fputs("\n", f);
+	
+	fputs("MAGIC_NUMBER=", f);
+	fputs("LISSANDRA", f);
+	fputs("\n", f);
+	
 	fclose (f);
 	free(path);
 }
