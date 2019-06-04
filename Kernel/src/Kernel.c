@@ -8,6 +8,7 @@ void leerConfig();
     void* consola();
     char* apiKernel(char*);
 
+    //Levanto la configuracion..
     void leerConfig(){
 
         t_config* configk = config_create("Kernel.config");
@@ -322,7 +323,17 @@ void leerConfig();
 	} //end Char* apiKernel ..
 
 
+/*
+	void largoPlazo (){
+		while (1){
+	    t_queue* colaNew = queue_create();
+        t_script* script = queue_pop(colaNew);
+        moverAcolaDeReady(script)
+		} //falta terminar...
 
+
+	}
+*/
 
 
 	void saludar(){
@@ -336,6 +347,13 @@ void leerConfig();
 
 
 int main(void) {
+
+	//Inicializo semaforos prueba
+
+	int sem_new = 0;
+	int sem_ready = 0;
+	int	sem_exec = 0;
+	int sem_multiProc = config.multiprocesamiento;
 
 
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
@@ -366,37 +384,15 @@ int main(void) {
 
 
 
+//Creo colas de estados
 
+    t_queue* colaNew = queue_create();
+    t_queue* colaReady = queue_create();
+    t_queue* colaExec = queue_create();
+    t_queue* colaFinish = queue_create();
 
 
 /*
-
-	// Planificacion RR SuperIncompleto
-
-    typedef struct Script {
-    	char* request1;
-    	char* request2;
-    	char* request3;
-    }Script;
-
-
-    typedef struct Nodo {
-    	Script script;
-    	struct Nodo*sgte;
-    }Nodo ;
-
-
-    typedef struct ListaReady{
-    	Nodo* inicio;
-    }ListaReady;
-
-
-    typedef struct ListaExec{
-    	Nodo* sgte;
-    }ListaExec;
-
-
-
 
 	int quantum= 4; // Aca deberia ir "QUANTUM" .
 	int contador,cantScripts,time,remain,flag=0;
@@ -449,8 +445,8 @@ int main(void) {
 
 	}// Fin RR
 
-
 */
+
 
 
 /*
