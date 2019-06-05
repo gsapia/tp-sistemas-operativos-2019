@@ -94,10 +94,8 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	respuesta.timestamp = *((uint64_t*)(pagina->marco + DESPL_TIMESTAMP));
 
 	return respuesta;
-
-	//return string_duplicate(pagina->marco + DESPL_VALOR);
 }
-char* insert(char* nombreTabla, u_int16_t clave, char* valor){
+enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 	// Truncamos el valor al tamanio maximo posible para evitar problemas
 	if(strlen(valor) > tamanio_value)
 		valor[tamanio_value] = '\0';
@@ -142,7 +140,7 @@ char* insert(char* nombreTabla, u_int16_t clave, char* valor){
 
 	pagina->modificado = true;
 
-	return string_from_format("Valor insertado!");
+	return ESTADO_INSERT_OK;
 }
 enum estados_create create(char* nombreTabla, enum consistencias tipoConsistencia, uint16_t cantidadParticiones, uint32_t compactionTime){
 	// Hago el CREATE a FS

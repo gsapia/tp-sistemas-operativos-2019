@@ -172,11 +172,6 @@ void servidor() {
 				log_trace(logger, "Recibi un SELECT");
 				struct_select paquete = recibir_select(socket_kernel);
 
-				/*
-				 * Depues haria lo que tenga que hacer con esta struct ya cargada
-				 */
-				printf("Comando recibido: SELECT %s %d\n\n", paquete.nombreTabla, paquete.key);
-
 				struct_select_respuesta registro = selects(paquete.nombreTabla, paquete.key);
 				enviar_registro(socket_kernel, registro);
 
@@ -189,10 +184,8 @@ void servidor() {
 				log_trace(logger, "Recibi un INSERT");
 				struct_insert paquete = recibir_insert(socket_kernel);
 
-				/*
-				 * Depues haria lo que tenga que hacer con esta struct ya cargada
-				 */
-				printf("Comando recibido: INSERT %s %d \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
+				enum estados_insert estado = insert(paquete.nombreTabla, paquete.key, paquete.valor);
+				responder_insert(socket_kernel, estado);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
@@ -204,18 +197,13 @@ void servidor() {
 				puts("Recibi un CREATE");
 				struct_create paquete = recibir_create(socket_kernel);
 
-				/*
-				 * Depues haria lo que tenga que hacer con esta struct ya cargada
-				 */
-				printf("Comando recibido: CREATE %s %d %d %d\n\n", paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
-
-
-				uint16_t estado = create(paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
+				enum estados_create estado = create(paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
 				responder_create(socket_kernel, estado);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
 			}
+			break;
 			case DESCRIBE:
 			{
 				log_trace(logger, "Recibi un DESCRIBE");
