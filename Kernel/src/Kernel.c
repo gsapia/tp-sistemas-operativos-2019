@@ -54,10 +54,17 @@ void inicializarColas(){
 				break;
 			}
 
-			resultado = apiKernel(linea);
+			/*resultado = apiKernel(linea);
 			free(linea);
 			puts(resultado);
-			free(resultado);
+			free(resultado);*/
+			t_queue* requests = queue_create();
+			queue_push(requests, linea);
+			t_script *script = malloc(sizeof(t_script));
+			script->requests = requests;
+			queue_push(colaNew, script);
+			sem_post(&new);
+
 		}
 
 	}
@@ -345,7 +352,7 @@ void inicializarColas(){
 
 
 
-	void largoPlazo (){
+	void largoPlazo(){
 		while (1){
 			sem_wait(&new);
 
@@ -384,14 +391,16 @@ void inicializarColas(){
 		while(1){
 			sem_wait(&exec);
 			t_script* script = queue_pop(colaExec); // saco de la cola el script
-			t_list* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
-			for (int q = config.quantum; q > 0 && !list_is_empty(requests);q--){
-				char* request = list_remove(requests,1);
+			t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
+			for (int q = config.quantum; q > 0 && !queue_is_empty(requests); q--){
+				char* request = queue_pop(requests);
 				char* resultado = apiKernel(request);
+				log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
 				free(request);
+				free(resultado);
 			}
 
-			if(!list_is_empty(requests)){
+			if(!queue_is_empty(requests)){
 
 				queue_push(colaReady,script);
 				//moverAColaReady(scripts)
@@ -415,6 +424,11 @@ void inicializarColas(){
 
 
 int main(void) {
+	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
+    log_info (logger, "Hola soy Kernel \n");
+
+    leerConfig();
+    log_info (logger, "Pude leer config ! \n");
 
 	//Inicializo semaforos
 
@@ -427,13 +441,6 @@ int main(void) {
 
 	inicializarColas();
 
-
-	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
-    log_info (logger, "Hola soy Kernel \n");
-
-    leerConfig();
-    log_info (logger, "Pude leer config ! \n");
-
     printf ("Prueba de hilo \n");
 
 
@@ -444,6 +451,28 @@ int main(void) {
    		exit(EXIT_FAILURE);
    	}
     pthread_join (hiloCliente,NULL);
+
+    // Iniciamos los planificadores
+    pthread_t hiloLargoPlazo;
+    if(pthread_create(&hiloLargoPlazo, NULL,(void*)largoPlazo , NULL))
+    {
+    	log_error(logger,"Hilo Largo Plazo: error en la creacion pthread_create");
+    	exit(EXIT_FAILURE);
+    }
+    pthread_t hiloCortoPlazo;
+    if(pthread_create(&hiloCortoPlazo, NULL,(void*)cortoPlazo , NULL))
+    {
+    	log_error(logger,"Hilo Corto Plazo: error en la creacion pthread_create");
+    	exit(EXIT_FAILURE);
+    }
+    pthread_t hiloExec;
+    if(pthread_create(&hiloExec, NULL,(void*)ejecutarScript , NULL))
+    {
+    	log_error(logger,"Hilo exec: error en la creacion pthread_create");
+    	exit(EXIT_FAILURE);
+    }
+    log_info(logger, "Planificadores iniciados.");
+
 
 
     pthread_t hiloAConsola;

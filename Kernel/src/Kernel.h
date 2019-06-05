@@ -37,7 +37,7 @@ struct ConfigKernel{
 
 typedef struct{
 
-  t_list* requests; //Defino la estructura t_script con un atributo que apunta a una lista de requests.
+	t_queue* requests; //Defino la estructura t_script con un atributo que apunta a una lista de requests.
 
 }t_script;
 
