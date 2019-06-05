@@ -49,6 +49,7 @@ typedef struct{
 }t_memoria;
 
 
+void aniadirScript(t_script *script);
 
 t_list *memorias;
 t_log* logger;

@@ -61,11 +61,31 @@ char* journal(){
 }
 
 char* run(char* runPath){
-	return string_from_format("Elegiste RUN ");
+	FILE * archivo = fopen (runPath, "r");
+	if(!archivo){
+		return strdup("ERROR: El archivo solicitado no existe.");
+	}
+
+	t_queue* requests = queue_create();
+	char* request = NULL;
+	size_t n = 0; // getline es jodon y pide que si no queres limitar el tamanio de lo que lee, igual le tenes que pasar un puntero a algo que valga 0...
+	while(getline(&request, &n, archivo) > 0){
+		string_trim(&request);
+		if(!string_is_empty(request))
+			queue_push(requests, request);
+
+		request = NULL;
+	}
+
+	t_script *script = malloc(sizeof(t_script));
+	script->requests = requests;
+	aniadirScript(script);
+
+	fclose (archivo);
+	return strdup("Añadido script a ejecutar");
 }
 
-char* metrics()
-{
+char* metrics(){
 	return string_from_format("Elegiste METRICS");
 }
 

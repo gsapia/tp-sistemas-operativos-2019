@@ -42,6 +42,11 @@ void inicializarColas(){
 
     }
 
+    void aniadirScript(t_script *script){
+		queue_push(colaNew, script);
+		sem_post(&new);
+    }
+
      //Consola Kernel
 
      void* consola(){
@@ -63,8 +68,7 @@ void inicializarColas(){
 			queue_push(requests, linea);
 			t_script *script = malloc(sizeof(t_script));
 			script->requests = requests;
-			queue_push(colaNew, script);
-			sem_post(&new);
+			aniadirScript(script);
 
 		}
 
