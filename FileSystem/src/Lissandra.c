@@ -48,12 +48,12 @@ int main(void){
 	tamValue = config_get_int_value(config, "TAMAÑOVALUE");
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
-/*
-	argumentos *args = malloc(sizeof(argumentos));
+
+/*	argumentos_servidor *args = malloc(sizeof(argumentos_servidor));
 	args->puerto_escucha = puerto_escucha;
 	args->tamValue = tamValue;
 
-	Servidor
+//	Servidor
 	pthread_t hiloServidor;
 	if(pthread_create(&hiloServidor, NULL, servidor, args)){
 		free(args);
@@ -85,7 +85,6 @@ int main(void){
 
 	pthread_join(hiloConsola, NULL);
 //	pthread_join(hiloServidor,NULL);
-	pthread_join(hiloDump, NULL);
 	log_destroy(logger);
 
 

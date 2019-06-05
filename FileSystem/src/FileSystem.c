@@ -27,6 +27,7 @@ char* encontreTabla(char* nombreTabla, DIR* path_buscado);
 FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp);
 void dumpear(t_list *datosParaDump, char* carpetaNombre);
 t_registro convertirAStruct(t_registro *registro);
+void escribirEnArchivo(FILE* f, t_registro* r);
 
 // Hilo del FILESYSTEM (Crea las carpetas necesarias)
 void *fileSystem() {
@@ -155,21 +156,6 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 	char* particionTemp = malloc(4);
 	particionTemp = intToString(cantDumps);
 	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
-	t_registro *registro; t_registro aux;
-
-	while(!list_is_empty(datosParaDump)){
-		registro = list_remove(datosParaDump,0);
-		aux = convertirAStruct(registro);
-	    fwrite(&aux, sizeof(t_registro), 1, temp);
-	}
-	fclose(temp);
-	free(particionTemp);
-}
-/*
-void dumpear(t_list *datosParaDump, char* carpetaNombre){
-	char* particionTemp = malloc(4);
-	particionTemp = intToString(cantDumps);
-	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
 	t_registro *registro = malloc(sizeof(t_registro));
 
 	while(!list_is_empty(datosParaDump)){
@@ -178,15 +164,19 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 	}
 	free(particionTemp);
 	free(registro);
-	fclose(f);
+	fclose(temp);
 }
 
 void escribirEnArchivo(FILE* f, t_registro* r){
-	char linea = string_from_format("%s;%s;%s", r->timeStamp, r->key, r->value); // [TIMESTAMP];[KEY];[VALUE]
+	char* timestamp = intToString(r->timeStamp);
+	char* key = intToString(r->key);
+	char* linea = string_from_format("%s;%s;%s\n", timestamp, key, r->value); // [TIMESTAMP];[KEY];[VALUE]
 	fputs(linea, f);
+	free(timestamp);
+	free(key);
 	free(linea);
 }
-*/
+
 FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp){
 	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
 	FILE* f = fopen(path, "w+");

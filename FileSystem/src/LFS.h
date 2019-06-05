@@ -32,7 +32,12 @@ char* puntoMontaje;
 typedef struct{
 	uint16_t puerto_escucha;
 	int tamValue;
-}argumentos;
+}argumentos_servidor;
+
+typedef struct{
+	int compactation_time;
+	char* nombreTabla;
+}argumentos_compactacion;
 
 typedef struct{
 	uint64_t timeStamp;

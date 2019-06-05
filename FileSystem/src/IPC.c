@@ -3,7 +3,7 @@
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 
-void* servidor(argumentos* args){
+void* servidor(argumentos_servidor* args){
 	uint16_t puerto_escucha = args->puerto_escucha;
 	int tamValue = args->tamValue;
 	free(args);
