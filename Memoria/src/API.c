@@ -4,7 +4,8 @@
 
 t_pagina* agregar_registro(uint16_t clave, char* valor, t_list *tabla_paginas){
 	// Truncamos el valor al tamanio maximo posible para evitar problemas
-	valor[tamanio_value] = '\0';
+	if(strlen(valor) > tamanio_value)
+		valor[tamanio_value] = '\0';
 
 	// Pedimos una pagina
 	t_marco marco = getPagina();
@@ -83,6 +84,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 
 		// Agrego el registro
 		pagina = agregar_registro(key, respuesta.valor, tabla_paginas);
+		free(respuesta.valor);
 	}
 	// Existe una pagina para esa clave
 
@@ -97,7 +99,8 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 }
 char* insert(char* nombreTabla, u_int16_t clave, char* valor){
 	// Truncamos el valor al tamanio maximo posible para evitar problemas
-	valor[tamanio_value] = '\0';
+	if(strlen(valor) > tamanio_value)
+		valor[tamanio_value] = '\0';
 
 	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, clave, valor);
 
