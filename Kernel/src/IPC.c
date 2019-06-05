@@ -96,6 +96,10 @@ struct_select_respuesta selectAMemoria(struct_select paquete){
 	enviar_select(socket_cliente, paquete);
 	return recibir_registro(socket_cliente);
 }
+enum estados_insert insertAMemoria(struct_insert paquete){
+	enviar_insert(socket_cliente, paquete);
+	return recibir_respuesta_insert(socket_cliente);
+}
 enum estados_create createAMemoria(struct_create paquete){
 	enviar_create(socket_cliente, paquete);
 	return recibir_respuesta_create(socket_cliente);

@@ -16,6 +16,7 @@ void initCliente();
 void closeCliente();
 
 struct_select_respuesta selectAMemoria(struct_select paquete);
+enum estados_insert insertAMemoria(struct_insert paquete);
 enum estados_create createAMemoria(struct_create paquete);
 
 

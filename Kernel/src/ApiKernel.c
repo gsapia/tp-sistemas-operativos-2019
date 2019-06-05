@@ -22,19 +22,30 @@ char* selects(char* nombreTabla, u_int16_t key){
 	}
 }
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
-	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, key, valor);
-	return string_from_format("Elegiste INSERT");
+	struct_insert paquete;
+	paquete.nombreTabla = nombreTabla;
+	paquete.key = key;
+	paquete.valor = valor;
+
+	enum estados_insert resultado = insertAMemoria(paquete);
+
+	switch (resultado) {
+	case ESTADO_INSERT_OK:
+		return strdup("Tabla creada");
+	case ESTADO_INSERT_TABLA:
+		return strdup("ERROR: Esa tabla no existe.");
+	default:
+		return strdup("ERROR: Ocurrio un error desconocido.");
+	}
 }
 char* create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
-	log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%d CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
-
 	struct_create paquete;
 	paquete.nombreTabla = nombreTabla;
 	paquete.consistencia = tipoConsistencia;
 	paquete.particiones = cantidadParticiones;
 	paquete.tiempoCompactacion = compactionTime;
 
-	uint16_t resultado = createAMemoria(paquete);
+	enum estados_create resultado = createAMemoria(paquete);
 
 	switch (resultado) {
 	case ESTADO_CREATE_OK:
