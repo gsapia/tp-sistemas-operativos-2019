@@ -32,7 +32,7 @@ char* insert(char* nombreTabla, u_int16_t key, char* valor){
 	switch (resultado) {
 	case ESTADO_INSERT_OK:
 		return strdup("Valor insertado");
-	case ESTADO_INSERT_TABLA:
+	case ESTADO_INSERT_ERROR_TABLA:
 		return strdup("ERROR: Esa tabla no existe.");
 	default:
 		return strdup("ERROR: Ocurrio un error desconocido.");

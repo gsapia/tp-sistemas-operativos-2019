@@ -57,7 +57,7 @@ typedef struct{
 
 enum estados_insert{
 	ESTADO_INSERT_OK,
-	ESTADO_INSERT_TABLA, // No existe la tabla
+	ESTADO_INSERT_ERROR_TABLA, // No existe la tabla
 	ESTADO_INSERT_ERROR_OTRO
 };
 

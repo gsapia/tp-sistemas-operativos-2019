@@ -41,7 +41,7 @@ int main(void) {
 	case ESTADO_INSERT_OK:
 		printf("Registro agregado\n");
 		break;
-	case ESTADO_INSERT_TABLA:
+	case ESTADO_INSERT_ERROR_TABLA:
 		printf("ERROR: no existe esa tabla");
 		break;
 		// Paja hacer los demas case

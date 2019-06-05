@@ -75,7 +75,7 @@ char *apiMemoria(char* mensaje){
 						switch (resultado) {
 							case ESTADO_INSERT_OK:
 								return strdup("Valor insertado");
-							case ESTADO_INSERT_TABLA:
+							case ESTADO_INSERT_ERROR_TABLA:
 								return strdup("ERROR: Esa tabla no existe.");
 							default:
 								return strdup("ERROR: Ocurrio un error desconocido.");
