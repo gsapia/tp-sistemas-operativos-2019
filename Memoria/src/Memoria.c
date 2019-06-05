@@ -29,7 +29,7 @@ int main(void) {
 	// pthread_join(hiloCliente, NULL); // Hasta que no este el handhake con FS hecho no deberiamos poder hacer mas nada
 
 	// ----- Provisoriamente supongo un valor de longitud 4 bytes. Pero habria que usar el valor enviado por LFS -----
-	tamanio_value = 4;
+	tamanio_value = 15;
 	// ----- Fin parte provisoria -----
 
 	initMemoriaPrincipal();

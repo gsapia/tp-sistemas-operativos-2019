@@ -419,6 +419,8 @@ void inicializarColas(){
 				log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
 				free(request);
 				free(resultado);
+
+				usleep(config.retardo_ciclico * 1000);
 			}
 
 
