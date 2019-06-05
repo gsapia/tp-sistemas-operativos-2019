@@ -5,6 +5,7 @@
 sem_t new;
 sem_t ready;
 sem_t exec;
+sem_t finish;
 sem_t multiProc;
 
 t_queue* colaNew;
@@ -350,9 +351,25 @@ void inicializarColas(){
 
 	} //end Char* apiKernel ..
 
-
+	void terminarScripts(){
+		while(1){
+			sem_wait(&finish);
+			t_script* finalizado = queue_pop(colaFinish);
+			free(finalizado);
+			log_debug(logger, "Finalizamos un script");
+		}
+	}
 
 	void largoPlazo(){
+		// Creamos un hilo que se encargue de manejar la cola de terminados
+		pthread_t hiloExit;
+		if(pthread_create(&hiloExit, NULL,(void*)terminarScripts , NULL))
+		{
+			log_error(logger,"Hilo largo plazo: error en la creacion del hilo de exit");
+			exit(EXIT_FAILURE);
+		}
+
+		// Este hilo se encarga de la cola de nuevos nada mas
 		while (1){
 			sem_wait(&new);
 
@@ -370,6 +387,7 @@ void inicializarColas(){
 
 
 	void cortoPlazo(){
+
 		while (1){
 
 		sem_wait(&ready);
@@ -386,7 +404,6 @@ void inicializarColas(){
 
 
 
-
 	void ejecutarScript(){
 		while(1){
 			sem_wait(&exec);
@@ -400,11 +417,18 @@ void inicializarColas(){
 				free(resultado);
 			}
 
+
+			// Si finalizo su ejecucion, va a la cola de terminados. Sino vuelve a la cola de listos.
 			if(!queue_is_empty(requests)){
 
 				queue_push(colaReady,script);
+				sem_post(&ready);
 				//moverAColaReady(scripts)
 
+			}
+			else{
+				queue_push(colaFinish,script);
+				sem_post(&finish);
 			}
 			sem_post(&multiProc);
 		}
@@ -435,6 +459,7 @@ int main(void) {
 	sem_init(&new,0,0);
 	sem_init(&ready,0,0);
 	sem_init(&exec,0,0);
+	sem_init(&finish,0,0);
 	sem_init(&multiProc,0,config.multiprocesamiento);
 
 	//Inicializo colas de estados
