@@ -35,6 +35,18 @@ int main(void) {
 	enviar_insert_ts(cliente, paquete); // Usar enviar_insert si no hace falta el timestamp (Kernel)
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
 
+	// Ahora me quedo esperando la respuesta
+	enum estados_insert estado3 = recibir_respuesta_insert(cliente);
+	switch (estado3) {
+	case ESTADO_INSERT_OK:
+		printf("Registro agregado\n");
+		break;
+	case ESTADO_INSERT_TABLA:
+		printf("ERROR: no existe esa tabla");
+		break;
+		// Paja hacer los demas case
+	}
+
 	// Armo un SELECT TABLA1 5
 	struct_select paquete2;
 	paquete2.nombreTabla = "TABLA1";
@@ -70,14 +82,14 @@ int main(void) {
 	// Ahora me quedo esperando la respuesta
 	struct_select_respuesta registro2 = recibir_registro(cliente);
 	switch (registro2.estado) {
-			case ESTADO_SELECT_OK:
-				printf("Respuesta SELECT: Valor:%s Timestamp:%lld\n",registro2.valor, registro2.timestamp);
-				break;
-			case ESTADO_SELECT_ERROR_KEY:
-				printf("Respuesta SELECT: ERROR No existe un registro con esa clave\n");
-				break;
-			// Paja hacer los demas case
-		}
+		case ESTADO_SELECT_OK:
+			printf("Respuesta SELECT: Valor:%s Timestamp:%lld\n",registro2.valor, registro2.timestamp);
+			break;
+		case ESTADO_SELECT_ERROR_KEY:
+			printf("Respuesta SELECT: ERROR No existe un registro con esa clave\n");
+			break;
+		// Paja hacer los demas case
+	}
 
 	// Armo un CREATE TABLA1 SC 4
 	struct_create paquete3;

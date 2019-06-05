@@ -493,12 +493,27 @@ struct_select_respuesta recibir_registro(int socket){
 	return paquete;
 }
 
-void responder_create(int socket, uint16_t estado){
-	send(socket, &estado, sizeof(estado), 0); // Simplemente mando el estado
+void enviar_estado(int socket, uint16_t estado){
+	send(socket, &estado, sizeof(estado), 0);
 }
-
-uint16_t recibir_respuesta_create(int socket){
+uint16_t recibir_estado(int socket){
 	uint16_t estado;
 	recv(socket, &estado, sizeof(estado), 0);
 	return estado;
+}
+
+void responder_create(int socket, enum estados_create estado){
+	enviar_estado(socket, estado); // Simplemente mando el estado
+}
+
+enum estados_create recibir_respuesta_create(int socket){
+	return recibir_estado(socket);
+}
+
+void responder_insert(int socket, enum estados_insert estado){
+	enviar_estado(socket, estado); // Simplemente mando el estado
+}
+
+enum estados_insert recibir_respuesta_insert(int socket){
+	return recibir_estado(socket);
 }

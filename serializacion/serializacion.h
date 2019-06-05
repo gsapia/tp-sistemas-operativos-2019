@@ -55,6 +55,12 @@ typedef struct{
 	uint64_t timestamp;
 }struct_insert;
 
+enum estados_insert{
+	ESTADO_INSERT_OK,
+	ESTADO_INSERT_TABLA, // No existe la tabla
+	ESTADO_INSERT_ERROR_OTRO
+};
+
 typedef struct{
 	char* nombreTabla;
 	uint8_t consistencia;
@@ -117,8 +123,12 @@ struct_select_respuesta recibir_registro(int socket);
 void enviar_registro(int socket, struct_select_respuesta registro);
 
 
-void responder_create(int socket, uint16_t estado);
+void responder_create(int socket, enum estados_create estado);
 
-uint16_t recibir_respuesta_create(int socket);
+enum estados_create recibir_respuesta_create(int socket);
+
+void responder_insert(int socket, enum estados_insert estado);
+
+enum estados_insert recibir_respuesta_insert(int socket);
 
 #endif /* SERIALIZACION_H_ */
