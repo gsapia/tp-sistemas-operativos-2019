@@ -78,6 +78,20 @@ typedef struct{
 	char* nombreTabla;
 }struct_describe, struct_drop;
 
+enum estados_describe{
+	ESTADO_DESCRIBE_OK,
+	ESTADO_DESCRIBE_ERROR_TABLA, // No existe la tabla
+	ESTADO_DESCRIBE_ERROR_OTRO
+};
+
+typedef struct{
+	uint16_t estado;
+	uint16_t consistencia;
+	uint16_t particiones;
+	uint32_t tiempo_compactacion;
+}struct_describe_respuesta;
+
+
 struct_select recibir_select(int socket);
 
 /**

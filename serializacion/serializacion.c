@@ -514,6 +514,77 @@ void responder_insert(int socket, enum estados_insert estado){
 	enviar_estado(socket, estado); // Simplemente mando el estado
 }
 
+void enviar_respuesta_describe(int socket, struct_describe_respuesta respuesta){
+	// Armo paquete con los datos
+	size_t tamanio_paquete = sizeof(respuesta.estado) + sizeof(respuesta.consistencia) + sizeof(respuesta.particiones) + sizeof(respuesta.tiempo_compactacion); // Calculo el tamanio del paquete
+	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
+
+	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
+
+	// Primero el estado de la peticion
+	memcpy(buffer + desplazamiento, &respuesta.estado, sizeof(respuesta.estado));
+	desplazamiento += sizeof(respuesta.estado);
+
+	if(respuesta.estado == ESTADO_DESCRIBE_OK){ // Si el estado no es OK, es al pedo mandar mas data.
+		// Ahora la consistencia
+		memcpy(buffer + desplazamiento, &respuesta.consistencia, sizeof(respuesta.consistencia));
+		desplazamiento += sizeof(respuesta.consistencia);
+		// Luego las particiones
+		memcpy(buffer + desplazamiento, &respuesta.particiones, sizeof(respuesta.particiones));
+		desplazamiento += sizeof(respuesta.particiones);
+
+		// Por ultimo el tiempo de compactacion
+		memcpy(buffer + desplazamiento, &respuesta.tiempo_compactacion, sizeof(respuesta.tiempo_compactacion));
+		// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
+	}
+	else{
+		tamanio_paquete = sizeof(respuesta.estado); // Evito mandar el buffer completo
+	}
+
+	// Por ultimo envio el paquete y libero el buffer.
+	send(socket, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
+	free(buffer);
+}
+/*TODO
+struct_describe_respuesta recibir_respuesta_describe(int socket){
+	struct_describe_respuesta paquete;
+	void* buffer = NULL;
+
+	// Primero recibo el estado
+	buffer = malloc(sizeof(paquete.estado));
+	recv(socket, buffer, sizeof(paquete.estado), 0);
+	paquete.estado = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
+	//printf("El estado es %d\n", paquete.estado);
+	free(buffer);
+
+	if(paquete.estado == ESTADO_DESCRIBE_OK){ // Si el estado no es OK, es al pedo el resto de data.
+		// Ahora recibo el valor
+		buffer = malloc(sizeof(uint16_t));
+		recv(socket, buffer, sizeof(uint16_t), 0);
+		tamanio_string = *((uint16_t*)buffer);
+		//printf("El valor es de %d bytes\n", tamanio_string);
+		free(buffer);
+
+		buffer = malloc(tamanio_string);
+		recv(socket, buffer, tamanio_string, 0);
+		paquete.valor = malloc(tamanio_string);
+		memcpy(paquete.valor, buffer, tamanio_string);
+		//printf("El valor es \"%s\"\n", paquete.valor);
+		free(buffer);
+
+		// Por ultimo el timestamp
+		buffer = malloc(sizeof(paquete.timestamp));
+		recv(socket, buffer, sizeof(uint64_t), 0);
+		paquete.timestamp = *((uint64_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
+		//printf("El timestamp es %lld\n", paquete.timestamp);
+		free(buffer);
+	}
+
+	//puts("Listo, recibi el paquete completo!\n");
+
+	return paquete;
+}*/
+
 enum estados_insert recibir_respuesta_insert(int socket){
 	return recibir_estado(socket);
 }
