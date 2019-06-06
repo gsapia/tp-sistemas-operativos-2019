@@ -91,6 +91,7 @@ int conectar(int socket_servidor){
 		return 0;
 	}
 	// El otro extremo es Kernel realmente
+	free(otro);
 	// Envio confirmacion de que soy Memoria
 	const uint8_t soy = ID_MEMORIA;
 	send(socket_kernel, &soy, sizeof(soy), 0);
@@ -184,6 +185,9 @@ void servidor() {
 	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
 
 	int socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+	int activado = 1;
+	setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
 
 	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
 		log_trace(logger, "Fallo el servidor");

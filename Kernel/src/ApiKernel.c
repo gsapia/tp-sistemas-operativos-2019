@@ -12,7 +12,7 @@ char* selects(char* nombreTabla, u_int16_t key){
 
 	switch(resultado.estado) {
 	case ESTADO_SELECT_OK:
-		return strdup(resultado.valor);
+		return resultado.valor;
 	case ESTADO_SELECT_ERROR_TABLA:
 		return strdup("ERROR: La tabla solicitada no existe.");
 	case ESTADO_SELECT_ERROR_KEY:
@@ -87,6 +87,7 @@ char* run(char* runPath){
 
 		request = NULL;
 	}
+	free(request);
 
 	t_script *script = malloc(sizeof(t_script));
 	script->requests = requests;

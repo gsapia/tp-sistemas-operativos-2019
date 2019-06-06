@@ -28,10 +28,10 @@ void inicializarColas(){
     char* apiKernel(char*);
 
     //Levanto la configuracion
-
+    t_config* configk;
     void leerConfig(){
 
-    	t_config* configk = config_create("Kernel.config");
+    	configk = config_create("Kernel.config");
 
     	config.ip_memoria = config_get_string_value(configk,"IP_MEMORIA");
     	config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
@@ -354,6 +354,7 @@ void inicializarColas(){
 			sem_wait(&finish);
 			t_script* finalizado = queue_pop(colaFinish);
 			log_trace(logger, "Finalizó el script \"%s\"", finalizado->nombre);
+			queue_destroy(finalizado->requests);
 			free(finalizado->nombre);
 			free(finalizado);
 		}
@@ -367,6 +368,7 @@ void inicializarColas(){
 			log_error(logger,"Hilo largo plazo: error en la creacion del hilo de exit");
 			exit(EXIT_FAILURE);
 		}
+		pthread_detach(hiloExit);
 
 		// Este hilo se encarga de la cola de nuevos nada mas
 		while (1){
@@ -478,7 +480,7 @@ int main(void) {
    		log_error(logger,"Hilo cliente: error en la creacion pthread_create");
    		exit(EXIT_FAILURE);
    	}
-    pthread_join (hiloCliente,NULL);
+    pthread_join(hiloCliente,NULL);
 
     // Iniciamos los planificadores
     pthread_t hiloLargoPlazo;
@@ -506,6 +508,8 @@ int main(void) {
 
      pthread_join (hiloAConsola,NULL);
 
+     log_destroy(logger); // Liberamos memoria del log
+     config_destroy(configk); // Liberamos memoria de archivo de config
 
    /*  pthread_t hiloUpScript;
      if(pthread_create(&hiloUpScript,NULL,(void*)levantarScripts,NULL)){
