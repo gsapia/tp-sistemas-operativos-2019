@@ -6,19 +6,21 @@
 #include<string.h>
 #include<commons/log.h>
 #include<commons/string.h>
-#include<commons/config.h>
-#include<readline/readline.h>
-#include<arpa/inet.h>           //Implemento librerias para utilizar Sockets de flujo.
-#include<sys/socket.h>
-#include<unistd.h>
-#include<netdb.h>
+#include <commons/config.h>
+#include <readline/readline.h>
+#include <arpa/inet.h>           // Implemento librerias para utilizar Sockets de flujo.
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netdb.h>
 #include <pthread.h>
-#include<readline/history.h>
+#include <readline/history.h>
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
+#include <semaphore.h>          // Librerias para usar semaforos
 
 
 //Borre los define de kernel.h dado que estan definidos en serializacion.h
+
 
 struct ConfigKernel{
 
@@ -31,17 +33,27 @@ struct ConfigKernel{
 
 }config;
 
+
+
 typedef struct{
-  t_list* requests; //Defino la estructura t_script con un atributo que apunta a una lista de requests.
+
+	t_queue* requests; //Defino la estructura t_script con un atributo que apunta a una lista de requests.
 
 }t_script;
+
+
 
 typedef struct{
 	char* ip;
 	int puerto;
 }t_memoria;
 
+
+void aniadirScript(t_script *script);
+
 t_list *memorias;
 t_log* logger;
+
+
 
 #endif /* KERNEL_H_ */

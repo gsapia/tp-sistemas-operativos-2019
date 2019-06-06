@@ -22,19 +22,30 @@ char* selects(char* nombreTabla, u_int16_t key){
 	}
 }
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
-	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, key, valor);
-	return string_from_format("Elegiste INSERT");
+	struct_insert paquete;
+	paquete.nombreTabla = nombreTabla;
+	paquete.key = key;
+	paquete.valor = valor;
+
+	enum estados_insert resultado = insertAMemoria(paquete);
+
+	switch (resultado) {
+	case ESTADO_INSERT_OK:
+		return strdup("Valor insertado");
+	case ESTADO_INSERT_ERROR_TABLA:
+		return strdup("ERROR: Esa tabla no existe.");
+	default:
+		return strdup("ERROR: Ocurrio un error desconocido.");
+	}
 }
 char* create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
-	log_debug(logger, "CREATE: Recibi Tabla:%s TipoDeConsistencia:%d CantidadDeParticines:%d TiempoDeCompactacion:%d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
-
 	struct_create paquete;
 	paquete.nombreTabla = nombreTabla;
 	paquete.consistencia = tipoConsistencia;
 	paquete.particiones = cantidadParticiones;
 	paquete.tiempoCompactacion = compactionTime;
 
-	uint16_t resultado = createAMemoria(paquete);
+	enum estados_create resultado = createAMemoria(paquete);
 
 	switch (resultado) {
 	case ESTADO_CREATE_OK:
@@ -61,11 +72,31 @@ char* journal(){
 }
 
 char* run(char* runPath){
-	return string_from_format("Elegiste RUN ");
+	FILE * archivo = fopen (runPath, "r");
+	if(!archivo){
+		return strdup("ERROR: El archivo solicitado no existe.");
+	}
+
+	t_queue* requests = queue_create();
+	char* request = NULL;
+	size_t n = 0; // getline es jodon y pide que si no queres limitar el tamanio de lo que lee, igual le tenes que pasar un puntero a algo que valga 0...
+	while(getline(&request, &n, archivo) > 0){
+		string_trim(&request);
+		if(!string_is_empty(request))
+			queue_push(requests, request);
+
+		request = NULL;
+	}
+
+	t_script *script = malloc(sizeof(t_script));
+	script->requests = requests;
+	aniadirScript(script);
+
+	fclose (archivo);
+	return strdup("Añadido script a ejecutar");
 }
 
-char* metrics()
-{
+char* metrics(){
 	return string_from_format("Elegiste METRICS");
 }
 

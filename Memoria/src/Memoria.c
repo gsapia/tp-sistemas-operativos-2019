@@ -7,6 +7,7 @@
 void leerConfig();
 void initMemoriaPrincipal();
 
+t_config* configf;
 int main(void) {
 	logger = log_create("Memoria.log", "Memoria", 1, LOG_LEVEL_TRACE);
 	log_info(logger, "Hola Soy Memoria");
@@ -28,7 +29,7 @@ int main(void) {
 	// pthread_join(hiloCliente, NULL); // Hasta que no este el handhake con FS hecho no deberiamos poder hacer mas nada
 
 	// ----- Provisoriamente supongo un valor de longitud 4 bytes. Pero habria que usar el valor enviado por LFS -----
-	tamanio_value = 4;
+	tamanio_value = 15;
 	// ----- Fin parte provisoria -----
 
 	initMemoriaPrincipal();
@@ -50,13 +51,16 @@ int main(void) {
 
 	//En caso que no pueda realizar alguna de las dos primeras operaciones, se deberá abortar el proceso memoria informando cuál fue el problema.
 
-	log_destroy(logger);
+	// Salimos limpiamente
+	pthread_cancel(hiloServidor); // Manda senial a hiloServidor de terminarse
+	pthread_join(hiloServidor, NULL); // Esperamos a que hiloServidor termine
+	log_destroy(logger); // Liberamos memoria del log
+	config_destroy(configf); // Liberamos memoria de archivo de config
 
 	return EXIT_SUCCESS;
 }
-
 void leerConfig(){
-	t_config* configf = config_create("Memoria.config");
+	configf = config_create("Memoria.config");
 	config.puerto_escucha = config_get_int_value(configf, "PUERTO");
 	config.ip_fs = config_get_string_value(configf, "IP_FS");
 	config.puerto_fs = config_get_int_value(configf, "PUERTO_FS");
@@ -73,8 +77,10 @@ void leerConfig(){
 
 	for(int i = 0; i < cantSeeds; i++){
 		config.puertos_seeds[i] = strtol(str_puertos_seeds[i], NULL, 10);
+		free(str_puertos_seeds[i]);
 		log_trace(logger, "Lei puerto de seeds: %d", config.puertos_seeds[i]); // Esto nomas para probar, pero esta de mas y habria que sacarlo
 	}
+	free(str_puertos_seeds);
 
 	config.retardo_acc_mp = config_get_int_value(configf, "RETARDO_MEM");
 	config.retardo_acc_fs = config_get_int_value(configf, "RETARDO_FS");

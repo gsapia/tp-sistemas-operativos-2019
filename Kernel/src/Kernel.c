@@ -2,25 +2,52 @@
 #include "ApiKernel.h"
 #include "IPC.h"
 
+sem_t new;
+sem_t ready;
+sem_t exec;
+sem_t finish;
+sem_t multiProc;
 
-void leerConfig();
+t_queue* colaNew;
+t_queue* colaReady;
+t_queue* colaExec;
+t_queue* colaFinish;
+
+
+void inicializarColas(){
+	colaNew = queue_create();
+	colaReady = queue_create();
+	colaExec = queue_create();
+	colaFinish = queue_create();
+}
+
+
+ void leerConfig();// Esta no se si esta demas xd .
 
     void* consola();
     char* apiKernel(char*);
 
-    //Levanto la configuracion..
+    //Levanto la configuracion
+
     void leerConfig(){
 
-        t_config* configk = config_create("Kernel.config");
+    	t_config* configk = config_create("Kernel.config");
 
-    		config.ip_memoria = config_get_string_value(configk,"IP_MEMORIA");
-            config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
-            config.quantum = config_get_int_value(configk,"QUANTUM");
-            config.multiprocesamiento = config_get_int_value(configk,"MULTIPROCESAMIENTO");
-            config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
-            config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
+    	config.ip_memoria = config_get_string_value(configk,"IP_MEMORIA");
+    	config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
+    	config.quantum = config_get_int_value(configk,"QUANTUM");
+    	config.multiprocesamiento = config_get_int_value(configk,"MULTIPROCESAMIENTO");
+    	config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
+    	config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
 
-        }
+    }
+
+    void aniadirScript(t_script *script){
+		queue_push(colaNew, script);
+		sem_post(&new);
+    }
+
+     //Consola Kernel
 
      void* consola(){
 		char *linea;
@@ -33,10 +60,16 @@ void leerConfig();
 				break;
 			}
 
-			resultado = apiKernel(linea);
+			/*resultado = apiKernel(linea);
 			free(linea);
 			puts(resultado);
-			free(resultado);
+			free(resultado);*/
+			t_queue* requests = queue_create();
+			queue_push(requests, linea);
+			t_script *script = malloc(sizeof(t_script));
+			script->requests = requests;
+			aniadirScript(script);
+
 		}
 
 	}
@@ -322,45 +355,122 @@ void leerConfig();
 
 	} //end Char* apiKernel ..
 
-
-/*
-	void largoPlazo (){
-		while (1){
-	    t_queue* colaNew = queue_create();
-        t_script* script = queue_pop(colaNew);
-        moverAcolaDeReady(script)
-		} //falta terminar...
-
-
+	void terminarScripts(){
+		while(1){
+			sem_wait(&finish);
+			t_script* finalizado = queue_pop(colaFinish);
+			free(finalizado);
+			log_debug(logger, "Finalizamos un script");
+		}
 	}
-*/
+
+	void largoPlazo(){
+		// Creamos un hilo que se encargue de manejar la cola de terminados
+		pthread_t hiloExit;
+		if(pthread_create(&hiloExit, NULL,(void*)terminarScripts , NULL))
+		{
+			log_error(logger,"Hilo largo plazo: error en la creacion del hilo de exit");
+			exit(EXIT_FAILURE);
+		}
+
+		// Este hilo se encarga de la cola de nuevos nada mas
+		while (1){
+			sem_wait(&new);
+
+			t_script* script = queue_pop(colaNew);
+
+			queue_push(colaReady,script);
+			//moverColaDeReady(script);
+
+			sem_post(&ready);
+		}
+
+	} // End Largo Plazo
+
+
+
+
+	void cortoPlazo(){
+
+		while (1){
+
+		sem_wait(&ready);
+		sem_wait(&multiProc);
+
+		t_script* script = queue_pop(colaReady);
+
+		queue_push(colaExec,script);
+		//moverAColaExec(script);
+
+		sem_post(&exec);
+		}
+	} //End Corto Plazo
+
+
+
+	void ejecutarScript(){
+		while(1){
+			sem_wait(&exec);
+			t_script* script = queue_pop(colaExec); // saco de la cola el script
+			t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
+			for (int q = config.quantum; q > 0 && !queue_is_empty(requests); q--){
+				char* request = queue_pop(requests);
+				char* resultado = apiKernel(request);
+				log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
+				free(request);
+				free(resultado);
+
+				usleep(config.retardo_ciclico * 1000);
+			}
+
+
+			// Si finalizo su ejecucion, va a la cola de terminados. Sino vuelve a la cola de listos.
+			if(!queue_is_empty(requests)){
+
+				queue_push(colaReady,script);
+				sem_post(&ready);
+				//moverAColaReady(scripts)
+
+			}
+			else{
+				queue_push(colaFinish,script);
+				sem_post(&finish);
+			}
+			sem_post(&multiProc);
+		}
+
+	}//end ejecutarScript
+
 
 
 	void saludar(){
-			printf("Hola soy un hilo \n");
-				}
+		printf("Hola soy un hilo \n");
+	}
 
-		void despedir()
-		{
-			printf("Adios hilo!\n");
-		}
+	void despedir()
+	{
+		printf("Adios hilo!\n");
+	}
 
 
 int main(void) {
-
-	//Inicializo semaforos prueba
-
-	int sem_new = 0;
-	int sem_ready = 0;
-	int	sem_exec = 0;
-	int sem_multiProc = config.multiprocesamiento;
-
-
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
     log_info (logger, "Hola soy Kernel \n");
 
     leerConfig();
     log_info (logger, "Pude leer config ! \n");
+
+	//Inicializo semaforos
+
+	sem_init(&new,0,0);
+	sem_init(&ready,0,0);
+	sem_init(&exec,0,0);
+	sem_init(&finish,0,0);
+	sem_init(&multiProc,0,config.multiprocesamiento);
+
+	//Inicializo colas de estados
+
+	inicializarColas();
 
     printf ("Prueba de hilo \n");
 
@@ -373,6 +483,29 @@ int main(void) {
    	}
     pthread_join (hiloCliente,NULL);
 
+    // Iniciamos los planificadores
+    pthread_t hiloLargoPlazo;
+    if(pthread_create(&hiloLargoPlazo, NULL,(void*)largoPlazo , NULL))
+    {
+    	log_error(logger,"Hilo Largo Plazo: error en la creacion pthread_create");
+    	exit(EXIT_FAILURE);
+    }
+    pthread_t hiloCortoPlazo;
+    if(pthread_create(&hiloCortoPlazo, NULL,(void*)cortoPlazo , NULL))
+    {
+    	log_error(logger,"Hilo Corto Plazo: error en la creacion pthread_create");
+    	exit(EXIT_FAILURE);
+    }
+    pthread_t hiloExec;
+    if(pthread_create(&hiloExec, NULL,(void*)ejecutarScript , NULL))
+    {
+    	log_error(logger,"Hilo exec: error en la creacion pthread_create");
+    	exit(EXIT_FAILURE);
+    }
+    log_info(logger, "Planificadores iniciados.");
+
+
+
     pthread_t hiloAConsola;
 	if(pthread_create(&hiloAConsola, NULL,(void*)consola , NULL))
 	{
@@ -383,14 +516,14 @@ int main(void) {
      pthread_join (hiloAConsola,NULL);
 
 
+   /*  pthread_t hiloUpScript;
+     if(pthread_create(&hiloUpScript,NULL,(void*)levantarScripts,NULL)){
 
-//Creo colas de estados
+    	 log_error(logger,"Hilo levantador de script: error en la creacion pthread_create");
+    	 exit(EXIT_FAILURE);
 
-    t_queue* colaNew = queue_create();
-    t_queue* colaReady = queue_create();
-    t_queue* colaExec = queue_create();
-    t_queue* colaFinish = queue_create();
-
+     }
+*/
 
 /*
 

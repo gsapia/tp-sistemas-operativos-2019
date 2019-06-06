@@ -9,7 +9,7 @@ struct_select recibir_select(int socket){
 	buffer = malloc(sizeof(uint16_t));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	tamanio_string = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
+	//printf("El nombre de tabla es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 
@@ -18,17 +18,17 @@ struct_select recibir_select(int socket){
 	recv(socket, buffer, tamanio_string, 0);
 	paquete.nombreTabla = malloc(tamanio_string);
 	memcpy(paquete.nombreTabla, buffer, tamanio_string);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
+	//printf("El nombre de tabla es %s\n", paquete.nombreTabla);
 	free(buffer);
 
 	// Ahora recibo la key
 	buffer = malloc(sizeof(paquete.key));
 	recv(socket, buffer, sizeof(paquete.key), 0);
 	paquete.key = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("La key es %d\n", paquete.key);
+	//printf("La key es %d\n", paquete.key);
 	free(buffer);
 
-	puts("Listo, recibi el paquete completo!\n");
+	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
 	// Para tener en cuenta: El recv recibe un maximo de bytes como diga el tercer parametro,
@@ -46,7 +46,7 @@ struct_insert recibir_insert(int socket){
 	buffer = malloc(sizeof(tamanio_string));
 	recv(socket, buffer, sizeof(tamanio_string), 0);
 	tamanio_string = *((uint16_t*)buffer);
-	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
+	//printf("El nombre de tabla es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 	// Ahora recibo el nombre de la tabla
@@ -54,31 +54,31 @@ struct_insert recibir_insert(int socket){
 	recv(socket, buffer, tamanio_string, 0);
 	paquete.nombreTabla = malloc(tamanio_string);
 	memcpy(paquete.nombreTabla, buffer, tamanio_string);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
+	//printf("El nombre de tabla es %s\n", paquete.nombreTabla);
 	free(buffer);
 
 	// Ahora recibo la key
 	buffer = malloc(sizeof(paquete.key));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	paquete.key = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("La key es %d\n", paquete.key);
+	//printf("La key es %d\n", paquete.key);
 	free(buffer);
 
 	// Por ultimo el valor
 	buffer = malloc(sizeof(uint16_t));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	tamanio_string = *((uint16_t*)buffer);
-	printf("El valor es de %d bytes\n", tamanio_string);
+	//printf("El valor es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 	buffer = malloc(tamanio_string);
 	recv(socket, buffer, tamanio_string, 0);
 	paquete.valor = malloc(tamanio_string);
 	memcpy(paquete.valor, buffer, tamanio_string);
-	printf("El valor es \"%s\"\n", paquete.valor);
+	//printf("El valor es \"%s\"\n", paquete.valor);
 	free(buffer);
 
-	puts("Listo, recibi el paquete completo!\n");
+	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
 }
@@ -92,7 +92,7 @@ struct_insert recibir_insert_ts(int socket){
 	buffer = malloc(sizeof(tamanio_string));
 	recv(socket, buffer, sizeof(tamanio_string), 0);
 	tamanio_string = *((uint16_t*)buffer);
-	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
+	//printf("El nombre de tabla es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 	// Ahora recibo el nombre de la tabla
@@ -100,39 +100,39 @@ struct_insert recibir_insert_ts(int socket){
 	recv(socket, buffer, tamanio_string, 0);
 	paquete.nombreTabla = malloc(tamanio_string);
 	memcpy(paquete.nombreTabla, buffer, tamanio_string);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
+	//printf("El nombre de tabla es %s\n", paquete.nombreTabla);
 	free(buffer);
 
 	// Ahora recibo la key
 	buffer = malloc(sizeof(paquete.key));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	paquete.key = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("La key es %d\n", paquete.key);
+	//printf("La key es %d\n", paquete.key);
 	free(buffer);
 
 	// Ahora el valor
 	buffer = malloc(sizeof(uint16_t));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	tamanio_string = *((uint16_t*)buffer);
-	printf("El valor es de %d bytes\n", tamanio_string);
+	//printf("El valor es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 	buffer = malloc(tamanio_string);
 	recv(socket, buffer, tamanio_string, 0);
 	paquete.valor = malloc(tamanio_string);
 	memcpy(paquete.valor, buffer, tamanio_string);
-	printf("El valor es \"%s\"\n", paquete.valor);
+	//printf("El valor es \"%s\"\n", paquete.valor);
 	free(buffer);
 
 	// Por ultimo el timestamp
 	buffer = malloc(sizeof(paquete.timestamp));
 	recv(socket, buffer, sizeof(uint64_t), 0);
 	paquete.timestamp = *((uint64_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El timestamp es %lld\n", paquete.timestamp);
+	//printf("El timestamp es %lld\n", paquete.timestamp);
 	free(buffer);
 
 
-	puts("Listo, recibi el paquete completo!\n");
+	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
 }
@@ -146,7 +146,7 @@ struct_create recibir_create(int socket){
 	buffer = malloc(sizeof(uint16_t));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	tamanio_string = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
+	//printf("El nombre de tabla es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 	// Ahora recibo el nombre de la tabla
@@ -154,31 +154,31 @@ struct_create recibir_create(int socket){
 	recv(socket, buffer, tamanio_string, 0);
 	paquete.nombreTabla = malloc(tamanio_string);
 	memcpy(paquete.nombreTabla, buffer, tamanio_string);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
+	//printf("El nombre de tabla es %s\n", paquete.nombreTabla);
 	free(buffer);
 
 	// Ahora recibo la consistencia
 	buffer = malloc(sizeof(paquete.consistencia));
 	recv(socket, buffer, sizeof(paquete.consistencia), 0);
 	paquete.consistencia = *((uint8_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("La consistencia es %d\n", paquete.consistencia);
+	//printf("La consistencia es %d\n", paquete.consistencia);
 	free(buffer);
 
 	// Luego las particiones
 	buffer = malloc(sizeof(paquete.particiones));
 	recv(socket, buffer, sizeof(paquete.particiones), 0);
 	paquete.particiones = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("Las particiones son %d\n", paquete.particiones);
+	//printf("Las particiones son %d\n", paquete.particiones);
 	free(buffer);
 
 	// Por ultimo el tiempo de compactacion
 	buffer = malloc(sizeof(paquete.tiempoCompactacion));
 	recv(socket, buffer, sizeof(paquete.tiempoCompactacion), 0);
 	paquete.tiempoCompactacion = *((uint32_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El tiempo de compactacion es %d\n", paquete.tiempoCompactacion);
+	//printf("El tiempo de compactacion es %d\n", paquete.tiempoCompactacion);
 	free(buffer);
 
-	puts("Listo, recibi el paquete completo!\n");
+	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
 	// Para tener en cuenta: El recv recibe un maximo de bytes como diga el tercer parametro,
@@ -196,7 +196,7 @@ struct_describe recibir_describe(int socket){
 	buffer = malloc(sizeof(uint16_t));
 	recv(socket, buffer, sizeof(uint16_t), 0);
 	tamanio_string = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El nombre de tabla es de %d bytes\n", tamanio_string);
+	//printf("El nombre de tabla es de %d bytes\n", tamanio_string);
 	free(buffer);
 
 	// Ahora recibo el nombre de la tabla
@@ -204,10 +204,10 @@ struct_describe recibir_describe(int socket){
 	recv(socket, buffer,tamanio_string, 0);
 	paquete.nombreTabla = malloc(tamanio_string);
 	memcpy(paquete.nombreTabla, buffer, tamanio_string);
-	printf("El nombre de tabla es %s\n", paquete.nombreTabla);
+	//printf("El nombre de tabla es %s\n", paquete.nombreTabla);
 	free(buffer);
 
-	puts("Listo, recibi el paquete completo!\n");
+	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
 }
@@ -462,7 +462,7 @@ struct_select_respuesta recibir_registro(int socket){
 	buffer = malloc(sizeof(paquete.estado));
 	recv(socket, buffer, sizeof(paquete.estado), 0);
 	paquete.estado = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-	printf("El estado es %d\n", paquete.estado);
+	//printf("El estado es %d\n", paquete.estado);
 	free(buffer);
 
 	if(paquete.estado == ESTADO_SELECT_OK){ // Si el estado no es OK, es al pedo el resto de data.
@@ -470,35 +470,50 @@ struct_select_respuesta recibir_registro(int socket){
 		buffer = malloc(sizeof(uint16_t));
 		recv(socket, buffer, sizeof(uint16_t), 0);
 		tamanio_string = *((uint16_t*)buffer);
-		printf("El valor es de %d bytes\n", tamanio_string);
+		//printf("El valor es de %d bytes\n", tamanio_string);
 		free(buffer);
 
 		buffer = malloc(tamanio_string);
 		recv(socket, buffer, tamanio_string, 0);
 		paquete.valor = malloc(tamanio_string);
 		memcpy(paquete.valor, buffer, tamanio_string);
-		printf("El valor es \"%s\"\n", paquete.valor);
+		//printf("El valor es \"%s\"\n", paquete.valor);
 		free(buffer);
 
 		// Por ultimo el timestamp
 		buffer = malloc(sizeof(paquete.timestamp));
 		recv(socket, buffer, sizeof(uint64_t), 0);
 		paquete.timestamp = *((uint64_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-		printf("El timestamp es %lld\n", paquete.timestamp);
+		//printf("El timestamp es %lld\n", paquete.timestamp);
 		free(buffer);
 	}
 
-	puts("Listo, recibi el paquete completo!\n");
+	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
 }
 
-void responder_create(int socket, uint16_t estado){
-	send(socket, &estado, sizeof(estado), 0); // Simplemente mando el estado
+void enviar_estado(int socket, uint16_t estado){
+	send(socket, &estado, sizeof(estado), 0);
 }
-
-uint16_t recibir_respuesta_create(int socket){
+uint16_t recibir_estado(int socket){
 	uint16_t estado;
 	recv(socket, &estado, sizeof(estado), 0);
 	return estado;
+}
+
+void responder_create(int socket, enum estados_create estado){
+	enviar_estado(socket, estado); // Simplemente mando el estado
+}
+
+enum estados_create recibir_respuesta_create(int socket){
+	return recibir_estado(socket);
+}
+
+void responder_insert(int socket, enum estados_insert estado){
+	enviar_estado(socket, estado); // Simplemente mando el estado
+}
+
+enum estados_insert recibir_respuesta_insert(int socket){
+	return recibir_estado(socket);
 }

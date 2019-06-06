@@ -64,7 +64,7 @@ char *apiMemoria(char* mensaje){
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
 					if (*endptr == '\0' && key < 65536) {
-						char* resultado = insert(nombreTabla, key, valor);
+						enum estados_insert resultado = insert(nombreTabla, key, valor);
 						while(cantArgumentos){
 							free(comando[cantArgumentos]);
 							cantArgumentos--;
@@ -72,7 +72,14 @@ char *apiMemoria(char* mensaje){
 						free(valor);
 						free(ultimoArgumento);
 						free(comando);
-						return resultado;
+						switch (resultado) {
+							case ESTADO_INSERT_OK:
+								return strdup("Valor insertado");
+							case ESTADO_INSERT_ERROR_TABLA:
+								return strdup("ERROR: Esa tabla no existe.");
+							default:
+								return strdup("ERROR: Ocurrio un error desconocido.");
+						}
 					}
 				}
 
