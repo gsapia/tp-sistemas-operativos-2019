@@ -2,6 +2,7 @@
 #include "serializacion.c"
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
+struct_describe_respuesta describe(char* nombreTabla);
 
 void* servidor(argumentos_servidor* args){
 	uint16_t puerto_escucha = args->puerto_escucha;
@@ -106,7 +107,10 @@ void* servidor(argumentos_servidor* args){
 				log_trace(logger, "Recibi un DESCRIBE");
 				struct_describe paquete = recibir_describe(cliente);
 
-				//Hacer algo con el paquete
+				struct_describe_respuesta registro;
+				registro = describe(paquete.nombreTabla);
+
+				enviar_respuesta_describe(cliente, registro);
 
 				printf("Comando recibido: DESCRIBE %s\n\n", paquete.nombreTabla);
 

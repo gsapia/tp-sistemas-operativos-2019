@@ -44,10 +44,13 @@ void renombrarArchivosTemporales(char* path){
 void analizarTmpc(char* path, char* nombre_tabla){
 	int i = 0;
 	char* pathTempc = string_from_format("%s/A%d.tmpc", path, i);
+	bool esUsado = false;
 	FILE* tempc;
 	int particion;
 	while(access(pathTempc, F_OK) != -1){ //Mientras exista el archivo
+		esUsado = true;
 		tempc = fopen(pathTempc, "r");						//Abro el .tmpc
+		free(pathTempc);
 		size_t buffer_size = 80;
 		char* buffer = malloc(buffer_size * sizeof(char));
 
@@ -63,20 +66,24 @@ void analizarTmpc(char* path, char* nombre_tabla){
 			particion = obtenerParticion(nombre_tabla, key_buffer); 		//Con la key del .tmpc, busco la particion .bin
 
 			discriminadorDeCasos(path, key_buffer, timestamp_buffer, linea[2], particion);
-//			free(linea);
-			free(keystr);
-
+			free(linea[0]);
+			free(linea[1]);
+			free(linea[2]);
+			free(linea);
 		}
 
 		free(buffer);
 
 		fclose(tempc);
+		pathTempc = string_from_format("%s/A%d.tmpc", path, i);
 		remove(pathTempc);
-		i++;
 		free(pathTempc);
+		i++;
 		pathTempc = string_from_format("%s/A%d.tmp", path, i);
 	}
-
+	if(!esUsado){
+		free(pathTempc);
+	}
 }
 
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion){
@@ -92,15 +99,12 @@ void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* va
 	while(getline(&buffer, &buffer_size, bin) > 0){
 		renglon++;
 		char **linea = string_split(buffer, ";");
-//		free(linea[2]);
 		char* endptrKey, *keystr = linea[1];
-//		free(linea[1]);
 		ulong key_buffer = strtoul(keystr, &endptrKey, 10);
 		if(key == key_buffer){
 			encontrado = true;
 			char* timestampstr = linea[0];char* endptrTimestamp;
-//			free(linea[0]);
-//			free(linea);
+
 			ulong timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
 
 			if(timestamp > timestamp_buffer){ //Si el timestamp del .tempc es mayor al del .bin, reemplazo
@@ -113,10 +117,16 @@ void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* va
 				free(keyC);
 				free(line);
 			}
-			free(timestampstr);
-			free(keystr);
+			free(linea[0]);
+			free(linea[1]);
+			free(linea[2]);
+			free(linea);
 			break;
 		}
+		free(linea[0]);
+		free(linea[1]);
+		free(linea[2]);
+		free(linea);
 	}
 
 	if(!encontrado){ //Si no se encontro, lo escribo al final

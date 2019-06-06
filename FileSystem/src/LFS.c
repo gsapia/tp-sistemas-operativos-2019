@@ -6,7 +6,7 @@ void *compactacion(argumentos_compactacion *args);
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
-char* describe(char* nombreTabla);
+struct_describe_respuesta describe(char* nombreTabla);
 char* drop(char* nombreTabla);
 bool existeTabla(char* nombreTabla);
 FILE* obtenerMetaDataLectura(char* nombreTabla);
@@ -25,6 +25,7 @@ bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2);
 void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
 t_registro* convertirARegistroPuntero(t_registro r);
 struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
+struct_describe_respuesta convertirARespuestaDescribe(char* consistencia, char* particiones, char* compactationTime);
 void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key);
 t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value);
 char* intToString(long a);
@@ -205,15 +206,29 @@ char *apiLissandra(char* mensaje){
 			//DESCRIBE
 
 			free(comando[0]);
-			if(cantArgumentos == 1){
+			if(cantArgumentos == 1){ //	DESCRIBE TABLA
 				char* nombreTabla = comando[1];
-				char* resultado = describe(nombreTabla);
+				struct_describe_respuesta resultado = describe(nombreTabla);
 				free(nombreTabla);
 				free(comando);
-				return resultado;
-			} else if(cantArgumentos == 0){
-				char* resultado = describe(NULL);
-				return resultado;
+				switch (resultado.estado){
+					case ESTADO_DESCRIBE_OK:
+						return strdup("Se hizo el DESCRIBE");
+					case ESTADO_DESCRIBE_ERROR_TABLA:
+						return strdup("ERROR: La tabla solicitada no existe.");
+					default:
+						return strdup("ERROR: Ocurrio un error desconocido.");
+				}
+			} else if(cantArgumentos == 0){ //DESCRIBE
+				struct_describe_respuesta resultado = describe(NULL);
+				switch (resultado.estado){
+					case ESTADO_DESCRIBE_OK:
+						return strdup("Se hizo el DESCRIBE");
+					case ESTADO_DESCRIBE_ERROR_TABLA:
+						return strdup("ERROR: La tabla solicitada no existe.");
+					default:
+						return strdup("ERROR: Ocurrio un error desconocido.");
+				}
 			}
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
@@ -329,14 +344,36 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 	return estado;
 }
 
-char* describe(char* nombreTabla){
+struct_describe_respuesta describe(char* nombreTabla){
+	struct_describe_respuesta describe_respuesta;
 	if(nombreTabla){
+		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
+		char** valores = malloc(4);
+		int i = 0;
+		size_t buffer_size = 80;
+		char* buffer = malloc(buffer_size * sizeof(char));
+
+		while(getline(&buffer, &buffer_size, metadata) != -1){ //ALGO=VALOR
+			char** linea= string_split(buffer, "=");
+			valores[i]=malloc(strlen(linea[1]));
+			strcpy(valores[i],linea[1]);
+			free(linea[0]);
+			free(linea[1]);
+			free(linea);
+			i++;
+		}
+
+		describe_respuesta = convertirARespuestaDescribe(valores[0], valores[1], valores[2]);
+
+		free(valores[0]);free(valores[1]);free(valores[2]);free(valores);
+		free(buffer);
+		fclose(metadata);
 		log_debug(logger, "DESCRIBE: Recibi Tabla: %s", nombreTabla);
 	}else{
 		log_info(logger, "NO me pasaron una tabla con DESCRIBE");
 	}
 
-	return string_from_format("Elegiste DESCRIBE");
+	return describe_respuesta;
 }
 
 char* drop(char* nombreTabla){
@@ -447,6 +484,30 @@ struct_select_respuesta convertirARespuestaSelect(t_registro* registro){
 	return select_respuesta;
 }
 
+struct_describe_respuesta convertirARespuestaDescribe(char* consistencia, char* particiones, char* compactationTime){
+	struct_describe_respuesta describe_respuesta;
+	describe_respuesta.estado = ESTADO_DESCRIBE_OK;
+
+	if(!strcmp("SC\n", consistencia)){
+		describe_respuesta.consistencia = SC;
+	}
+	if(!strcmp("SHC\n", consistencia)){
+		describe_respuesta.consistencia = SHC;
+	}
+	if(!strcmp("EC\n", consistencia)){
+		describe_respuesta.consistencia = EC;
+	}
+
+	char* endptrParticiones, *particionesstr = particiones;
+	ulong particiones_l = strtoul(particionesstr, &endptrParticiones, 10);
+	describe_respuesta.particiones = particiones_l;
+
+	char* endptrCompactationTime, *compactationTimestr = compactationTime;
+	ulong compactationTime_l = strtoul(compactationTimestr, &endptrCompactationTime, 10);
+	describe_respuesta.tiempo_compactacion = compactationTime_l;
+	return describe_respuesta;
+}
+
 //Obtiene la particion sobre la cual debe actuar
 int obtenerParticion(char* nombreTabla, u_int16_t key){
 	FILE* metadata = obtenerMetaDataLectura(nombreTabla);
@@ -519,7 +580,6 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 		list_add(lista,aux);
 	}
 	fclose(f);
-	remove(f);
 	free(buffer);
 }
 
