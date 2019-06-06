@@ -159,14 +159,16 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 	char* particionTemp = malloc(4);
 	particionTemp = intToString(cantDumps);
 	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
-	t_registro *registro = malloc(sizeof(t_registro));
+	t_registro *registro;
 
 	while(!list_is_empty(datosParaDump)){
+		registro = malloc(sizeof(t_registro));
 		registro = list_remove(datosParaDump,0);
 		escribirEnArchivo(temp, registro);
+		free(registro);
 	}
 	free(particionTemp);
-	free(registro);
+
 	fclose(temp);
 }
 
@@ -258,9 +260,9 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 		f = fopen(path_aux, "w");
 		fclose(f);
 		free(path_aux);
+		free(particion);
 	}
 	free(path);
-	free(particion);
 
 }
 

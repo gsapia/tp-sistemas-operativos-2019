@@ -553,8 +553,8 @@ void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int 
 
 void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key){
 	t_registro* aux = malloc(sizeof(t_registro));
-	size_t buffer_size = 80;
-	char* buffer = malloc(buffer_size * sizeof(char));
+	size_t buffer_size = 0;
+	char* buffer = NULL;
 	aux->timeStamp = 0;
 
 	while(getline(&buffer, &buffer_size, f) != -1){ // [TIMESTAMP;KEY;VALUE]
@@ -573,14 +573,22 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 			aux->value = malloc(strlen(linea[2]));
 			strcpy(aux->value,linea[2]);
 		}
-		free(keystr);
-		free(timestampstr);
+		free(linea[0]);
+		free(linea[1]);
+		free(linea[2]);
+		free(linea);
+		free(buffer);
+		buffer = NULL;
 	}
+
 	if(aux->timeStamp!=0){
 		list_add(lista,aux);
 	}
+	if(aux->timeStamp==0){
+		free(aux);
+		free(buffer);
+	}
 	fclose(f);
-	free(buffer);
 }
 
 t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value){

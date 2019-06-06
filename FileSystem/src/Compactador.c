@@ -10,6 +10,7 @@ void *compactacion(argumentos_compactacion *args){
 	char* nombreTabla = malloc(strlen(args->nombreTabla));
 	strcpy(nombreTabla, args->nombreTabla);
 	int tiempo = args->compactation_time/1000;
+	free(args->nombreTabla);
 	free(args);
 
 	while(1){
@@ -51,8 +52,8 @@ void analizarTmpc(char* path, char* nombre_tabla){
 		esUsado = true;
 		tempc = fopen(pathTempc, "r");						//Abro el .tmpc
 		free(pathTempc);
-		size_t buffer_size = 80;
-		char* buffer = malloc(buffer_size * sizeof(char));
+		size_t buffer_size = 0;
+		char* buffer = NULL;
 
 		// [TIMESTAMP;KEY;VALUE]
 		while(getline(&buffer, &buffer_size, tempc) != -1){ 				//Mientras existan lineas/renglones en el .tmpc
@@ -70,8 +71,9 @@ void analizarTmpc(char* path, char* nombre_tabla){
 			free(linea[1]);
 			free(linea[2]);
 			free(linea);
+			free(buffer);
+			buffer = NULL;
 		}
-
 		free(buffer);
 
 		fclose(tempc);
@@ -81,17 +83,16 @@ void analizarTmpc(char* path, char* nombre_tabla){
 		i++;
 		pathTempc = string_from_format("%s/A%d.tmp", path, i);
 	}
-	if(!esUsado){
-		free(pathTempc);
-	}
+
+	free(pathTempc);
 }
 
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion){
 	char* pathBin = string_from_format("%s/%d.bin", path, particion);
 	log_trace(logger, "%s", pathBin);
 	FILE* bin = fopen(pathBin, "r+");
-	size_t buffer_size = 80;
-	char* buffer = malloc(buffer_size * sizeof(char));
+	size_t buffer_size = 0;
+	char* buffer = NULL;
 	bool encontrado = false;
 	int renglon = 0;
 
@@ -127,6 +128,8 @@ void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* va
 		free(linea[1]);
 		free(linea[2]);
 		free(linea);
+		free(buffer);
+		buffer = NULL;
 	}
 
 	if(!encontrado){ //Si no se encontro, lo escribo al final
