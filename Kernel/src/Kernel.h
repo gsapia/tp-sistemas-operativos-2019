@@ -36,9 +36,8 @@ struct ConfigKernel{
 
 
 typedef struct{
-
+	char* nombre; // Le ponemos un nombre al script
 	t_queue* requests; //Defino la estructura t_script con un atributo que apunta a una lista de requests.
-
 }t_script;
 
 

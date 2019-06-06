@@ -72,91 +72,36 @@ void closeCliente(){
 	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 
-void servidor() {
-	log_trace(logger, "Iniciando servidor");
+int conectar(int socket_servidor){
+	struct sockaddr_in direccionCliente;
+	unsigned int tamanoDireccion = sizeof(direccionCliente);
+	int socket_kernel = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
+	//printf("Recibi una conexion en %d\n", socket_kernel);
 
-	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
 
-	int socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
+	//----------------COMIENZO HANDSHAKE----------------
 
-	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
-		log_trace(logger, "Fallo el servidor");
-		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
+	// Recibo quien es el otro extremo
+	uint8_t *otro = malloc(sizeof(uint8_t));
+
+	if(!(recv(socket_kernel, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
+		// El otro extremo no es Kernel, cierro la conexion / termino el programa
+		log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
+		close(socket_kernel);
+		return 0;
 	}
+	// El otro extremo es Kernel realmente
+	// Envio confirmacion de que soy Memoria
+	const uint8_t soy = ID_MEMORIA;
+	send(socket_kernel, &soy, sizeof(soy), 0);
+	//log_trace(logger, "Me conecte con Kernel!");
 
-	listen(socket_servidor, SOMAXCONN);
-	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
+	return socket_kernel;
+}
 
-	bool conectado = false;
-
-	int socket_kernel;
-
-	while(!conectado){
-		struct sockaddr_in direccionCliente;
-		unsigned int tamanoDireccion = sizeof(direccionCliente);
-		socket_kernel = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
-		printf("Recibi una conexion en %d\n", socket_kernel);
-
-
-		//----------------COMIENZO HANDSHAKE----------------
-
-		// Recibo quien es el otro extremo
-		uint8_t *otro = malloc(sizeof(uint8_t));
-
-		if(!(recv(socket_kernel, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
-			// El otro extremo no es Kernel, cierro la conexion / termino el programa
-			log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
-			close(socket_kernel);
-		}
-		else{
-			// El otro extremo es Kernel realmente
-			// Envio confirmacion de que soy Memoria
-			const uint8_t soy = ID_MEMORIA;
-			send(socket_kernel, &soy, sizeof(soy), 0);
-
-			// Y ahora entonces le enviamos/recibimos los datos necesarios
-
-			uint16_t cantidadSeeds;
-			for(cantidadSeeds = 0; config.ip_seeds[cantidadSeeds]; cantidadSeeds++);
-
-			send(socket_kernel, &cantidadSeeds, sizeof(cantidadSeeds), 0); // Mando la cantidad de seeds
-
-			for(int i = 0; i < cantidadSeeds; i++){
-				uint16_t tamanio_ip = strlen(config.ip_seeds[i])+1;
-				size_t tamanio_paquete = sizeof(tamanio_ip) + tamanio_ip + sizeof(config.puertos_seeds[i]);
-
-				void* paquete = malloc(tamanio_paquete);
-				int despl = 0;
-
-				memcpy(paquete, &tamanio_ip, sizeof(tamanio_ip)); // Primero el tamanio del string IP
-				despl += sizeof(tamanio_ip);
-				memcpy(paquete + despl, config.ip_seeds[i], tamanio_ip); // Ahora la IP
-				despl += tamanio_ip;
-				memcpy(paquete + despl, &config.puertos_seeds[i], sizeof(config.puertos_seeds[i])); // Por ultimo el puerto
-
-				send(socket_kernel, paquete, tamanio_paquete, 0);
-				free(paquete);
-			}
-
-			//Y por ahora no necesito enviar/recibir mas nada
-			// Asi que el handshake termino y me quedo a la espera de solicitudes de Kernel
-
-			//-------------------FIN HANDSHAKE------------------
-
-			conectado = true;
-			log_trace(logger, "Me conecte con Kernel!");
-		}
-	}
-
-
-	/*
-	 * TODO:
-	 * Esperar solicitudes
-	 */
-
+void kernel_handler(int *socket_cliente){
+	int socket_kernel = *socket_cliente;
+	free(socket_cliente);
 	while(1){
 		// Recibo el codigo de op
 		uint8_t cod_op;
@@ -227,5 +172,84 @@ void servidor() {
 		}
 	}
 	close(socket_kernel); // No me olvido de cerrar el socket que ya no voy a usar mas
+
+}
+
+void servidor() {
+	log_trace(logger, "Iniciando servidor");
+
+	struct sockaddr_in direccionServidor;
+	direccionServidor.sin_family = AF_INET;
+	direccionServidor.sin_addr.s_addr = INADDR_ANY;
+	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
+
+	int socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
+		log_trace(logger, "Fallo el servidor");
+		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
+	}
+
+	listen(socket_servidor, SOMAXCONN);
+	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
+
+	int socket_kernel = conectar(socket_servidor);
+
+	while(!socket_kernel){
+		sleep(5);
+		socket_kernel = conectar(socket_servidor);
+	}
+
+	// Y ahora entonces le enviamos/recibimos los datos necesarios
+
+	uint16_t cantidadSeeds;
+	for(cantidadSeeds = 0; config.ip_seeds[cantidadSeeds]; cantidadSeeds++);
+
+	send(socket_kernel, &cantidadSeeds, sizeof(cantidadSeeds), 0); // Mando la cantidad de seeds
+
+	for(int i = 0; i < cantidadSeeds; i++){
+		uint16_t tamanio_ip = strlen(config.ip_seeds[i])+1;
+		size_t tamanio_paquete = sizeof(tamanio_ip) + tamanio_ip + sizeof(config.puertos_seeds[i]);
+
+		void* paquete = malloc(tamanio_paquete);
+		int despl = 0;
+
+		memcpy(paquete, &tamanio_ip, sizeof(tamanio_ip)); // Primero el tamanio del string IP
+		despl += sizeof(tamanio_ip);
+		memcpy(paquete + despl, config.ip_seeds[i], tamanio_ip); // Ahora la IP
+		despl += tamanio_ip;
+		memcpy(paquete + despl, &config.puertos_seeds[i], sizeof(config.puertos_seeds[i])); // Por ultimo el puerto
+
+		send(socket_kernel, paquete, tamanio_paquete, 0);
+		free(paquete);
+	}
+
+	//Y por ahora no necesito enviar/recibir mas nada
+	// Asi que el handshake termino y me quedo a la espera de solicitudes de Kernel
+
+	close(socket_kernel);
+
+	// Ahora infinitamente me quedo esperando conexiones de Kernel
+	while(1){
+		int *socket_cliente = malloc(sizeof(int));
+		*socket_cliente = conectar(socket_servidor);
+
+		while(!(*socket_cliente)){
+			sleep(5);
+			*socket_cliente = conectar(socket_servidor);
+		}
+
+		// Mando la ejecucion a un hilo deatacheable
+		pthread_t hilo;
+		pthread_attr_t attr;
+		pthread_attr_init(&attr);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		while(pthread_create(&hilo, &attr, (void*)kernel_handler, socket_cliente)){
+			sleep(5);
+			log_info(logger, "Error creando hilo cliente");
+		}
+		pthread_attr_destroy(&attr);
+	}
+
 	close(socket_servidor); // No me olvido de cerrar el socket que ya no voy a usar mas
 }

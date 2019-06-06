@@ -24,7 +24,7 @@ void inicializarColas(){
 
  void leerConfig();// Esta no se si esta demas xd .
 
-    void* consola();
+    void consola();
     char* apiKernel(char*);
 
     //Levanto la configuracion
@@ -49,9 +49,8 @@ void inicializarColas(){
 
      //Consola Kernel
 
-     void* consola(){
+     void consola(){
 		char *linea;
-		char *resultado;
 		while(1) {
 			linea = readline(">");
 
@@ -60,18 +59,13 @@ void inicializarColas(){
 				break;
 			}
 
-			/*resultado = apiKernel(linea);
-			free(linea);
-			puts(resultado);
-			free(resultado);*/
 			t_queue* requests = queue_create();
 			queue_push(requests, linea);
 			t_script *script = malloc(sizeof(t_script));
+			script->nombre = strdup("Request por consola");
 			script->requests = requests;
 			aniadirScript(script);
-
 		}
-
 	}
 
 	//API Kernel
@@ -359,8 +353,9 @@ void inicializarColas(){
 		while(1){
 			sem_wait(&finish);
 			t_script* finalizado = queue_pop(colaFinish);
+			log_trace(logger, "Finalizó el script \"%s\"", finalizado->nombre);
+			free(finalizado->nombre);
 			free(finalizado);
-			log_debug(logger, "Finalizamos un script");
 		}
 	}
 
@@ -388,58 +383,60 @@ void inicializarColas(){
 	} // End Largo Plazo
 
 
+	void ejecutarScript(t_script* script){
+		t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
+		for (int q = config.quantum; q > 0 && !queue_is_empty(requests); q--){
+			char* request = queue_pop(requests);
+			char* resultado = apiKernel(request);
+			log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
+			free(request);
+			free(resultado);
+
+			usleep(config.retardo_ciclico * 1000);
+		}
+
+		// Si finalizo su ejecucion, va a la cola de terminados. Sino vuelve a la cola de listos.
+		if(!queue_is_empty(requests)){
+			queue_push(colaReady,script);
+			sem_post(&ready);
+			//moverAColaReady(scripts)
+		}
+		else{
+			queue_push(colaFinish,script);
+			sem_post(&finish);
+		}
+		sem_post(&multiProc);
+	}//end ejecutarScript
 
 
 	void cortoPlazo(){
-
 		while (1){
+			sem_wait(&ready);
+			sem_wait(&multiProc);
 
-		sem_wait(&ready);
-		sem_wait(&multiProc);
+			t_script* script = queue_pop(colaReady);
 
-		t_script* script = queue_pop(colaReady);
+			// Mando la ejecucion a un hilo_exec deatacheable
+			pthread_t hilo_exec;
+			pthread_attr_t attr;
+			pthread_attr_init(&attr);
+			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+			while(pthread_create(&hilo_exec, &attr, (void*)ejecutarScript, script)){
+				log_info(logger, "Error creando hilo exec");
+				queue_push(colaFinish,script);
+				sem_post(&finish);
+			}
+			pthread_attr_destroy(&attr);
 
-		queue_push(colaExec,script);
-		//moverAColaExec(script);
+			//queue_push(colaExec,script);
+			//moverAColaExec(script);
 
-		sem_post(&exec);
+			sem_post(&exec);
 		}
 	} //End Corto Plazo
 
 
 
-	void ejecutarScript(){
-		while(1){
-			sem_wait(&exec);
-			t_script* script = queue_pop(colaExec); // saco de la cola el script
-			t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
-			for (int q = config.quantum; q > 0 && !queue_is_empty(requests); q--){
-				char* request = queue_pop(requests);
-				char* resultado = apiKernel(request);
-				log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
-				free(request);
-				free(resultado);
-
-				usleep(config.retardo_ciclico * 1000);
-			}
-
-
-			// Si finalizo su ejecucion, va a la cola de terminados. Sino vuelve a la cola de listos.
-			if(!queue_is_empty(requests)){
-
-				queue_push(colaReady,script);
-				sem_post(&ready);
-				//moverAColaReady(scripts)
-
-			}
-			else{
-				queue_push(colaFinish,script);
-				sem_post(&finish);
-			}
-			sem_post(&multiProc);
-		}
-
-	}//end ejecutarScript
 
 
 
@@ -494,12 +491,6 @@ int main(void) {
     if(pthread_create(&hiloCortoPlazo, NULL,(void*)cortoPlazo , NULL))
     {
     	log_error(logger,"Hilo Corto Plazo: error en la creacion pthread_create");
-    	exit(EXIT_FAILURE);
-    }
-    pthread_t hiloExec;
-    if(pthread_create(&hiloExec, NULL,(void*)ejecutarScript , NULL))
-    {
-    	log_error(logger,"Hilo exec: error en la creacion pthread_create");
     	exit(EXIT_FAILURE);
     }
     log_info(logger, "Planificadores iniciados.");

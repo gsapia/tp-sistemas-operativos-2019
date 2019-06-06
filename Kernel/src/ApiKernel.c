@@ -90,6 +90,7 @@ char* run(char* runPath){
 
 	t_script *script = malloc(sizeof(t_script));
 	script->requests = requests;
+	script->nombre = strdup(runPath);
 	aniadirScript(script);
 
 	fclose (archivo);

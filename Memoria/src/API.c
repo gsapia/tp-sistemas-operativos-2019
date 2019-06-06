@@ -2,6 +2,7 @@
 #include "MemoriaPrincipal.h"
 #include "IPC.h"
 
+// TODO: Posible condicion de carrera cuando varios hilos quieran acceder a lo mismo!!
 t_pagina* agregar_registro(uint16_t clave, char* valor, t_list *tabla_paginas){
 	// Truncamos el valor al tamanio maximo posible para evitar problemas
 	if(strlen(valor) > tamanio_value)
