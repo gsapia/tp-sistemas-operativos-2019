@@ -7,35 +7,38 @@ char* intToString(long a);
 void casoParticular(char* path, int particion, FILE* bin, char* line, int renglon);
 
 void *compactacion(argumentos_compactacion *args){
-	char* nombre_tabla = malloc(strlen(args->nombreTabla));
-	strcpy(nombre_tabla, args->nombreTabla);
+	char* nombreTabla = malloc(strlen(args->nombreTabla));
+	strcpy(nombreTabla, args->nombreTabla);
 	int tiempo = args->compactation_time/1000;
 	free(args);
 
 	while(1){
 		sleep(tiempo);
-		char* path = string_from_format("%sTable/%s", puntoMontaje, nombre_tabla);
+		log_trace(logger,"%s inicia compactacion", nombreTabla);
+		char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
 		renombrarArchivosTemporales(path);
-		analizarTmpc(path, nombre_tabla);
+		analizarTmpc(path, nombreTabla);
 		free(path);
 	}
 }
 
 void renombrarArchivosTemporales(char* path){
 	int i = 0;
-	path = string_from_format("%s/A%d.tmp", path, i);
+	char* path_aux = string_from_format("%s/A%d.tmp", path, i);
 	char* pathAux;
-	if(access(path, F_OK) != -1){//Existe el archivo que uso como flag
-		while(access(path, F_OK) != -1){ //Mientras exista el archivo
-			pathAux = string_from_format("%sc", path);
-			rename(path, pathAux);
-			i++;
-			path = string_from_format("%s/A%d.tmp", path, i);
+	if(access(path_aux, F_OK) != -1){//Existe el archivo que uso como flag
+		while(access(path_aux, F_OK) != -1){ //Mientras exista el archivo
+			pathAux = string_from_format("%sc", path_aux);
+			rename(path_aux, pathAux);
 			free(pathAux);
+			i++;
+			free(path_aux);
+			path_aux = string_from_format("%s/A%d.tmp", path, i);
 		}
 	}else{
-		log_trace(logger,"No hay .tmp para compactar", path);
+		log_trace(logger,"No hay .tmp para compactar", path_aux);
 	}
+	free(path_aux);
 }
 
 void analizarTmpc(char* path, char* nombre_tabla){
@@ -60,7 +63,7 @@ void analizarTmpc(char* path, char* nombre_tabla){
 			particion = obtenerParticion(nombre_tabla, key_buffer); 		//Con la key del .tmpc, busco la particion .bin
 
 			discriminadorDeCasos(path, key_buffer, timestamp_buffer, linea[2], particion);
-			free(linea);
+//			free(linea);
 			free(keystr);
 
 		}
@@ -70,9 +73,10 @@ void analizarTmpc(char* path, char* nombre_tabla){
 		fclose(tempc);
 		remove(pathTempc);
 		i++;
+		free(pathTempc);
 		pathTempc = string_from_format("%s/A%d.tmp", path, i);
 	}
-	free(pathTempc);
+
 }
 
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion){
@@ -88,11 +92,15 @@ void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* va
 	while(getline(&buffer, &buffer_size, bin) > 0){
 		renglon++;
 		char **linea = string_split(buffer, ";");
+//		free(linea[2]);
 		char* endptrKey, *keystr = linea[1];
+//		free(linea[1]);
 		ulong key_buffer = strtoul(keystr, &endptrKey, 10);
 		if(key == key_buffer){
 			encontrado = true;
 			char* timestampstr = linea[0];char* endptrTimestamp;
+//			free(linea[0]);
+//			free(linea);
 			ulong timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
 
 			if(timestamp > timestamp_buffer){ //Si el timestamp del .tempc es mayor al del .bin, reemplazo
@@ -107,7 +115,6 @@ void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* va
 			}
 			free(timestampstr);
 			free(keystr);
-			free(linea);
 			break;
 		}
 	}

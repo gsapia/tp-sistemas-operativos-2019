@@ -1,35 +1,3 @@
-/*
--Es el punto de entrada al LFS, administra la conexión con los demás módulos y  entiende como resolver los distintos pedidos que se le soliciten.
-
-##### TABLAS #####
--Se divide a las tablas en particiones. Cada particion es un archivo en el FS. Cant de particiones? Definido en el Metadata.
--Cada tabla estara representada con un directorio, que contiene todos los archivos metadata (que corresponden a c/u de las particiones), ademas de temer un archivo de Metadata (propio)
--Tipos de archivos: (.bin - .tmp - tmpc
-
-
-##### METADATA #####
--Contiene la informacion administrativa de la tabla.
-	-Tipo de consistencia
-	-Numero de Particiones
-	-Tiempo entre compactaciones.
-
-##### REGISTRO #####
--Los datos de la tabla estarán formados por registros, donde cada uno de ellos estará compuesto por 3 partes:
-	-Timestamp (tiempo de la insercion de la key)
-	-Key ( ... la key)
-	-Value ( Con valor maximo en .config, tiene que controlar que no se hagan insert de tamaño mayor al maximo.)
-
-¡Para la distribución de las distintas Key dentro de dicha tabla se aplicará una función módulo!
-¡Se dividirá la key por la cantidad de particiones y el resto de la operación será la partición a utilizar!
-
-##### .TMP / DUMPS / MEMTABLE
--.tmp = se guardan los datos que vayan modificandose para luego compactarlos
--Dos jerarquias de .tmp:
-	-El area de "memtable", dividido por tabla, son los datos que no fueron dumpeados en un archivo temporal. Son los Insert que se acumulan hasta que se haga un DUMP.
-	-Datos en .tmp que estan pendientes de compactacion
-
-*/
-
 #include "LFS.h"
 
 void *consola();
@@ -49,13 +17,13 @@ int main(void){
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 
-/*	argumentos_servidor *args = malloc(sizeof(argumentos_servidor));
-	args->puerto_escucha = puerto_escucha;
-	args->tamValue = tamValue;
+/*	argumentos_servidor args;
+	args.puerto_escucha = puerto_escucha;
+	args.tamValue = tamValue;
 
 //	Servidor
 	pthread_t hiloServidor;
-	if(pthread_create(&hiloServidor, NULL, servidor, args)){
+	if(pthread_create(&hiloServidor, NULL, servidor, &args)){
 		free(args);
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
@@ -87,7 +55,12 @@ int main(void){
 //	pthread_join(hiloServidor,NULL);
 	log_destroy(logger);
 
-
+//	Libero todas las variables que me quedan colgadas.
+	free(puntoMontaje);
+	if(!list_is_empty(memTable)){
+		list_destroy_and_destroy_elements(memTable, free);
+	}
+	config_destroy(config);
 	return EXIT_SUCCESS;
 }
 

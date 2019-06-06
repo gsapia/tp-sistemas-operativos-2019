@@ -49,8 +49,8 @@ void crearFicheroPadre(){
 void crearMetaDataFS(){
 	char* path = string_from_format("%sMetadata/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
-	path = string_from_format("%sMetadata.bin", path);
-	FILE *f = fopen(path, "w");
+	char* path2 = string_from_format("%sMetadata.bin", path);
+	FILE *f = fopen(path2, "w");
 	
 	fputs("BLOCK_SIZE=", f);
 	fputs("64", f);
@@ -66,6 +66,7 @@ void crearMetaDataFS(){
 	
 	fclose (f);
 	free(path);
+	free(path2);
 }
 
 // Crea el archivo "Bitmap.bin" del archivo de FileSystem
@@ -96,8 +97,10 @@ bool existeTabla(char* nombreTabla){
 	free(path);
 
 	if(encontreTabla(nombreTabla, path_buscado)){
+		closedir(path_buscado);
 		return true;
 	}else{
+		closedir(path_buscado);
 		return false;
 	}
 }
@@ -148,7 +151,7 @@ void dumpDeTablas(t_list *memTableAux){
 	if(flag==1){
 		cantDumps++;
 	}
-
+	closedir(path_buscado);
 }
 
 //Dumpeo los datos dentro de un archivo ".tmp" que se encuentra dentro de "/Table/carpetaNombre"
@@ -199,6 +202,9 @@ int obtenerParticiones(FILE* metadata){
 	fgets(aux, 20, metadata);
 	char** part = string_split(aux, "=");
 	particiones = atoi(part[1]);
+	free(part[1]);
+	free(part[0]);
+	free(part);
 	return particiones;
 }
 

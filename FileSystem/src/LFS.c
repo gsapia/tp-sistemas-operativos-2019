@@ -313,9 +313,9 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 		args->compactation_time = compactionTime;
 		args->nombreTabla = malloc(strlen(nombreTabla));
 		strcpy(args->nombreTabla, nombreTabla);
+
 		pthread_t hiloCompactacion;
 		if(pthread_create(&hiloCompactacion, NULL, compactacion, args)){
-			free(NULL);
 			log_error(logger, "Hilo compactacion: Error - pthread_create()");
 			exit(EXIT_FAILURE);
 		}
@@ -464,22 +464,27 @@ void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int 
 	char* particion = intToString(particion_busqueda);
 	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
 	FILE* f = fopen(path, "r");
-
+	free(path);
 	agregarRegistroMayorTimeStamDeArchivo(f, lista, key); // agrego del .bin, el registro con el mayor timestamp a la lista
 
+	log_trace(logger,"Antes del .tmp");
 	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
 		path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
-		f = fopen(path, "r");
-		agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
+		if(access(path, F_OK) != -1){
+			f = fopen(path, "r");
+			agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
+		}
+		free(path);
 	}
-
+	log_trace(logger,"Antes del .tmpc");
 	int i = 0;
 	path = string_from_format("%sTable/%s/A%s.tmpc", puntoMontaje, nombreTabla, i);
 	while(access(path, F_OK) != -1){// agrego de los .tmpc, el registro con el mayor timestamp de cada uno a la lista
+		free(path);
 		f = fopen(path, "r");
 		agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
 		i++;
-		path = string_from_format("%s/A%d.tmp", path, i);
+		path = string_from_format("%s/A%d.tmpc", path, i);
 	}
 
 	free(path);
@@ -509,14 +514,12 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 		}
 		free(keystr);
 		free(timestampstr);
-		free(linea[0]);free(linea[1]);free(linea[2]);
 	}
 	if(aux->timeStamp!=0){
 		list_add(lista,aux);
 	}
-
-
 	fclose(f);
+	remove(f);
 	free(buffer);
 }
 
