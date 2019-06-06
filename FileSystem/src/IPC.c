@@ -6,7 +6,6 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 void* servidor(argumentos_servidor* args){
 	uint16_t puerto_escucha = args->puerto_escucha;
 	int tamValue = args->tamValue;
-	free(args);
 	log_trace(logger, "Iniciando servidor...");
 	log_trace(logger, "Puerto: %u, Tamanio: %d", puerto_escucha, tamValue);
 
