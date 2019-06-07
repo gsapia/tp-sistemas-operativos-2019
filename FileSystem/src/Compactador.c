@@ -1,29 +1,44 @@
 #include "LFS.h"
-void renombrarArchivosTemporales(char* path);
+void renombrarArchivosTemporales(char* path, int particiones);
 void analizarTmpc(char* path, char* nombre_tabla);
 int obtenerParticion(char* nombreTabla, u_int16_t key);
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion);
 char* intToString(long a);
 void casoParticular(char* path, int particion, FILE* bin, char* line, int renglon);
+FILE* obtenerMetaDataLectura(char* nombreTabla);
+
 
 void *compactacion(argumentos_compactacion *args){
 	char* nombreTabla = malloc(strlen(args->nombreTabla));
 	strcpy(nombreTabla, args->nombreTabla);
 	int tiempo = args->compactation_time/1000;
-	free(args->nombreTabla);
-	free(args);
+	free(args->nombreTabla); free(args);
+	FILE* metadata = obtenerMetaDataLectura(nombreTabla);
+
+	int i = 0;
+	size_t buffer_size = 0; char* buffer = NULL;
+	while(getline(&buffer, &buffer_size, metadata) != -1 && i<1){
+		free(buffer);
+		buffer = NULL;
+		i++;
+	}
+	char** linea= string_split(buffer, "=");
+	free(buffer);
+	int particiones = atoi(linea[1]) + 1;
+	free(linea[0]); free(linea[1]); free(linea);
+	log_trace(logger, "%d", particiones);
 
 	while(1){
 		sleep(tiempo);
 		log_trace(logger,"%s inicia compactacion", nombreTabla);
 		char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
-		renombrarArchivosTemporales(path);
+		renombrarArchivosTemporales(path, particiones);
 		analizarTmpc(path, nombreTabla);
 		free(path);
 	}
 }
 
-void renombrarArchivosTemporales(char* path){
+void renombrarArchivosTemporales(char* path, int particiones){
 	int i = 0;
 	char* path_aux = string_from_format("%s/A%d.tmp", path, i);
 	char* pathAux;
@@ -45,11 +60,9 @@ void renombrarArchivosTemporales(char* path){
 void analizarTmpc(char* path, char* nombre_tabla){
 	int i = 0;
 	char* pathTempc = string_from_format("%s/A%d.tmpc", path, i);
-	bool esUsado = false;
 	FILE* tempc;
 	int particion;
 	while(access(pathTempc, F_OK) != -1){ //Mientras exista el archivo
-		esUsado = true;
 		tempc = fopen(pathTempc, "r");						//Abro el .tmpc
 		free(pathTempc);
 		size_t buffer_size = 0;
