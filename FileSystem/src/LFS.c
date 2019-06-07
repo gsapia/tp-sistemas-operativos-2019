@@ -297,7 +297,6 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		return select_respuesta;
 	}else{
 		select_respuesta.estado = ESTADO_SELECT_ERROR_TABLA;
-		list_destroy(listaFiltro);
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
 		return select_respuesta;
 	}
@@ -329,7 +328,7 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 
 		argumentos_compactacion *args = malloc(sizeof(argumentos_compactacion));
 		args->compactation_time = compactionTime;
-		args->nombreTabla = malloc(strlen(nombreTabla));
+		args->nombreTabla = malloc(strlen(nombreTabla)+1);
 		strcpy(args->nombreTabla, nombreTabla);
 
 		pthread_t hiloCompactacion;
