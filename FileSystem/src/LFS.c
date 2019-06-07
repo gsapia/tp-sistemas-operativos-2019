@@ -71,9 +71,12 @@ char *apiLissandra(char* mensaje){
 					free(nombreTabla);
 					free(keystr);
 					free(comando);
+					char* valor = malloc(strlen(resultado.valor));
+					strcpy(valor, resultado.valor);
+					free(resultado.valor);
 					switch (resultado.estado){
 						case ESTADO_SELECT_OK:
-							return strdup(resultado.valor);
+							return valor;
 						case ESTADO_SELECT_ERROR_TABLA:
 							return strdup("ERROR: La tabla solicitada no existe.");
 						case ESTADO_SELECT_ERROR_KEY:
@@ -270,7 +273,7 @@ char *apiLissandra(char* mensaje){
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	struct_select_respuesta select_respuesta;
 	t_registro *aux;
-	t_list *listaFiltro = list_create();
+	t_list *listaFiltro = NULL;
 
 	if(existeTabla(nombreTabla)){
 		int particion_busqueda = obtenerParticion(nombreTabla, key);
@@ -350,8 +353,8 @@ struct_describe_respuesta describe(char* nombreTabla){
 		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
 		char** valores = malloc(4);
 		int i = 0;
-		size_t buffer_size = 80;
-		char* buffer = malloc(buffer_size * sizeof(char));
+		size_t buffer_size = 0;
+		char* buffer = NULL;
 
 		while(getline(&buffer, &buffer_size, metadata) != -1){ //ALGO=VALOR
 			char** linea= string_split(buffer, "=");
@@ -361,6 +364,8 @@ struct_describe_respuesta describe(char* nombreTabla){
 			free(linea[1]);
 			free(linea);
 			i++;
+			free(buffer);
+			buffer = NULL;
 		}
 
 		describe_respuesta = convertirARespuestaDescribe(valores[0], valores[1], valores[2]);
@@ -390,7 +395,7 @@ char* drop(char* nombreTabla){
 //Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla). Luego se limpia la memtable.
 void* dump(int tiempo_dump){
 	int tiempo = tiempo_dump/1000;
-	t_list* memTableAux = list_create();
+	t_list* memTableAux = NULL;
 
 	while(1){
 		sleep(tiempo);
@@ -524,11 +529,12 @@ bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2){
 void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int particion_busqueda){
 	char* particion = intToString(particion_busqueda);
 	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
+	free(particion);
 	FILE* f = fopen(path, "r");
 	free(path);
 	agregarRegistroMayorTimeStamDeArchivo(f, lista, key); // agrego del .bin, el registro con el mayor timestamp a la lista
 
-	log_trace(logger,"Antes del .tmp");
+//	log_trace(logger,"Antes del .tmp");
 	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
 		path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
 		if(access(path, F_OK) != -1){
@@ -537,7 +543,7 @@ void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int 
 		}
 		free(path);
 	}
-	log_trace(logger,"Antes del .tmpc");
+//	log_trace(logger,"Antes del .tmpc");
 	int i = 0;
 	path = string_from_format("%sTable/%s/A%s.tmpc", puntoMontaje, nombreTabla, i);
 	while(access(path, F_OK) != -1){// agrego de los .tmpc, el registro con el mayor timestamp de cada uno a la lista
@@ -586,8 +592,8 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 	}
 	if(aux->timeStamp==0){
 		free(aux);
-		free(buffer);
 	}
+	free(buffer);
 	fclose(f);
 }
 

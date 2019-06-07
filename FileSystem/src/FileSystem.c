@@ -125,7 +125,7 @@ char* encontreTabla(char* nombreTabla, DIR* path_buscado){
 
 // Va fijandose tabla por tabla, dentro de "Table/", si es necesario el dumpeo de datos
 void dumpDeTablas(t_list *memTableAux){
-	t_list* datosParaDump = list_create();
+	t_list* datosParaDump = NULL;
 	int flag = 0; // Sirve para indicar que se hizo un dump y sumarle a la variable cantDumps (Sirve mas para testeos).
 	char *path = string_from_format("%sTable/", puntoMontaje);
 	DIR* path_buscado = opendir(path);
@@ -141,8 +141,11 @@ void dumpDeTablas(t_list *memTableAux){
 			if(!list_is_empty(datosParaDump)){
 				log_trace(logger, "%s tiene %d datos para Dumpear", carpeta->d_name, list_size(datosParaDump));
 				dumpear(datosParaDump, carpeta->d_name);
+				list_destroy(datosParaDump);
+				datosParaDump = NULL;
 				flag = 1;
 			}else{
+				list_destroy(datosParaDump);
 				log_info(logger, "%s no tiene datos para Dumpear", carpeta->d_name);
 			}
 		}
@@ -156,19 +159,19 @@ void dumpDeTablas(t_list *memTableAux){
 
 //Dumpeo los datos dentro de un archivo ".tmp" que se encuentra dentro de "/Table/carpetaNombre"
 void dumpear(t_list *datosParaDump, char* carpetaNombre){
-	char* particionTemp = malloc(4);
+	char* particionTemp;
 	particionTemp = intToString(cantDumps);
 	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
+	free(particionTemp);
 	t_registro *registro;
 
 	while(!list_is_empty(datosParaDump)){
-		registro = malloc(sizeof(t_registro));
 		registro = list_remove(datosParaDump,0);
 		escribirEnArchivo(temp, registro);
-		free(registro);
 	}
-	free(particionTemp);
-
+	free(registro->nombre_tabla);
+	free(registro->value);
+	free(registro);
 	fclose(temp);
 }
 
