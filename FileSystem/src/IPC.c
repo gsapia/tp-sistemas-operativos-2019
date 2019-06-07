@@ -6,7 +6,7 @@ struct_describe_respuesta describe(char* nombreTabla);
 
 void* servidor(argumentos_servidor* args){
 	uint16_t puerto_escucha = args->puerto_escucha;
-	int tamValue = args->tamValue;
+	uint16_t tamValue = args->tamValue;
 	log_trace(logger, "Iniciando servidor...");
 	log_trace(logger, "Puerto: %u, Tamanio: %d", puerto_escucha, tamValue);
 

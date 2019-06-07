@@ -17,18 +17,17 @@ int main(void){
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 
-/*	argumentos_servidor args;
+	argumentos_servidor args;
 	args.puerto_escucha = puerto_escucha;
 	args.tamValue = tamValue;
 
 //	Servidor
 	pthread_t hiloServidor;
 	if(pthread_create(&hiloServidor, NULL, servidor, &args)){
-		free(args);
 		log_error(logger, "Hilo servidor: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
-*/
+
 
 	//Creo las Tablas del FileSystem necesarias
 	pthread_t hiloFS;

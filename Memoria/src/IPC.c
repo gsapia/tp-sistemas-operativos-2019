@@ -10,14 +10,14 @@ struct_select_respuesta selectAFS(struct_select paquete){
 	respuesta.estado = ESTADO_SELECT_OK;
 	respuesta.valor = strdup("VALOR");
 	respuesta.timestamp = 123456;
-	return respuesta;
+	//return respuesta;
 	// ----- Fin parte provisoria -----
 	enviar_select(socket_cliente, paquete);
 	return recibir_registro(socket_cliente);
 }
 enum estados_create createAFS(struct_create paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
-	return ESTADO_CREATE_OK;
+	//return ESTADO_CREATE_OK;
 	// ----- Fin parte provisoria -----
 	enviar_create(socket_cliente, paquete);
 	return recibir_respuesta_create(socket_cliente);
