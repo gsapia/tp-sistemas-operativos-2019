@@ -95,8 +95,20 @@ void* servidor(argumentos_servidor* args){
 			{
 				puts("Recibi un CREATE");
 				struct_create paquete = recibir_create(cliente);
+				char* consistencia;
+				switch (paquete.consistencia) {
+					case SC:
+						consistencia = "SC";
+						break;
+					case SHC:
+						consistencia = "SHC";
+					case EC:
+						consistencia = "EC";
+					default:
+						consistencia = ""; // TODO esto esta como el orto. Lo ideal es redefinir create para levantar un numero y no un char*
+				}
 
-				int estado = create(paquete->nombreTabla, paquete->consistencia, paquete->particiones, paquete->tiempoCompactacion);
+				int estado = create(paquete.nombreTabla, consistencia, paquete.particiones, paquete.tiempoCompactacion);
 				responder_create(cliente, estado);
 
 				printf("Comando recibido: CREATE %s %d %d %d\n\n", paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);

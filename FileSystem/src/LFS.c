@@ -285,7 +285,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		agregarRegDeBinYTemps(listaFiltro, nombreTabla, key, particion_busqueda);
 
 		if(!list_is_empty(listaFiltro)){
-			list_sort(listaFiltro, (_Bool (*)(void*))ordenarDeMayorAMenorTimestamp);
+			list_sort(listaFiltro, (_Bool (*)(void*,void*))ordenarDeMayorAMenorTimestamp);
 			aux = list_get(listaFiltro, 0);
 			select_respuesta = convertirARespuestaSelect(aux);
 		}else{

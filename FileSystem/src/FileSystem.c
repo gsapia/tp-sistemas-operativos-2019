@@ -236,7 +236,8 @@ void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int canti
 	FILE* metadata = fopen(path, "w");
 
 	fputs("CONSISTENCY=", metadata);
-	fputs(tipoConsistencia, metadata);fputs("\n", metadata);
+	fputs(tipoConsistencia, metadata);
+	fputs("\n", metadata);
 
 	fputs("PARTITIONS=", metadata);
 	char* cantPart = intToString(cantidadParticiones); //ROMPE

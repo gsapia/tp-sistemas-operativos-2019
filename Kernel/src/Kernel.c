@@ -354,7 +354,7 @@ void inicializarColas(){
 			sem_wait(&finish);
 			t_script* finalizado = queue_pop(colaFinish);
 			log_trace(logger, "Finalizó el script \"%s\"", finalizado->nombre);
-			queue_destroy(finalizado->requests);
+			queue_destroy_and_destroy_elements(finalizado->requests, free);
 			free(finalizado->nombre);
 			free(finalizado);
 		}
@@ -391,6 +391,7 @@ void inicializarColas(){
 			char* request = queue_pop(requests);
 			char* resultado = apiKernel(request);
 			log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
+
 			free(request);
 			free(resultado);
 

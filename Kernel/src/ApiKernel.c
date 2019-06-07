@@ -57,7 +57,7 @@ char* create(char* nombreTabla, enum consistencias tipoConsistencia, u_int canti
 	}
 }
 char* describe(char* nombreTabla){
-	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
+	//log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
 	return string_from_format("Elegiste DESCRIBE");
 }
 
