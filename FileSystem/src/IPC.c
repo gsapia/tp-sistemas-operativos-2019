@@ -96,7 +96,9 @@ void* servidor(argumentos_servidor* args){
 				puts("Recibi un CREATE");
 				struct_create paquete = recibir_create(cliente);
 
+				int estado = create(paquete->nombreTabla, paquete->consistencia, paquete->particiones, paquete->tiempoCompactacion);
 
+				responder_create(cliente, estado);
 
 				printf("Comando recibido: CREATE %s %d %d %d\n\n", paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
 				free(paquete.nombreTabla);
