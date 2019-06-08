@@ -1,6 +1,6 @@
 #include "LFS.h"
-void renombrarArchivosTemporales(char* path, int particiones);
-void analizarTmpc(char* path, char* nombre_tabla);
+int renombrarArchivosTemporales(char* path, int particiones);
+void analizarTmpc(char* path, char* nombre_tabla, int diferencia);
 int obtenerParticion(char* nombreTabla, u_int16_t key);
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion);
 char* intToString(long a);
@@ -26,83 +26,96 @@ void *compactacion(argumentos_compactacion *args){
 	free(buffer);
 	int particiones = atoi(linea[1]) + 1;
 	free(linea[0]); free(linea[1]); free(linea);
-	log_trace(logger, "%d", particiones);
 
 	while(1){
 		sleep(tiempo);
-		log_trace(logger,"%s inicia compactacion", nombreTabla);
 		char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
-		renombrarArchivosTemporales(path, particiones);
-		analizarTmpc(path, nombreTabla);
+		int diferencia = renombrarArchivosTemporales(path, particiones);
+		if(diferencia > 0){
+			analizarTmpc(path, nombreTabla, diferencia);
+			log_info(logger, "%s realizo compactacion de %d .tmpc", nombreTabla, diferencia);
+		}
 		free(path);
 	}
 }
 
-void renombrarArchivosTemporales(char* path, int particiones){
-	int i = 0;
+int renombrarArchivosTemporales(char* path, int particiones){
+	int i = 0; int cantArchivos = 0;
 	char* path_aux = string_from_format("%s/A%d.tmp", path, i);
 	char* pathAux;
-	if(access(path_aux, F_OK) != -1){//Existe el archivo que uso como flag
-		while(access(path_aux, F_OK) != -1){ //Mientras exista el archivo
+	DIR* path_buscado = opendir(path);
+	struct dirent* carpeta = readdir(path_buscado);
+
+	while(carpeta){
+		if(strcmp(carpeta->d_name, ".") && strcmp(carpeta->d_name, "..")){
+			cantArchivos++;
+		}
+		carpeta = readdir(path_buscado);
+	}
+	int diferencia = cantArchivos - particiones;
+	int diferenciaReturn = diferencia;
+	while(diferencia != 0){
+		if(access(path_aux, F_OK) != -1){//Existe el archivo .tmp
 			pathAux = string_from_format("%sc", path_aux);
 			rename(path_aux, pathAux);
 			free(pathAux);
-			i++;
-			free(path_aux);
-			path_aux = string_from_format("%s/A%d.tmp", path, i);
+			diferencia--;
 		}
-	}else{
-		log_trace(logger,"No hay .tmp para compactar", path_aux);
+		i++;
+		free(path_aux);
+		path_aux = string_from_format("%s/A%d.tmp", path, i);
 	}
+
 	free(path_aux);
+	closedir(path_buscado);
+	return diferenciaReturn;
 }
 
-void analizarTmpc(char* path, char* nombre_tabla){
+void analizarTmpc(char* path, char* nombre_tabla, int diferencia){
 	int i = 0;
 	char* pathTempc = string_from_format("%s/A%d.tmpc", path, i);
 	FILE* tempc;
 	int particion;
-	while(access(pathTempc, F_OK) != -1){ //Mientras exista el archivo
-		tempc = fopen(pathTempc, "r");						//Abro el .tmpc
-		free(pathTempc);
-		size_t buffer_size = 0;
-		char* buffer = NULL;
+	log_trace(logger, "Diferencia: %d", diferencia);
+	while(diferencia != 0){
+		if(access(pathTempc, F_OK) != -1){		//Si podes acceder al .tmpc
+			tempc = fopen(pathTempc, "r");						//Abro el .tmpc
+			free(pathTempc);
+			size_t buffer_size = 0;
+			char* buffer = NULL;
+			while(getline(&buffer, &buffer_size, tempc) != -1){ 				//Mientras existan lineas/renglones en el .tmpc
+				char** linea = string_split(buffer, ";"); 						//Dividi el renglon
+				char* endptrKey, *keystr = linea[1];
+				ulong key_buffer = strtoul(keystr, &endptrKey, 10);
 
-		// [TIMESTAMP;KEY;VALUE]
-		while(getline(&buffer, &buffer_size, tempc) != -1){ 				//Mientras existan lineas/renglones en el .tmpc
-			char** linea = string_split(buffer, ";"); 						//Dividi el renglon
-			char* endptrKey, *keystr = linea[1];
-			ulong key_buffer = strtoul(keystr, &endptrKey, 10);
+				char* timestampstr = linea[0], *endptrTimestamp;
+				ulong timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
 
-			char* timestampstr = linea[0], *endptrTimestamp;
-			ulong timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
+				particion = obtenerParticion(nombre_tabla, key_buffer); 		//Con la key del .tmpc, busco la particion .bin
 
-			particion = obtenerParticion(nombre_tabla, key_buffer); 		//Con la key del .tmpc, busco la particion .bin
-
-			discriminadorDeCasos(path, key_buffer, timestamp_buffer, linea[2], particion);
-			free(linea[0]);
-			free(linea[1]);
-			free(linea[2]);
-			free(linea);
+				discriminadorDeCasos(path, key_buffer, timestamp_buffer, linea[2], particion);
+				free(linea[0]);
+				free(linea[1]);
+				free(linea[2]);
+				free(linea);
+				free(buffer);
+				buffer = NULL;
+			}
 			free(buffer);
-			buffer = NULL;
+			fclose(tempc);
+			pathTempc = string_from_format("%s/A%d.tmpc", path, i);
+			remove(pathTempc);
+			diferencia--;
 		}
-		free(buffer);
-
-		fclose(tempc);
-		pathTempc = string_from_format("%s/A%d.tmpc", path, i);
-		remove(pathTempc);
 		free(pathTempc);
 		i++;
-		pathTempc = string_from_format("%s/A%d.tmp", path, i);
+		pathTempc = string_from_format("%s/A%d.tmpc", path, i);
 	}
-
 	free(pathTempc);
 }
 
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion){
 	char* pathBin = string_from_format("%s/%d.bin", path, particion);
-	log_trace(logger, "%s", pathBin);
 	FILE* bin = fopen(pathBin, "r+");
 	size_t buffer_size = 0;
 	char* buffer = NULL;
@@ -146,7 +159,6 @@ void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* va
 	}
 
 	if(!encontrado){ //Si no se encontro, lo escribo al final
-		log_trace(logger,"No encontrado");
 		char* timestampC = intToString(timestamp);
 		char* keyC = intToString(key);
 		char* line = string_from_format("%s;%s;%s", timestampC, keyC, value);

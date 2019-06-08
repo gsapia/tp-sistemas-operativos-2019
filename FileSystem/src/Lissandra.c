@@ -55,10 +55,7 @@ int main(void){
 	log_destroy(logger);
 
 //	Libero todas las variables que me quedan colgadas.
-	free(puntoMontaje);
-	if(!list_is_empty(memTable)){
-		list_destroy_and_destroy_elements(memTable, free);
-	}
+
 	config_destroy(config);
 	return EXIT_SUCCESS;
 }

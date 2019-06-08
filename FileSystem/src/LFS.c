@@ -46,7 +46,6 @@ void* consola(){
 		free(resultado);
 	}
 	log_info(logger, "Se ha cerrado la Consola");
-	return 0;
 }
 
 char *apiLissandra(char* mensaje){

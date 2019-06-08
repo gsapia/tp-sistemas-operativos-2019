@@ -139,14 +139,12 @@ void dumpDeTablas(t_list *memTableAux){
 			datosParaDump = list_filter(memTableAux, (_Bool (*)(void*))tieneDatosParaDump); //Filtro de la memtable los registros tiene que ser dumpeados en cada Tabla/.
 
 			if(!list_is_empty(datosParaDump)){
-				log_trace(logger, "%s tiene %d datos para Dumpear", carpeta->d_name, list_size(datosParaDump));
 				dumpear(datosParaDump, carpeta->d_name);
 				list_destroy(datosParaDump);
 				datosParaDump = NULL;
 				flag = 1;
 			}else{
 				list_destroy(datosParaDump);
-				log_info(logger, "%s no tiene datos para Dumpear", carpeta->d_name);
 			}
 		}
 		carpeta = readdir(path_buscado);
