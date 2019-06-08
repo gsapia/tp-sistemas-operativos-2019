@@ -276,7 +276,6 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 
 	if(existeTabla(nombreTabla)){
 		int particion_busqueda = obtenerParticion(nombreTabla, key);
-		log_trace(logger, "Particion buscada: %d", particion_busqueda);
 
 		bool registro_IgualKey(t_registro *registro){return registro->key == key && !strcmp(registro->nombre_tabla,nombreTabla);}
 
