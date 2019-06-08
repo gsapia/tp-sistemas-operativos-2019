@@ -76,7 +76,6 @@ void analizarTmpc(char* path, char* nombre_tabla, int diferencia){
 	char* pathTempc = string_from_format("%s/A%d.tmpc", path, i);
 	FILE* tempc;
 	int particion;
-	log_trace(logger, "Diferencia: %d", diferencia);
 	while(diferencia != 0){
 		if(access(pathTempc, F_OK) != -1){		//Si podes acceder al .tmpc
 			tempc = fopen(pathTempc, "r");						//Abro el .tmpc
