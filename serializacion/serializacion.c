@@ -562,21 +562,21 @@ struct_describe_respuesta recibir_respuesta_describe(int socket){
 		buffer = malloc(sizeof(uint16_t));
 		recv(socket, buffer, sizeof(uint16_t), 0);
 		paquete.consistencia = *((uint16_t*)buffer);
-		printf("La consistencia es %d\n", paquete.consistencia);
+		//printf("La consistencia es %d\n", paquete.consistencia);
 		free(buffer);
 
 		// Luego las particiones
 		buffer = malloc(sizeof(uint16_t));
 		recv(socket, buffer, sizeof(uint16_t), 0);
 		paquete.particiones = *((uint16_t*)buffer);
-		printf("Las particiones son %d\n", paquete.particiones);
+		//printf("Las particiones son %d\n", paquete.particiones);
 		free(buffer);
 
 		// Por ultimo el tiempo de compactacion
 		buffer = malloc(sizeof(paquete.tiempo_compactacion));
 		recv(socket, buffer, sizeof(uint32_t), 0);
 		paquete.tiempo_compactacion = *((uint32_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-		printf("El tiempo de compactacion es %d\n", paquete.tiempo_compactacion);
+		//printf("El tiempo de compactacion es %d\n", paquete.tiempo_compactacion);
 		free(buffer);
 	}
 
