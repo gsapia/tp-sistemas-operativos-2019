@@ -136,6 +136,16 @@ int main(void) {
 				 */
 				printf("Comando recibido: DESCRIBE %s\n\n", paquete.nombreTabla);
 
+				// Para el ejemplo respondemos cualquier cosa
+				struct_describe_respuesta respuesta;
+				respuesta.estado = ESTADO_DESCRIBE_OK;
+				respuesta.consistencia = SC;
+				respuesta.particiones = 5;
+				respuesta.tiempo_compactacion = 60000;
+
+				// Y lo mando
+				enviar_respuesta_describe(cliente, respuesta);
+
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
 			}

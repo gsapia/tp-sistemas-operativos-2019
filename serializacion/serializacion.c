@@ -545,7 +545,7 @@ void enviar_respuesta_describe(int socket, struct_describe_respuesta respuesta){
 	send(socket, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
 	free(buffer);
 }
-/*TODO
+
 struct_describe_respuesta recibir_respuesta_describe(int socket){
 	struct_describe_respuesta paquete;
 	void* buffer = NULL;
@@ -558,32 +558,32 @@ struct_describe_respuesta recibir_respuesta_describe(int socket){
 	free(buffer);
 
 	if(paquete.estado == ESTADO_DESCRIBE_OK){ // Si el estado no es OK, es al pedo el resto de data.
-		// Ahora recibo el valor
+		// Ahora recibo la consistencia
 		buffer = malloc(sizeof(uint16_t));
 		recv(socket, buffer, sizeof(uint16_t), 0);
-		tamanio_string = *((uint16_t*)buffer);
-		//printf("El valor es de %d bytes\n", tamanio_string);
+		paquete.consistencia = *((uint16_t*)buffer);
+		printf("La consistencia es %d\n", paquete.consistencia);
 		free(buffer);
 
-		buffer = malloc(tamanio_string);
-		recv(socket, buffer, tamanio_string, 0);
-		paquete.valor = malloc(tamanio_string);
-		memcpy(paquete.valor, buffer, tamanio_string);
-		//printf("El valor es \"%s\"\n", paquete.valor);
+		// Luego las particiones
+		buffer = malloc(sizeof(uint16_t));
+		recv(socket, buffer, sizeof(uint16_t), 0);
+		paquete.particiones = *((uint16_t*)buffer);
+		printf("Las particiones son %d\n", paquete.particiones);
 		free(buffer);
 
-		// Por ultimo el timestamp
-		buffer = malloc(sizeof(paquete.timestamp));
-		recv(socket, buffer, sizeof(uint64_t), 0);
-		paquete.timestamp = *((uint64_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
-		//printf("El timestamp es %lld\n", paquete.timestamp);
+		// Por ultimo el tiempo de compactacion
+		buffer = malloc(sizeof(paquete.tiempo_compactacion));
+		recv(socket, buffer, sizeof(uint32_t), 0);
+		paquete.tiempo_compactacion = *((uint32_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
+		printf("El tiempo de compactacion es %d\n", paquete.tiempo_compactacion);
 		free(buffer);
 	}
 
 	//puts("Listo, recibi el paquete completo!\n");
 
 	return paquete;
-}*/
+}
 
 enum estados_insert recibir_respuesta_insert(int socket){
 	return recibir_estado(socket);

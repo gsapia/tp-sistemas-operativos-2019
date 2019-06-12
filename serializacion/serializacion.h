@@ -145,4 +145,8 @@ void responder_insert(int socket, enum estados_insert estado);
 
 enum estados_insert recibir_respuesta_insert(int socket);
 
+void enviar_respuesta_describe(int socket, struct_describe_respuesta respuesta);
+
+struct_describe_respuesta recibir_respuesta_describe(int socket);
+
 #endif /* SERIALIZACION_H_ */

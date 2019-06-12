@@ -127,7 +127,7 @@ int main(void) {
 	enviar_create(cliente, paquete3_fail);
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
 
-	// Ahore me quedo esperando la respuesta
+	// Ahora me quedo esperando la respuesta
 	uint16_t estado2 = recibir_respuesta_create(cliente);
 	switch (estado2) {
 	case ESTADO_CREATE_OK:
@@ -148,6 +148,18 @@ int main(void) {
 	puts("Enviando DESCRIBE");
 	enviar_describe(cliente, paquete4);
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
+
+	// Ahora me quedo esperando la respuesta
+	struct_describe_respuesta coso = recibir_respuesta_describe(cliente);
+	switch (coso.estado) {
+	case ESTADO_DESCRIBE_OK:
+		printf("Describe OK\n");
+		break;
+	case ESTADO_DESCRIBE_ERROR_TABLA:
+		printf("ERROR: La tabla no existe\n");
+		break;
+		// Paja hacer los demas case
+	}
 
 	// Armo un DROP TABLA1
 	struct_drop paquete5;
