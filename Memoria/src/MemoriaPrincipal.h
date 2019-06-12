@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <commons/collections/list.h>
+#include <pthread.h>
 
 #include "Memoria.h"
 

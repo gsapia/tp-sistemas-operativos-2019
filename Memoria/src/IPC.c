@@ -3,24 +3,31 @@
 #include "API.h"
 
 int socket_cliente;
+pthread_mutex_t mutex_fs; // Debemos evitar condiciones de carrera en requests a FS
 
 struct_select_respuesta selectAFS(struct_select paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
-	struct_select_respuesta respuesta;
-	respuesta.estado = ESTADO_SELECT_OK;
-	respuesta.valor = strdup("VALOR");
-	respuesta.timestamp = 123456;
+	//struct_select_respuesta respuesta;
+	//respuesta.estado = ESTADO_SELECT_OK;
+	//respuesta.valor = strdup("VALOR");
+	//respuesta.timestamp = 123456;
 	//return respuesta;
 	// ----- Fin parte provisoria -----
+	pthread_mutex_lock(&mutex_fs);
 	enviar_select(socket_cliente, paquete);
-	return recibir_registro(socket_cliente);
+	struct_select_respuesta respuesta = recibir_registro(socket_cliente);
+	pthread_mutex_unlock(&mutex_fs);
+	return respuesta;
 }
 enum estados_create createAFS(struct_create paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
 	//return ESTADO_CREATE_OK;
 	// ----- Fin parte provisoria -----
+	pthread_mutex_lock(&mutex_fs);
 	enviar_create(socket_cliente, paquete);
-	return recibir_respuesta_create(socket_cliente);
+	enum estados_create respuesta = recibir_respuesta_create(socket_cliente);
+	pthread_mutex_unlock(&mutex_fs);
+	return respuesta;
 }
 
 void initCliente(){

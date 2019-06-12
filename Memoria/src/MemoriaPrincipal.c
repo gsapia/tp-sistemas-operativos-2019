@@ -1,6 +1,7 @@
 #include "MemoriaPrincipal.h"
 
 bool* paginas_usadas; // Habria que modificar esto para usar LRU
+pthread_mutex_t mutex_paginas;
 
 void initMemoriaPrincipal(){
 	log_trace(logger, "Inicializando la memoria principal con un tamanio de %d bytes", config.tamanio_memoria);
@@ -25,10 +26,13 @@ void initMemoriaPrincipal(){
 t_marco getPagina(){
 	// TODO: Habria que modificar esto para usar LRU
 
+	pthread_mutex_lock(&mutex_paginas); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer
 	uint32_t marco;
 	for(marco = 0; *(paginas_usadas + marco); marco++);
 
 	*(paginas_usadas + marco) = true;
+
+	pthread_mutex_unlock(&mutex_paginas);
 
 	return memoria_principal + (tamanio_pagina * marco);
 }
