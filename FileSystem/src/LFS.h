@@ -22,8 +22,11 @@
 #include<commons/bitarray.h>
 #include<dirent.h>
 #include<arpa/inet.h>
-#include <sys/time.h>
-#include "serializacion.h"
+#include<sys/time.h>
+#include"serializacion.h"
+#include<sys/types.h>
+#include<fcntl.h>
+#include<sys/mman.h>
 t_log* logger;
 t_config* config;
 char* puntoMontaje;
@@ -56,7 +59,7 @@ t_list *memTable;
 int cont; 			// Contador de cantidad de registros en Memtable
 int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
 int tamValue;
-
+char* bitmap;
 
 //############ FUNCIONES ##############
 void* consola();
@@ -112,5 +115,7 @@ bool esArchivoTemporalC(char* nombre);
 int obtenerUltimoBloqueBin(char* path, int particion);
 int* obtenerBloques(char* bloques);
 int ultimoBloques(char* bloques);
+void crearBitmap(char* path);
+void iniciarArchivoConCeros(FILE* f, int sizeBits);
 
 #endif /* LFS_H_ */

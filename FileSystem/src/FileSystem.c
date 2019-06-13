@@ -59,11 +59,33 @@ void crearMetaDataFS(){
 
 // Crea el archivo "Bitmap.bin" del archivo de FileSystem
 void crearBitMapFS(){
+	int sizeBits = 5192;		//Hay que obtener la cantidad de bloques del PuntoMontaje/Metadata/Metadata.bin
 	char* path = string_from_format("%sMetadata/Bitmap.bin", puntoMontaje);
-	FILE* f = fopen(path, "w+");
-	fclose(f);
+	FILE* f = fopen(path, "w");
+	iniciarArchivoConCeros(f, sizeBits);
+	crearBitmap(path);
 	free(path);
 }
+
+void iniciarArchivoConCeros(FILE* f, int sizeBits){
+	for(int i=0;i<sizeBits;i++){
+		fputc('0',f);
+	}
+	fclose(f);
+}
+
+void crearBitmap(char* path){
+	int fd = open(path, O_RDWR, S_IRUSR | S_IWUSR);
+	struct stat sb;		//Struct con datos del archivo del archivo
+
+	if(fstat(fd,&sb) == -1){ perror("No se pudo obtener el tamaño del archivo\n");}
+
+	bitmap = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //Puntero a un bloque de memoria con el contenido del archivo Bitmap.bin
+
+//	munmap(bitmap, sb.st_size);
+	close(fd);
+}
+
 // Crea la carpeta "Table/" dentro de la carpeta del punto de montaje
 void crearTables(){
 	char* path = string_from_format("%sTable/", puntoMontaje);

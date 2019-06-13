@@ -82,19 +82,19 @@ void analizarTmpc(char* path, char* nombreTabla){
 				log_trace(logger,"El size es: %d", size);
 
 				if(ultimoBloque != -1){ //Si existe un ultimo bloque
+					log_trace(logger,"El ultimo bloque es: %d", ultimoBloque);
 					//Ver si la frase entra en el ultimo bloque
 					//Si entra, joya
 					//Si no entra, agregar un Bloque Nuevo
 					//Insertar la linea
 					//Actualizar SIZE en .bin
 					//Actualizar BLOCKS en .bin
-					log_trace(logger,"El ultimo bloque es: %d", ultimoBloque);
 				}else{
+					log_trace(logger,"No hay bloques, agrego uno.");
 					//Agregar un bloque nuevo
 					//Insertar la linea
 					//Actualizar SIZE en .bin
 					//Actualizar BLOCKS en .bin
-					log_trace(logger,"No hay bloques");
 				}
 
 				free(linea[0]);
