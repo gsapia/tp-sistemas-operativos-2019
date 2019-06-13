@@ -1,34 +1,4 @@
 #include "LFS.h"
-#include "serializacion.h"
-void* consola();
-char* apiLissandra(char*);
-void *compactacion(argumentos_compactacion *args);
-struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
-char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
-uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
-struct_describe_respuesta describe(char* nombreTabla);
-char* drop(char* nombreTabla);
-bool existeTabla(char* nombreTabla);
-FILE* obtenerMetaDataLectura(char* nombreTabla);
-int obtenerParticion(char *nombreTabla, u_int16_t key);
-int funcionModulo(int key, int particiones);
-int obtenerParticiones(FILE* metadata);
-void agregarRegDeBinYTemps(t_list *listaFiltro, char* nombreTabla, u_int16_t key, int particion_busqueda);
-FILE* obtenerBIN(int particion, char* nombreTabla);
-void crearDirectiorioDeTabla(char* nombreTabla);
-void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
-void crearBinDeTabla(char* nombreTabla, int cantParticiones);
-void dumpDeTablas(t_list *memTableAux);
-void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
-uint64_t getTimestamp();
-bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2);
-void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
-t_registro* convertirARegistroPuntero(t_registro r);
-struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
-struct_describe_respuesta convertirARespuestaDescribe(char* consistencia, char* particiones, char* compactationTime);
-void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key);
-t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value);
-char* intToString(long a);
 
 void* consola(){
 	char *linea;
@@ -529,9 +499,10 @@ void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int 
 	free(particion);
 	FILE* f = fopen(path, "r");
 	free(path);
-	agregarRegistroMayorTimeStamDeArchivo(f, lista, key); // agrego del .bin, el registro con el mayor timestamp a la lista
 
-//	log_trace(logger,"Antes del .tmp");
+//	agregarRegistroMayorTimeStamDeArchivo(f, lista, key); --> agrego del /Bloques/n.bin, el registro con el mayor timestamp a la lista. HAY QUE HACERLA
+
+	log_trace(logger,"Antes del .tmp");
 	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
 		path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
 		if(access(path, F_OK) != -1){
@@ -540,7 +511,7 @@ void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int 
 		}
 		free(path);
 	}
-//	log_trace(logger,"Antes del .tmpc");
+	log_trace(logger,"Antes del .tmpc");
 	int i = 0;
 	path = string_from_format("%sTable/%s/A%s.tmpc", puntoMontaje, nombreTabla, i);
 	while(access(path, F_OK) != -1){// agrego de los .tmpc, el registro con el mayor timestamp de cada uno a la lista

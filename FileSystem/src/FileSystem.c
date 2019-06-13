@@ -16,18 +16,6 @@ Se encontrara en [Punto_Montaje]/Metadata/Bitmap.bin
 */
 
 #include "LFS.h"
-void crearFicheroPadre();
-void crearMetaDataFS();
-void crearBitMapFS();
-void crearTables();
-void crearBloquesDatos();
-bool existeTabla(char* nombreTabla);
-char* intToString(long a);
-char* encontreTabla(char* nombreTabla, DIR* path_buscado);
-FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp);
-void dumpear(t_list *datosParaDump, char* carpetaNombre);
-t_registro convertirAStruct(t_registro *registro);
-void escribirEnArchivo(FILE* f, t_registro* r);
 
 // Hilo del FILESYSTEM (Crea las carpetas necesarias)
 void *fileSystem() {
@@ -260,6 +248,9 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
 		f = fopen(path_aux, "w");
+		fputs("SIZE=0", f);
+		fputs("\n",f);
+		fputs("BLOCKS=[]",f);
 		fclose(f);
 		free(path_aux);
 		free(particion);

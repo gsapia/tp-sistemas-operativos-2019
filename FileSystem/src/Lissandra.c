@@ -1,12 +1,5 @@
 #include "LFS.h"
 
-void *consola();
-t_config *leer_config();
-t_log* iniciar_logger();
-void* servidor(uint16_t puerto_escucha, int tamValue);
-void* fileSystem(t_config *config);
-void* dump(int tiempo_dump);
-
 int main(void){
 	memTable = list_create(); cont = 0; cantDumps = 0;
 	config = leer_config();
