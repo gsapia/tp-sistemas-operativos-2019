@@ -2,57 +2,12 @@
 #include "MemoriaPrincipal.h"
 #include "IPC.h"
 
-// TODO: Posible condicion de carrera cuando varios hilos quieran acceder a lo mismo!!
-t_pagina* agregar_registro(uint16_t clave, char* valor, t_list *tabla_paginas){
-	// Truncamos el valor al tamanio maximo posible para evitar problemas
-	if(strlen(valor) > tamanio_value)
-		valor[tamanio_value] = '\0';
-
-	// Pedimos una pagina
-	t_marco marco = getPagina();
-
-	// Le cargamos los valores
-	uint64_t *timestamp = marco + DESPL_TIMESTAMP;
-	uint16_t *key = marco + DESPL_KEY;
-	char *value = marco + DESPL_VALOR;
-
-	*timestamp = getTimestamp();
-	*key = clave;
-	strcpy(value, valor);
-
-	// La agregamos en la tabla de paginas
-	t_pagina *pagina = malloc(sizeof(t_pagina));
-	pagina->marco = marco;
-	pagina->modificado = false;
-	pagina->numero = list_size(tabla_paginas)+1; // Revisar bien
-
-	list_add(tabla_paginas, pagina);
-
-	return pagina;
-}
-
-t_segmento* agregar_segmento(char* nombreTabla){
-	// Creamos una tabla de paginas
-	t_list* tabla_paginas = list_create();
-
-	// Creamos el segmento
-	t_segmento *segmento = malloc(sizeof(t_segmento));
-	segmento->nombre_tabla = strdup(nombreTabla);
-	segmento->paginas = tabla_paginas;
-
-	// Lo agregamos a la tabla de segmentos
-	list_add(tabla_segmentos, segmento);
-	return segmento;
-}
-
+// TODO: Cuando detectamos que no tenemos un segmento o una pagina en select, antes de crearlos/pedirlos, deberiamos constatar que FS realmente tiene el registro buscado
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
 
 	// Busco si el segmento correspondiente existe en la tabla de segmentos
-	bool buscador_tabla(t_segmento *segmento){
-		return strcmp(segmento->nombre_tabla, nombreTabla) == 0;
-	}
-	t_segmento* segmento = list_find(tabla_segmentos, (_Bool (*)(void*))buscador_tabla);
+	t_segmento* segmento = buscar_segmento(nombreTabla);
 	if(!segmento){
 		// El segmento para esa tabla todavia no existe en la tabla de segmentos
 		log_debug(logger, "Todavia no existe un segmento para esa tabla");
@@ -61,14 +16,9 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		segmento = agregar_segmento(nombreTabla);
 	}
 	// El segmento para esa tabla ya existe en la tabla de segmentos
-	t_list *tabla_paginas = segmento->paginas;
 
-	bool buscador_clave(t_pagina* pagina){
-		uint16_t *clave = (pagina->marco + DESPL_KEY);
-		return *clave == key;
-	}
-
-	t_pagina *pagina = list_find(tabla_paginas, (_Bool (*)(void*))buscador_clave);
+	// Busco si el registro ya existe en la tabla de paginas
+	t_pagina *pagina = buscar_pagina(segmento, key);
 	if(!pagina){
 		// Todavia no existe una pagina para esa clave
 		log_debug(logger, "Todavia no existe una pagina para esa clave");
@@ -84,7 +34,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		}
 
 		// Agrego el registro
-		pagina = agregar_registro(key, respuesta.valor, tabla_paginas);
+		pagina = agregar_registro(key, respuesta.valor, segmento);
 		free(respuesta.valor);
 	}
 	// Existe una pagina para esa clave
@@ -104,10 +54,7 @@ enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, clave, valor);
 
 	// Busco si el segmento correspondiente existe en la tabla de segmentos
-	bool buscador_tabla(t_segmento *segmento){
-		return strcmp(segmento->nombre_tabla, nombreTabla) == 0;
-	}
-	t_segmento* segmento = list_find(tabla_segmentos, (_Bool (*)(void*))buscador_tabla);
+	t_segmento* segmento = buscar_segmento(nombreTabla);
 	if(!segmento){
 		// El segmento para esa tabla todavia no existe en la tabla de segmentos asi que lo agrego.
 		log_debug(logger, "El segmento para esa tabla todavia no existe en la tabla de segmentos");
@@ -118,17 +65,12 @@ enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 	// El segmento para esa tabla ya existe en la tabla de segmentos
 
 	// Busco si el registro ya existe en la tabla de paginas
-	t_list *tabla_paginas = segmento->paginas;
-	bool buscador_pagina(t_pagina *pagina){
-		uint16_t *key = (pagina->marco + DESPL_KEY);
-		return *key == clave;
-	}
-	t_pagina *pagina = list_find(tabla_paginas, (_Bool (*)(void*))buscador_pagina);
+	t_pagina *pagina = buscar_pagina(segmento, clave);
 	if(!pagina){
 		// No tenemos el registro en la memoria principal, asi que tenemos que agregarlo
 		log_debug(logger, "No tenemos este registro en la memoria principal");
 
-		pagina = agregar_registro(clave, valor, tabla_paginas);
+		pagina = agregar_registro(clave, valor, segmento);
 	}
 	// Ya tenemos este registro en la memoria principal, asi que lo modificamos
 	t_marco marco = pagina->marco;

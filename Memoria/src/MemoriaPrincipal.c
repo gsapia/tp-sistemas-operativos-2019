@@ -1,7 +1,9 @@
 #include "MemoriaPrincipal.h"
+#include "Misc.h"
 
-bool* paginas_usadas; // Habria que modificar esto para usar LRU
+uint64_t* paginas_usadas; // Habria que modificar esto para usar LRU
 pthread_mutex_t mutex_paginas;
+
 
 void initMemoriaPrincipal(){
 	log_trace(logger, "Inicializando la memoria principal con un tamanio de %d bytes", config.tamanio_memoria);
@@ -18,21 +20,134 @@ void initMemoriaPrincipal(){
 	// Inicializo la tabla de segmentos
 	tabla_segmentos = list_create();
 
-	paginas_usadas = malloc(CANT_PAGINAS);
-	for(uint32_t marco = 0; marco < CANT_PAGINAS; marco++)
-		*(paginas_usadas + marco) = false;
+	paginas_usadas = calloc(CANT_PAGINAS, sizeof(paginas_usadas));
 }
 
-t_marco getPagina(){
-	// TODO: Habria que modificar esto para usar LRU
+// Devuelve el marco de una pagina que no haya sido modificada, o -1 en caso de no haber ninguna
+int algoritmo_reemplazo(){
+	log_trace(logger, "Ejecutando algoritmo de reemplazo.");
+	int marco = -1;
+	bool buscador_pagina_libre(t_pagina *pagina){
+		return !pagina->modificado;
+	}
+	void iterador_pagina(t_segmento *segmento){
+		if(marco == -1){
+			t_list* tabla_segmentos = segmento->paginas;
+			t_pagina *pagina = list_remove_by_condition(tabla_segmentos, (_Bool (*)(void*))buscador_pagina_libre);
+
+			if (pagina) {
+				// Encontramos una pagina que podemos reemplazar
+				marco = pagina->numero;
+				free(pagina);
+				log_trace(logger, "Reemplazamos una pagina.");
+			}
+		}
+	}
+	list_iterate(tabla_segmentos, (void(*)(void*))iterador_pagina);
+
+	if(marco == -1){
+		log_trace(logger, "No hay paginas para reemplazar.");
+	}
+
+	return marco;
+}
+
+// SOLO USAR DESDE getPagina()
+int getMarco(){
+	int marco;
+	for(marco = 0; marco < CANT_PAGINAS && *(paginas_usadas + marco); marco++);
+
+	if(marco == CANT_PAGINAS){
+		// Todas las paginas estan ocupadas, hay que intentar reemplazar
+		marco = algoritmo_reemplazo();
+		if(marco == -1){
+			log_trace(logger, "La memoria esta FULL.");
+			// TODO: Logica de memoria llena
+		}
+	}
+
+	return marco;
+}
+
+// Devuelve una nueva pagina alojada ya en memoria
+t_pagina* getPagina(){
+	t_pagina *pagina = malloc(sizeof(t_pagina));
 
 	pthread_mutex_lock(&mutex_paginas); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer
-	uint32_t marco;
-	for(marco = 0; *(paginas_usadas + marco); marco++);
-
-	*(paginas_usadas + marco) = true;
-
+	int marco = getMarco();
+	// TODO: Que pasa si la memoria esta FULL
+	*(paginas_usadas + marco) = getTimestamp(); // Actualizo el timestamp
 	pthread_mutex_unlock(&mutex_paginas);
 
-	return memoria_principal + (tamanio_pagina * marco);
+	pagina->marco = memoria_principal + (tamanio_pagina * marco);
+	pagina->modificado = false;
+	pagina->numero = marco;
+
+
+	return pagina;
+}
+
+t_segmento* buscar_segmento(char* nombre_tabla){
+	bool buscador_tabla(t_segmento *segmento){
+		return strcmp(segmento->nombre_tabla, nombre_tabla) == 0;
+	}
+	t_segmento* segmento = list_find(tabla_segmentos, (_Bool (*)(void*))buscador_tabla);
+
+	return segmento;
+}
+
+t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave){
+	t_list *tabla_paginas = segmento->paginas;
+	bool buscador_pagina(t_pagina *pagina){
+		uint16_t *key = (pagina->marco + DESPL_KEY);
+		return *key == clave;
+	}
+	t_pagina *pagina = list_find(tabla_paginas, (_Bool (*)(void*))buscador_pagina);
+
+	if(pagina)
+		*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
+
+	return pagina;
+}
+
+t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento){
+	// Truncamos el valor al tamanio maximo posible para evitar problemas
+	if(strlen(valor) > tamanio_value)
+		valor[tamanio_value] = '\0';
+
+	// Pedimos una pagina
+	t_pagina* pagina = getPagina();
+	t_marco marco = pagina->marco;
+
+	// Le cargamos los valores
+	uint64_t *timestamp = marco + DESPL_TIMESTAMP;
+	uint16_t *key = marco + DESPL_KEY;
+	char *value = marco + DESPL_VALOR;
+
+	*timestamp = getTimestamp();
+	*key = clave;
+	strcpy(value, valor);
+
+	// La agregamos en la tabla de paginas
+	t_list *tabla_paginas = segmento->paginas;
+	list_add(tabla_paginas, pagina);
+
+	if(pagina)
+		*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
+
+	return pagina;
+}
+
+t_segmento* agregar_segmento(char* nombreTabla){
+	// Creamos una tabla de paginas
+	t_list* tabla_paginas = list_create();
+
+	// Creamos el segmento
+	t_segmento *segmento = malloc(sizeof(t_segmento));
+	segmento->nombre_tabla = strdup(nombreTabla);
+	segmento->paginas = tabla_paginas;
+
+	// Lo agregamos a la tabla de segmentos
+	list_add(tabla_segmentos, segmento);
+	return segmento;
 }

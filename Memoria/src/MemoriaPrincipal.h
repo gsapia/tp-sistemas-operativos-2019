@@ -52,6 +52,15 @@ t_list* tabla_segmentos;
 
 void initMemoriaPrincipal();
 
-void* getPagina();
+// Busca el segmento correspondiente a la tabla, sino encuentra ninguno, retorna NULL
+t_segmento* buscar_segmento(char* nombre_tabla);
+
+// Busca la pagina correspondiente a la key dada, sino encuentra ninguna, retorna NULL
+t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave);
+
+
+t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento);
+
+t_segmento* agregar_segmento(char* nombreTabla);
 
 #endif /* MEMORIAPRINCIPAL_H_ */
