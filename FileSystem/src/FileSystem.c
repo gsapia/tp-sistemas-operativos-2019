@@ -16,18 +16,6 @@ Se encontrara en [Punto_Montaje]/Metadata/Bitmap.bin
 */
 
 #include "LFS.h"
-void crearFicheroPadre();
-void crearMetaDataFS();
-void crearBitMapFS();
-void crearTables();
-void crearBloquesDatos();
-bool existeTabla(char* nombreTabla);
-char* intToString(long a);
-char* encontreTabla(char* nombreTabla, DIR* path_buscado);
-FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp);
-void dumpear(t_list *datosParaDump, char* carpetaNombre);
-t_registro convertirAStruct(t_registro *registro);
-void escribirEnArchivo(FILE* f, t_registro* r);
 
 // Hilo del FILESYSTEM (Crea las carpetas necesarias)
 void *fileSystem() {
@@ -71,11 +59,33 @@ void crearMetaDataFS(){
 
 // Crea el archivo "Bitmap.bin" del archivo de FileSystem
 void crearBitMapFS(){
+	int sizeBits = 5192;		//Hay que obtener la cantidad de bloques del PuntoMontaje/Metadata/Metadata.bin
 	char* path = string_from_format("%sMetadata/Bitmap.bin", puntoMontaje);
-	FILE* f = fopen(path, "w+");
-	fclose(f);
+	FILE* f = fopen(path, "w");
+	iniciarArchivoConCeros(f, sizeBits);
+	crearBitmap(path);
 	free(path);
 }
+
+void iniciarArchivoConCeros(FILE* f, int sizeBits){
+	for(int i=0;i<sizeBits;i++){
+		fputc('0',f);
+	}
+	fclose(f);
+}
+
+void crearBitmap(char* path){
+	int fd = open(path, O_RDWR, S_IRUSR | S_IWUSR);
+	struct stat sb;		//Struct con datos del archivo del archivo
+
+	if(fstat(fd,&sb) == -1){ perror("No se pudo obtener el tamaño del archivo\n");}
+
+	bitmap = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //Puntero a un bloque de memoria con el contenido del archivo Bitmap.bin
+
+//	munmap(bitmap, sb.st_size);
+	close(fd);
+}
+
 // Crea la carpeta "Table/" dentro de la carpeta del punto de montaje
 void crearTables(){
 	char* path = string_from_format("%sTable/", puntoMontaje);
@@ -260,6 +270,9 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
 		f = fopen(path_aux, "w");
+		fputs("SIZE=0", f);
+		fputs("\n",f);
+		fputs("BLOCKS=[]",f);
 		fclose(f);
 		free(path_aux);
 		free(particion);
