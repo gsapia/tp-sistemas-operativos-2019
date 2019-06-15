@@ -39,6 +39,7 @@ enum estados_select{
 	ESTADO_SELECT_OK,
 	ESTADO_SELECT_ERROR_TABLA, // No existe la tabla
 	ESTADO_SELECT_ERROR_KEY, // No existe esa key en la tabla
+	ESTADO_SELECT_MEMORIA_FULL, // La memoria esta full
 	ESTADO_SELECT_ERROR_OTRO
 };
 
@@ -58,6 +59,7 @@ typedef struct{
 enum estados_insert{
 	ESTADO_INSERT_OK,
 	ESTADO_INSERT_ERROR_TABLA, // No existe la tabla
+	ESTADO_INSERT_MEMORIA_FULL, // La memoria esta full
 	ESTADO_INSERT_ERROR_OTRO
 };
 
