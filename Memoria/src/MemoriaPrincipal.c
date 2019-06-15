@@ -168,6 +168,10 @@ t_segmento* agregar_segmento(char* nombreTabla){
 void vaciar_memoria(){
 	pthread_mutex_lock(&mutex_paginas); // Evitamos que alguien tome nuevas paginas mientras tanto
 
+	void liberar_segmento(t_segmento* segmento){
+		free(segmento->nombre_tabla);
+		free(segmento);
+	}
 	void iterador_paginas(t_pagina* pagina){
 		if(pagina->modificado){
 			// TODO: Persisto los cambios en FS
@@ -181,7 +185,7 @@ void vaciar_memoria(){
 		list_destroy_and_destroy_elements(tabla_paginas, free);
 	}
 	list_iterate(tabla_segmentos, (void(*)(void*))iterador_segmentos);
-	list_clean_and_destroy_elements(tabla_segmentos, free);
+	list_clean_and_destroy_elements(tabla_segmentos, (void(*)(void*))liberar_segmento);
 
 	full = false;
 	pthread_mutex_unlock(&mutex_paginas);
