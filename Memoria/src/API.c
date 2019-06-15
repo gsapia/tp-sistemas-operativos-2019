@@ -36,6 +36,10 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		// Agrego el registro
 		pagina = agregar_registro(key, respuesta.valor, segmento);
 		free(respuesta.valor);
+
+		if(!pagina){
+			return ESTADO_SELECT_MEMORIA_FULL;
+		}
 	}
 	// Existe una pagina para esa clave
 
@@ -71,6 +75,10 @@ enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 		log_debug(logger, "No tenemos este registro en la memoria principal");
 
 		pagina = agregar_registro(clave, valor, segmento);
+
+		if(!pagina){
+			return ESTADO_INSERT_MEMORIA_FULL;
+		}
 	}
 	// Ya tenemos este registro en la memoria principal, asi que lo modificamos
 	t_marco marco = pagina->marco;

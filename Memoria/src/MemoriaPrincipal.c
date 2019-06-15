@@ -3,6 +3,7 @@
 
 uint64_t* paginas_usadas; // Habria que modificar esto para usar LRU
 pthread_mutex_t mutex_paginas;
+bool full = false;
 
 
 void initMemoriaPrincipal(){
@@ -63,6 +64,8 @@ int getMarco(){
 		if(marco == -1){
 			log_trace(logger, "La memoria esta FULL.");
 			// TODO: Logica de memoria llena
+			full = true;
+			return -1;
 		}
 	}
 
@@ -71,18 +74,21 @@ int getMarco(){
 
 // Devuelve una nueva pagina alojada ya en memoria
 t_pagina* getPagina(){
-	t_pagina *pagina = malloc(sizeof(t_pagina));
+	if(full) // Seamos eficientes, si la memoria esta FULL evitamos hacer nada
+		return NULL;
 
 	pthread_mutex_lock(&mutex_paginas); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer
 	int marco = getMarco();
-	// TODO: Que pasa si la memoria esta FULL
+	if(marco == -1)
+		return NULL;
 	*(paginas_usadas + marco) = getTimestamp(); // Actualizo el timestamp
 	pthread_mutex_unlock(&mutex_paginas);
+
+	t_pagina *pagina = malloc(sizeof(t_pagina));
 
 	pagina->marco = memoria_principal + (tamanio_pagina * marco);
 	pagina->modificado = false;
 	pagina->numero = marco;
-
 
 	return pagina;
 }
@@ -117,6 +123,10 @@ t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento){
 
 	// Pedimos una pagina
 	t_pagina* pagina = getPagina();
+	if(!pagina){
+		// La memoria esta full
+		return NULL;
+	}
 	t_marco marco = pagina->marco;
 
 	// Le cargamos los valores
