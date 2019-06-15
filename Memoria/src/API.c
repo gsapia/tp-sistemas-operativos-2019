@@ -38,7 +38,9 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 		free(respuesta.valor);
 
 		if(!pagina){
-			return ESTADO_SELECT_MEMORIA_FULL;
+			struct_select_respuesta respuesta;
+			respuesta.estado = ESTADO_SELECT_MEMORIA_FULL;
+			return respuesta;
 		}
 	}
 	// Existe una pagina para esa clave
