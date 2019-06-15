@@ -33,8 +33,8 @@ int algoritmo_reemplazo(){
 	}
 	void iterador_pagina(t_segmento *segmento){
 		if(marco == -1){
-			t_list* tabla_segmentos = segmento->paginas;
-			t_pagina *pagina = list_remove_by_condition(tabla_segmentos, (_Bool (*)(void*))buscador_pagina_libre);
+			t_list* tabla_paginas = segmento->paginas;
+			t_pagina *pagina = list_remove_by_condition(tabla_paginas, (_Bool (*)(void*))buscador_pagina_libre);
 
 			if (pagina) {
 				// Encontramos una pagina que podemos reemplazar
@@ -79,10 +79,11 @@ t_pagina* getPagina(){
 
 	pthread_mutex_lock(&mutex_paginas); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer
 	int marco = getMarco();
+	if(marco >= 0)
+		*(paginas_usadas + marco) = getTimestamp(); // Actualizo el timestamp
+	pthread_mutex_unlock(&mutex_paginas);
 	if(marco == -1)
 		return NULL;
-	*(paginas_usadas + marco) = getTimestamp(); // Actualizo el timestamp
-	pthread_mutex_unlock(&mutex_paginas);
 
 	t_pagina *pagina = malloc(sizeof(t_pagina));
 
@@ -162,4 +163,26 @@ t_segmento* agregar_segmento(char* nombreTabla){
 	// Lo agregamos a la tabla de segmentos
 	list_add(tabla_segmentos, segmento);
 	return segmento;
+}
+
+void vaciar_memoria(){
+	pthread_mutex_lock(&mutex_paginas); // Evitamos que alguien tome nuevas paginas mientras tanto
+
+	void iterador_paginas(t_pagina* pagina){
+		if(pagina->modificado){
+			// TODO: Persisto los cambios en FS
+		}
+
+		*(paginas_usadas + pagina->numero) = 0; // Indicamos que la pagina ahora esta libre
+	}
+	void iterador_segmentos(t_segmento* segmento){
+		t_list* tabla_paginas = segmento->paginas;
+		list_iterate(tabla_paginas, (void(*)(void*))iterador_paginas);
+		list_destroy_and_destroy_elements(tabla_paginas, free);
+	}
+	list_iterate(tabla_segmentos, (void(*)(void*))iterador_segmentos);
+	list_clean_and_destroy_elements(tabla_segmentos, free);
+
+	full = false;
+	pthread_mutex_unlock(&mutex_paginas);
 }

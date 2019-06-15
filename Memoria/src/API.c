@@ -116,5 +116,8 @@ char* drop(char* nombreTabla){
 	return string_from_format("Elegiste DROP");
 }
 char* journal(){
+	log_trace(logger, "Realizando Journaling.");
+	vaciar_memoria();
+	log_trace(logger, "Journaling terminado.");
 	return string_from_format("Elegiste JOURNAL");
 }

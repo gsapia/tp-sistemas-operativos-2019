@@ -63,4 +63,6 @@ t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento);
 
 t_segmento* agregar_segmento(char* nombreTabla);
 
+void vaciar_memoria();
+
 #endif /* MEMORIAPRINCIPAL_H_ */
