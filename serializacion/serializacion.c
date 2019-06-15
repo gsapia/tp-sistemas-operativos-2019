@@ -420,6 +420,11 @@ void enviar_journal(int socket){
 	send(socket, &cod_op, sizeof(cod_op), 0);
 }
 
+void enviar_describe_global(int socket){
+	const uint8_t cod_op = DESCRIBE_GLOBAL;
+	send(socket, &cod_op, sizeof(cod_op), 0);
+}
+
 void enviar_registro(int socket, struct_select_respuesta registro){
 	uint16_t tamanio_valor = strlen(registro.valor) + 1; // Calculo el tamanio del valor
 
@@ -578,6 +583,90 @@ struct_describe_respuesta recibir_respuesta_describe(int socket){
 		paquete.tiempo_compactacion = *((uint32_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
 		//printf("El tiempo de compactacion es %d\n", paquete.tiempo_compactacion);
 		free(buffer);
+	}
+
+	//puts("Listo, recibi el paquete completo!\n");
+
+	return paquete;
+}
+
+void enviar_respuesta_describe_global(int socket, struct_describe_global_respuesta respuesta){
+	// Vamos a enviar un paquete inicial con estado y cantidad de tablas descriptas
+	uint32_t cantidad_describes = dictionary_size(respuesta.describes);
+	size_t tamanio_paquete = sizeof(respuesta.estado) + sizeof(cantidad_describes);
+	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
+
+	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
+
+	// Primero el estado de la peticion
+	memcpy(buffer + desplazamiento, &respuesta.estado, sizeof(respuesta.estado));
+	desplazamiento += sizeof(respuesta.estado);
+
+	if(respuesta.estado == ESTADO_DESCRIBE_OK){ // Si el estado no es OK, es al pedo mandar mas data.
+		// Ahora la cantidad de describes
+		memcpy(buffer + desplazamiento, &cantidad_describes, sizeof(cantidad_describes));
+		// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
+	}
+	else{
+		tamanio_paquete = sizeof(respuesta.estado); // Evito mandar el buffer completo
+	}
+
+	// Luego envio el paquete y libero el buffer.
+	send(socket, buffer, tamanio_paquete, 0);
+	free(buffer);
+
+	// Por ultimo enviamos una respuesta_describe por cada tabla descripta
+	if(respuesta.estado == ESTADO_DESCRIBE_OK){
+		void enviar_describe_individual(char* nombre_tabla, struct_describe_respuesta* describe){
+			// Enviamos el nombre de la tabla
+			uint16_t tamanio_nombre = strlen(nombre_tabla)+1; // Calculo el tamanio del nombre
+			tamanio_paquete = sizeof(tamanio_nombre) + tamanio_nombre; // Evito mandar el buffer completo
+			buffer = malloc(tamanio_paquete);
+			memcpy(buffer, &tamanio_nombre, sizeof(tamanio_nombre)); // En el comienzo del buffer copio el tamanio del nombre de la tabla
+			desplazamiento = sizeof(tamanio_nombre); // Me corro 2 bytes del uint16
+			memcpy(buffer + desplazamiento, nombre_tabla, tamanio_nombre); // En la nueva posicion copio el nombre de la tabla
+			// Al pedo calcular el desplazamiento ahora, no voy a enviar mas nada y ademas ya me ocupe todo el buffer
+
+			// Ahora envio el paquete y libero el buffer.
+			send(socket, buffer, tamanio_paquete, 0); // Hago un solo send para todo, asi nos aseguramos que el paquete llega en orden
+			free(buffer);
+
+			// Por ultimo mandamos la metadata
+			enviar_respuesta_describe(socket, *describe);
+		}
+		dictionary_iterator(respuesta.describes, (void(*)(char*,void*))enviar_describe_individual);
+	}
+}
+
+struct_describe_global_respuesta recibir_respuesta_describe_global(int socket){
+	struct_describe_global_respuesta paquete;
+	void* buffer = NULL;
+
+	// Primero recibo el estado
+	buffer = malloc(sizeof(paquete.estado));
+	recv(socket, buffer, sizeof(paquete.estado), 0);
+	paquete.estado = *((uint16_t*)buffer); // Casteo el puntero a void a un puntero a uint para despues buscar el valor al que apunta
+	//printf("El estado es %d\n", paquete.estado);
+	free(buffer);
+
+	if(paquete.estado == ESTADO_DESCRIBE_OK){ // Si el estado no es OK, es al pedo el resto de data.
+		// Ahora recibo la cantidad de tablas descriptas
+		buffer = malloc(sizeof(uint32_t));
+		recv(socket, buffer, sizeof(uint32_t), 0);
+		uint32_t cantidad_describes = *((uint32_t*)buffer);
+		//printf("La cantidad de describes es %d\n", cantidad_describes);
+		free(buffer);
+
+		// Ahora recibo todos los describes
+		paquete.describes = dictionary_create();
+		for(int i = 0; i < cantidad_describes; i++){
+			// Primero nombre de tabla
+			char* nombre_tabla = recibir_describe(socket).nombreTabla;
+
+			struct_describe_respuesta* describe = malloc(sizeof(struct_describe_respuesta));
+			*describe = recibir_respuesta_describe(socket);
+			dictionary_put(paquete.describes, nombre_tabla, describe);
+		}
 	}
 
 	//puts("Listo, recibi el paquete completo!\n");

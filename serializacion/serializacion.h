@@ -8,13 +8,15 @@
 #include <netdb.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <commons/collections/dictionary.h>
 
 enum operaciones{
 	SELECT = 1,
-	INSERT = 2,
-	CREATE = 3,
-	DESCRIBE = 4,
-	DROP = 5,
+	INSERT,
+	CREATE,
+	DESCRIBE,
+	DESCRIBE_GLOBAL,
+	DROP,
 	JOURNAL
 };
 
@@ -93,6 +95,11 @@ typedef struct{
 	uint32_t tiempo_compactacion;
 }struct_describe_respuesta;
 
+typedef struct{
+	uint16_t estado;
+	t_dictionary* describes; // Lista de struct_describe_respuesta para cada nombre de tabla
+}struct_describe_global_respuesta;
+
 
 struct_select recibir_select(int socket);
 
@@ -133,6 +140,8 @@ void enviar_drop(int socket, struct_describe paquete);
 
 void enviar_journal(int socket);
 
+void enviar_describe_global(int socket);
+
 
 struct_select_respuesta recibir_registro(int socket);
 
@@ -150,5 +159,9 @@ enum estados_insert recibir_respuesta_insert(int socket);
 void enviar_respuesta_describe(int socket, struct_describe_respuesta respuesta);
 
 struct_describe_respuesta recibir_respuesta_describe(int socket);
+
+void enviar_respuesta_describe_global(int socket, struct_describe_global_respuesta respuesta);
+
+struct_describe_global_respuesta recibir_respuesta_describe_global(int socket);
 
 #endif /* SERIALIZACION_H_ */

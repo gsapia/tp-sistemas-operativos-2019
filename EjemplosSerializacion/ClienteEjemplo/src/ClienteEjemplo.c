@@ -174,6 +174,25 @@ int main(void) {
 	puts("Enviando JOURNAL");
 	enviar_journal(cliente);
 
+	// Enviamos un DESCRIBE GLOBAL
+	puts("Enviando DESCRIBE GLOBAL");
+	enviar_describe_global(cliente);
+
+	// Ahora me quedo esperando la respuesta
+	struct_describe_global_respuesta respuesta_describe_global = recibir_respuesta_describe_global(cliente);
+	if(respuesta_describe_global.estado == ESTADO_DESCRIBE_OK){
+		void mostrar_describe(char* nombre_tabla, struct_describe_respuesta* describe){
+			switch (describe->estado) {
+				case ESTADO_DESCRIBE_OK:
+					printf("Describe OK, Tabla: %s, Consistencia: %d, Particiones: %d Compactacion: %d\n", nombre_tabla, describe->consistencia, describe->particiones, describe->tiempo_compactacion);
+					break;
+					// Paja hacer los demas case
+			}
+		}
+		dictionary_iterator(respuesta_describe_global.describes, mostrar_describe);
+	}
+
+
 	puts("Termine");
 	close(cliente); // No me olvido de cerrar el socket que ya no voy a usar
 	return EXIT_SUCCESS;

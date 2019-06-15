@@ -126,6 +126,41 @@ int main(void) {
 				free(paquete.nombreTabla);
 			}
 			break;
+			case DESCRIBE_GLOBAL:
+			{
+				puts("Recibi un DESCRIBE GLOBAL");
+
+				/*
+				 * Depues haria lo que tenga que hacer
+				 */
+				printf("Comando recibido: DESCRIBE\n\n");
+
+				// Para el ejemplo respondemos con la metadata de 2 tablas
+				struct_describe_global_respuesta respuesta;
+				respuesta.estado = ESTADO_DESCRIBE_OK;
+				respuesta.describes = dictionary_create();
+
+				struct_describe_respuesta* tabla1 = malloc(sizeof(struct_describe_respuesta));
+				tabla1->estado = ESTADO_DESCRIBE_OK;
+				tabla1->consistencia = SC;
+				tabla1->particiones = 5;
+				tabla1->tiempo_compactacion = 60000;
+				dictionary_put(respuesta.describes, "TABLA1", tabla1);
+
+				struct_describe_respuesta* tabla2 = malloc(sizeof(struct_describe_respuesta));
+				tabla2->estado = ESTADO_DESCRIBE_OK;
+				tabla2->consistencia = SHC;
+				tabla2->particiones = 7;
+				tabla2->tiempo_compactacion = 60000;
+				dictionary_put(respuesta.describes, "TABLA2", tabla2);
+
+				// Y lo mando
+				enviar_respuesta_describe_global(cliente, respuesta);
+
+				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
+				dictionary_destroy_and_destroy_elements(respuesta.describes, free);
+			}
+			break;
 			case DESCRIBE:
 			{
 				puts("Recibi un DESCRIBE");
