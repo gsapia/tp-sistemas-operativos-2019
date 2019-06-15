@@ -21,7 +21,7 @@ void initMemoriaPrincipal(){
 	// Inicializo la tabla de segmentos
 	tabla_segmentos = list_create();
 
-	paginas_usadas = calloc(CANT_PAGINAS, sizeof(paginas_usadas));
+	paginas_usadas = calloc(CANT_PAGINAS, sizeof(*paginas_usadas));
 }
 
 // Devuelve el marco de una pagina que no haya sido modificada, o -1 en caso de no haber ninguna
@@ -89,6 +89,8 @@ t_pagina* getPagina(){
 	pagina->marco = memoria_principal + (tamanio_pagina * marco);
 	pagina->modificado = false;
 	pagina->numero = marco;
+
+	log_debug(logger, "Utilizando el frame %d", marco);
 
 	return pagina;
 }
