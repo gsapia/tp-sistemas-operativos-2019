@@ -6,7 +6,7 @@
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
 
-	// Busco si el segmento correspondiente existe en la tabla de segmentos
+	/*// Busco si el segmento correspondiente existe en la tabla de segmentos
 	t_segmento* segmento = buscar_segmento(nombreTabla);
 	if(!segmento){
 		// El segmento para esa tabla todavia no existe en la tabla de segmentos
@@ -45,11 +45,38 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	}
 	// Existe una pagina para esa clave
 
+	t_registro registro = leer_registro(pagina);
 	struct_select_respuesta respuesta;
 	respuesta.estado = ESTADO_SELECT_OK;
-	respuesta.valor = pagina->marco + DESPL_VALOR;
-	respuesta.timestamp = *((uint64_t*)(pagina->marco + DESPL_TIMESTAMP));
+	respuesta.valor = registro.valor;
+	respuesta.timestamp = registro.timestamp;*/
 
+	struct_select_respuesta respuesta;
+	pthread_mutex_lock(&mutex_memoria_principal); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer, o que el valor sea modificado mientras se lee
+	t_registro* registro = buscar_registro(nombreTabla, key);
+	if(registro){
+		respuesta.estado = ESTADO_SELECT_OK;
+		respuesta.valor = registro->valor;
+		respuesta.timestamp = registro->timestamp;
+		free(registro);
+	}
+	else{
+		// Hago el SELECT a FS
+		struct_select paquete;
+		paquete.key = key;
+		paquete.nombreTabla = nombreTabla;
+		respuesta = selectAFS(paquete);
+
+		if(respuesta.estado == ESTADO_SELECT_OK){ // Si el resultado no fue el esperado, no guardo nada y devuelvo lo que recibI
+			// Agrego el registro
+			t_pagina* pagina = inicializar_nuevo_registro(nombreTabla, key, respuesta.valor);
+
+			if(!pagina){
+				respuesta.estado = ESTADO_SELECT_MEMORIA_FULL;
+			}
+		}
+	}
+	pthread_mutex_unlock(&mutex_memoria_principal);
 	return respuesta;
 }
 enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
@@ -58,7 +85,7 @@ enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 		valor[tamanio_value] = '\0';
 
 	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, clave, valor);
-
+	pthread_mutex_lock(&mutex_memoria_principal); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer, o que la pagina se limpie mientras se modifica debido a un journal inoportuno
 	// Busco si el segmento correspondiente existe en la tabla de segmentos
 	t_segmento* segmento = buscar_segmento(nombreTabla);
 	if(!segmento){
@@ -79,20 +106,13 @@ enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 		pagina = agregar_registro(clave, valor, segmento);
 
 		if(!pagina){
+			pthread_mutex_unlock(&mutex_memoria_principal);
 			return ESTADO_INSERT_MEMORIA_FULL;
 		}
 	}
 	// Ya tenemos este registro en la memoria principal, asi que lo modificamos
-	t_marco marco = pagina->marco;
-
-	uint64_t *timestamp = marco + DESPL_TIMESTAMP;
-	char *value = marco + DESPL_VALOR;
-
-	*timestamp = getTimestamp();
-	strcpy(value, valor);
-
-	pagina->modificado = true;
-
+	modificar_registro(pagina, valor);
+	pthread_mutex_unlock(&mutex_memoria_principal);
 	return ESTADO_INSERT_OK;
 }
 enum estados_create create(char* nombreTabla, enum consistencias tipoConsistencia, uint16_t cantidadParticiones, uint32_t compactionTime){
@@ -116,8 +136,6 @@ char* drop(char* nombreTabla){
 	return string_from_format("Elegiste DROP");
 }
 char* journal(){
-	log_trace(logger, "Realizando Journaling.");
 	vaciar_memoria();
-	log_trace(logger, "Journaling terminado.");
 	return string_from_format("Elegiste JOURNAL");
 }

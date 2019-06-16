@@ -2,9 +2,14 @@
 #include "Misc.h"
 
 uint64_t* paginas_usadas; // Habria que modificar esto para usar LRU
-pthread_mutex_t mutex_paginas;
 bool full = false;
 
+void auto_journaling(){
+	while(1){
+		msleep(config.tiempo_journal);
+		vaciar_memoria();
+	}
+}
 
 void initMemoriaPrincipal(){
 	log_trace(logger, "Inicializando la memoria principal con un tamanio de %d bytes", config.tamanio_memoria);
@@ -22,6 +27,13 @@ void initMemoriaPrincipal(){
 	tabla_segmentos = list_create();
 
 	paginas_usadas = calloc(CANT_PAGINAS, sizeof(*paginas_usadas));
+
+	pthread_t hiloJournaling;
+	if (pthread_create(&hiloJournaling, NULL, (void*)auto_journaling, NULL)) {
+		log_error(logger, "Hilo auto_journaling: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+	pthread_detach(hiloJournaling);
 }
 
 // Devuelve el marco de una pagina que no haya sido modificada, o -1 en caso de no haber ninguna
@@ -77,11 +89,9 @@ t_pagina* getPagina(){
 	if(full) // Seamos eficientes, si la memoria esta FULL evitamos hacer nada
 		return NULL;
 
-	pthread_mutex_lock(&mutex_paginas); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer
 	int marco = getMarco();
 	if(marco >= 0)
 		*(paginas_usadas + marco) = getTimestamp(); // Actualizo el timestamp
-	pthread_mutex_unlock(&mutex_paginas);
 	if(marco == -1)
 		return NULL;
 
@@ -91,9 +101,58 @@ t_pagina* getPagina(){
 	pagina->modificado = false;
 	pagina->numero = marco;
 
-	log_debug(logger, "Utilizando el frame %d", marco);
+	log_debug(logger, "Asignando el frame %d", marco);
 
 	return pagina;
+}
+
+t_pagina* inicializar_nuevo_registro(char* nombreTabla, u_int16_t key, char* valor){
+	// Busco si el segmento correspondiente existe en la tabla de segmentos
+	t_segmento* segmento = buscar_segmento(nombreTabla);
+	if(!segmento){
+		// El segmento para esa tabla todavia no existe en la tabla de segmentos
+		log_debug(logger, "Todavia no existe un segmento para esa tabla");
+
+		// Agregamos el segmento para esa tabla
+		segmento = agregar_segmento(nombreTabla);
+	}
+	// El segmento para esa tabla ya existe en la tabla de segmentos
+
+
+	// Agrego el registro
+	t_pagina* pagina = agregar_registro(key, valor, segmento);
+
+	msleep(config.retardo_acc_mp);
+
+	return pagina;
+}
+
+t_registro leer_registro(t_pagina* pagina){
+	t_registro registro;
+	registro.key = *((uint16_t*)(pagina->marco + DESPL_KEY));
+	registro.valor = pagina->marco + DESPL_VALOR;
+	registro.timestamp = *((uint64_t*)(pagina->marco + DESPL_TIMESTAMP));
+
+	*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
+
+	msleep(config.retardo_acc_mp);
+
+	return registro;
+}
+
+void modificar_registro(t_pagina* pagina, char* valor){
+	t_marco marco = pagina->marco;
+	pagina->modificado = true; // TODO: Posible condicion de carrera, el algoritmo de reemplazo podria reemplazar esta pagina justo antes de que cambiemos este flag
+
+	uint64_t *timestamp = marco + DESPL_TIMESTAMP;
+	char *value = marco + DESPL_VALOR;
+
+	*timestamp = getTimestamp();
+	strcpy(value, valor);
+
+	*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
+
+	msleep(config.retardo_acc_mp);
 }
 
 t_segmento* buscar_segmento(char* nombre_tabla){
@@ -113,10 +172,30 @@ t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave){
 	}
 	t_pagina *pagina = list_find(tabla_paginas, (_Bool (*)(void*))buscador_pagina);
 
-	if(pagina)
-		*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
-
 	return pagina;
+}
+
+t_registro* buscar_registro(char* nombre_tabla, uint16_t key){
+	// Busco si el segmento correspondiente existe en la tabla de segmentos
+	t_segmento* segmento = buscar_segmento(nombre_tabla);
+	if(!segmento){
+		// El segmento para esa tabla todavia no existe en la tabla de segmentos
+		log_debug(logger, "Todavia no existe un segmento para esa tabla");
+		return NULL;
+	}
+	// El segmento para esa tabla ya existe en la tabla de segmentos
+
+	// Busco si el registro ya existe en la tabla de paginas
+	t_pagina *pagina = buscar_pagina(segmento, key);
+	if(!pagina){
+		// Todavia no existe una pagina para esa clave
+		log_debug(logger, "Todavia no existe una pagina para esa clave");
+		return NULL;
+	}
+	// Existe una pagina para esa clave
+	t_registro* registro = malloc(sizeof(t_registro));
+	*registro = leer_registro(pagina);
+	return registro;
 }
 
 t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento){
@@ -145,8 +224,7 @@ t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento){
 	t_list *tabla_paginas = segmento->paginas;
 	list_add(tabla_paginas, pagina);
 
-	if(pagina)
-		*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
+	*(paginas_usadas + pagina->numero) = getTimestamp(); // Actualizo el timestamp
 
 	return pagina;
 }
@@ -166,7 +244,8 @@ t_segmento* agregar_segmento(char* nombreTabla){
 }
 
 void vaciar_memoria(){
-	pthread_mutex_lock(&mutex_paginas); // Evitamos que alguien tome nuevas paginas mientras tanto
+	log_trace(logger, "Realizando Journaling.");
+	pthread_mutex_lock(&mutex_memoria_principal); // Evitamos que alguien tome nuevas paginas mientras tanto
 
 	void liberar_segmento(t_segmento* segmento){
 		free(segmento->nombre_tabla);
@@ -188,5 +267,6 @@ void vaciar_memoria(){
 	list_clean_and_destroy_elements(tabla_segmentos, (void(*)(void*))liberar_segmento);
 
 	full = false;
-	pthread_mutex_unlock(&mutex_paginas);
+	pthread_mutex_unlock(&mutex_memoria_principal);
+	log_trace(logger, "Journaling terminado.");
 }

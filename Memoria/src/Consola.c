@@ -31,6 +31,8 @@ char *apiMemoria(char* mensaje){
 							return strdup("ERROR: La tabla solicitada no existe.");
 						case ESTADO_SELECT_ERROR_KEY:
 							return strdup("ERROR: Esa tabla no contiene ningun registro con la clave solicitada.");
+						case ESTADO_SELECT_MEMORIA_FULL:
+							return strdup("ERROR: La memoria esta FULL y no puede procesar la solicitud.");
 						default:
 							return strdup("ERROR: Ocurrio un error desconocido.");
 					}
@@ -77,6 +79,8 @@ char *apiMemoria(char* mensaje){
 								return strdup("Valor insertado");
 							case ESTADO_INSERT_ERROR_TABLA:
 								return strdup("ERROR: Esa tabla no existe.");
+							case ESTADO_INSERT_MEMORIA_FULL:
+								return strdup("ERROR: La memoria esta FULL y no puede procesar la solicitud.");
 							default:
 								return strdup("ERROR: Ocurrio un error desconocido.");
 						}

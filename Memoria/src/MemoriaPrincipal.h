@@ -16,11 +16,11 @@ typedef void* t_marco;
 
 void* memoria_principal;
 
-/*typedef struct{
-	uint64_t* timestamp;
-	u_int16_t* key;
+typedef struct{
+	uint64_t timestamp;
+	u_int16_t key;
 	char* valor; // El valor tiene un tamanio maximo informado por LFS desde el comienzo.
-}t_registrop;*/
+}t_registro;
 
 /*
  * Un registro va a tener lo siguiente:
@@ -52,16 +52,25 @@ t_list* tabla_segmentos;
 
 void initMemoriaPrincipal();
 
+pthread_mutex_t mutex_memoria_principal;
+
 // Busca el segmento correspondiente a la tabla, sino encuentra ninguno, retorna NULL
 t_segmento* buscar_segmento(char* nombre_tabla);
 
 // Busca la pagina correspondiente a la key dada, sino encuentra ninguna, retorna NULL
 t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave);
 
+t_registro leer_registro(t_pagina* pagina);
+void modificar_registro(t_pagina* pagina, char* valor);
+
+t_pagina* inicializar_nuevo_registro(char* nombreTabla, u_int16_t key, char* valor);
 
 t_pagina* agregar_registro(uint16_t clave, char* valor, t_segmento* segmento);
 
 t_segmento* agregar_segmento(char* nombreTabla);
+
+t_registro* buscar_registro(char* nombre_tabla, uint16_t key);
+
 
 void vaciar_memoria();
 
