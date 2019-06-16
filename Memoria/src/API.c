@@ -6,51 +6,6 @@
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
 
-	/*// Busco si el segmento correspondiente existe en la tabla de segmentos
-	t_segmento* segmento = buscar_segmento(nombreTabla);
-	if(!segmento){
-		// El segmento para esa tabla todavia no existe en la tabla de segmentos
-		log_debug(logger, "Todavia no existe un segmento para esa tabla");
-
-		// Agregamos el segmento para esa tabla
-		segmento = agregar_segmento(nombreTabla);
-	}
-	// El segmento para esa tabla ya existe en la tabla de segmentos
-
-	// Busco si el registro ya existe en la tabla de paginas
-	t_pagina *pagina = buscar_pagina(segmento, key);
-	if(!pagina){
-		// Todavia no existe una pagina para esa clave
-		log_debug(logger, "Todavia no existe una pagina para esa clave");
-
-		// Hago el SELECT a FS
-		struct_select paquete;
-		paquete.key = key;
-		paquete.nombreTabla = nombreTabla;
-		struct_select_respuesta respuesta = selectAFS(paquete);
-
-		if(respuesta.estado != ESTADO_SELECT_OK){ // Si el resultado no fue el esperado, no guardo nada y devuelvo lo que recibi
-			return respuesta;
-		}
-
-		// Agrego el registro
-		pagina = agregar_registro(key, respuesta.valor, segmento);
-		free(respuesta.valor);
-
-		if(!pagina){
-			struct_select_respuesta respuesta;
-			respuesta.estado = ESTADO_SELECT_MEMORIA_FULL;
-			return respuesta;
-		}
-	}
-	// Existe una pagina para esa clave
-
-	t_registro registro = leer_registro(pagina);
-	struct_select_respuesta respuesta;
-	respuesta.estado = ESTADO_SELECT_OK;
-	respuesta.valor = registro.valor;
-	respuesta.timestamp = registro.timestamp;*/
-
 	struct_select_respuesta respuesta;
 	pthread_mutex_lock(&mutex_memoria_principal); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer, o que el valor sea modificado mientras se lee
 	t_registro* registro = buscar_registro(nombreTabla, key);
