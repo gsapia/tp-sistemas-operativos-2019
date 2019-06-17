@@ -2,7 +2,6 @@
 #include "MemoriaPrincipal.h"
 #include "IPC.h"
 
-// TODO: Cuando detectamos que no tenemos un segmento o una pagina en select, antes de crearlos/pedirlos, deberiamos constatar que FS realmente tiene el registro buscado
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
 
