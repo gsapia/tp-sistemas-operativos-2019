@@ -37,7 +37,7 @@ enum estados_insert insertAFS(struct_insert paquete){
 	// ----- Fin parte provisoria -----
 	enum estados_insert respuesta;
 	void operacion(int socket){
-		enviar_insert(socket, paquete);
+		enviar_insert_ts(socket, paquete);
 		respuesta = recibir_respuesta_insert(socket);
 	}
 
@@ -206,8 +206,7 @@ void kernel_handler(int *socket_cliente){
 	while(1){
 		// Recibo el codigo de op
 		uint8_t cod_op;
-		if(!recv(socket_kernel, &cod_op, sizeof(uint8_t), 0)){ // Problema, recv es no bloqueante, asi que estoy en espera activa hasta
-													  	 // que se desconecte el cliente o reciba algo. Deberiamos usar select()?
+		if(!recv(socket_kernel, &cod_op, sizeof(uint8_t), 0)){
 			log_trace(logger, "El cliente se desconecto");
 			break;
 		}
@@ -215,8 +214,8 @@ void kernel_handler(int *socket_cliente){
 		switch (cod_op) {
 			case SELECT:
 			{
-				log_trace(logger, "Recibi un SELECT");
 				struct_select paquete = recibir_select(socket_kernel);
+				log_trace(logger, "Recibi un SELECT %s %d", paquete.nombreTabla, paquete.key);
 
 				struct_select_respuesta registro = selects(paquete.nombreTabla, paquete.key);
 				enviar_registro(socket_kernel, registro);
@@ -227,8 +226,8 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case INSERT:
 			{
-				log_trace(logger, "Recibi un INSERT");
 				struct_insert paquete = recibir_insert(socket_kernel);
+				log_trace(logger, "Recibi un INSERT %s %d %s", paquete.nombreTabla, paquete.key, paquete.valor);
 
 				enum estados_insert estado = insert(paquete.nombreTabla, paquete.key, paquete.valor);
 				responder_insert(socket_kernel, estado);
@@ -240,8 +239,8 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case CREATE:
 			{
-				puts("Recibi un CREATE");
 				struct_create paquete = recibir_create(socket_kernel);
+				log_trace(logger, "Recibi un CREATE %s %s %d %lld", paquete.nombreTabla, consistenciaAString(paquete.consistencia), paquete.particiones, paquete.tiempoCompactacion);
 
 				enum estados_create estado = create(paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
 				responder_create(socket_kernel, estado);
@@ -252,8 +251,8 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case DESCRIBE:
 			{
-				log_trace(logger, "Recibi un DESCRIBE");
 				struct_describe paquete = recibir_describe(socket_kernel);
+				log_trace(logger, "Recibi un DESCRIBE %s", paquete.nombreTabla);
 
 				struct_describe_respuesta registro;
 				registro = describe(paquete.nombreTabla);
@@ -266,7 +265,7 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case DESCRIBE_GLOBAL:
 			{
-				log_trace(logger, "Recibi un DESCRIBE GLOBAL");
+				log_trace(logger, "Recibi un DESCRIBE");
 
 				struct_describe_global_respuesta respuesta;
 
@@ -279,9 +278,27 @@ void kernel_handler(int *socket_cliente){
 			}
 			break;
 			case DROP:
-				break;
+			{
+				struct_drop paquete = recibir_drop(socket_kernel);
+				log_trace(logger, "Recibi un DROP %s", paquete.nombreTabla);
+
+				enum estados_drop respuesta = drop(paquete.nombreTabla);
+
+				responder_drop(socket_kernel, respuesta);
+
+				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
+				free(paquete.nombreTabla);
+			}
+			break;
 			case JOURNAL:
-				break;
+			{
+				log_trace(logger, "Recibi un JOURNAL");
+
+				enum estados_journal respuesta = journal();
+
+				responder_journal(socket_kernel, respuesta);
+			}
+			break;
 			default:
 				log_trace(logger, "Recibi una operacion invalida...");
 		}
