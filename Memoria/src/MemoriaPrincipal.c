@@ -186,6 +186,7 @@ t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave){
 }
 
 void eliminar_segmento(char* nombre_tabla){
+	pthread_mutex_lock(&mutex_memoria_principal); // Mutex para evitar que el valor sea modificado mientras se borra
 	t_segmento* segmento = buscar_y_eliminar_segmento(nombre_tabla);
 
 	if(segmento){
@@ -198,6 +199,7 @@ void eliminar_segmento(char* nombre_tabla){
 
 		full = false;
 	}
+	pthread_mutex_unlock(&mutex_memoria_principal);
 }
 
 t_registro* buscar_registro(char* nombre_tabla, uint16_t key){
