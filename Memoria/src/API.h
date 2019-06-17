@@ -11,8 +11,8 @@ enum estados_insert insert(char* nombreTabla, u_int16_t key, char* valor);
 enum estados_create create(char* nombreTabla, enum consistencias tipoConsistencia, uint16_t cantidadParticiones, uint32_t compactionTime);
 struct_describe_respuesta describe(char* nombreTabla);
 struct_describe_global_respuesta describe_global();
-char* drop(char* nombreTabla);
-char* journal();
+enum estados_drop drop(char* nombreTabla);
+enum estados_journal journal();
 
 
 #endif /* API_H_ */

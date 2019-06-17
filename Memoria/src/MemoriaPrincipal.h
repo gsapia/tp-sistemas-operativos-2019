@@ -71,6 +71,7 @@ t_segmento* agregar_segmento(char* nombreTabla);
 
 t_registro* buscar_registro(char* nombre_tabla, uint16_t key);
 
+void eliminar_segmento(char* nombre_tabla);
 
 void vaciar_memoria();
 

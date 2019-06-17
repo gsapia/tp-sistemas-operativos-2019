@@ -10,7 +10,7 @@ int msleep(int milisegundos){
 	return usleep(milisegundos * 1000);
 }
 
-char* consistenciaAString(enum consistencias consistencia){ // @suppress("No return")
+char* consistenciaAString(enum consistencias consistencia){
 	switch(consistencia){
 		case SC:
 			return "SC";
@@ -19,4 +19,5 @@ char* consistenciaAString(enum consistencias consistencia){ // @suppress("No ret
 		case EC:
 			return "EC";
 	}
+	return NULL;
 }

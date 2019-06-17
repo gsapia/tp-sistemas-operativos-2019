@@ -1,5 +1,6 @@
 #include "MemoriaPrincipal.h"
 #include "Misc.h"
+#include "IPC.h"
 
 uint64_t* paginas_usadas; // Habria que modificar esto para usar LRU
 bool full = false;
@@ -164,6 +165,15 @@ t_segmento* buscar_segmento(char* nombre_tabla){
 	return segmento;
 }
 
+t_segmento* buscar_y_eliminar_segmento(char* nombre_tabla){
+	bool buscador_tabla(t_segmento *segmento){
+		return strcmp(segmento->nombre_tabla, nombre_tabla) == 0;
+	}
+	t_segmento* segmento = list_remove_by_condition(tabla_segmentos, (_Bool (*)(void*))buscador_tabla);
+
+	return segmento;
+}
+
 t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave){
 	t_list *tabla_paginas = segmento->paginas;
 	bool buscador_pagina(t_pagina *pagina){
@@ -173,6 +183,21 @@ t_pagina* buscar_pagina(t_segmento* segmento, uint16_t clave){
 	t_pagina *pagina = list_find(tabla_paginas, (_Bool (*)(void*))buscador_pagina);
 
 	return pagina;
+}
+
+void eliminar_segmento(char* nombre_tabla){
+	t_segmento* segmento = buscar_y_eliminar_segmento(nombre_tabla);
+
+	if(segmento){
+		void limpiador(t_pagina* pagina){
+			*(paginas_usadas + pagina->numero) = 0; // Indicamos que la pagina ahora esta libre
+			free(pagina);
+		}
+		list_iterate(segmento->paginas, (void(*)(void*))limpiador);
+		list_destroy(segmento->paginas);
+
+		full = false;
+	}
 }
 
 t_registro* buscar_registro(char* nombre_tabla, uint16_t key){
@@ -251,15 +276,27 @@ void vaciar_memoria(){
 		free(segmento->nombre_tabla);
 		free(segmento);
 	}
+	char* tabla_actual;
 	void iterador_paginas(t_pagina* pagina){
 		if(pagina->modificado){
-			// TODO: Persisto los cambios en FS
+			t_registro registro = leer_registro(pagina);
+			struct_insert paquete;
+			paquete.nombreTabla = tabla_actual;
+			paquete.key = registro.key;
+			paquete.valor = registro.valor;
+			paquete.timestamp = registro.timestamp;
+			enum estados_insert resultado_insert = insertAFS(paquete);
+			if(resultado_insert != ESTADO_INSERT_OK){
+				log_error(logger, "Error al realizar la operacion INSERT %s %d %s %lld sobre LFS", tabla_actual, registro.key, registro.valor, registro.timestamp);
+				return;
+			}
 		}
 
 		*(paginas_usadas + pagina->numero) = 0; // Indicamos que la pagina ahora esta libre
 	}
 	void iterador_segmentos(t_segmento* segmento){
 		t_list* tabla_paginas = segmento->paginas;
+		tabla_actual = segmento->nombre_tabla;
 		list_iterate(tabla_paginas, (void(*)(void*))iterador_paginas);
 		list_destroy_and_destroy_elements(tabla_paginas, free);
 	}

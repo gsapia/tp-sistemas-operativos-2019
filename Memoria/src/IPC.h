@@ -17,8 +17,10 @@ void closeCliente();
 void servidor();
 
 struct_select_respuesta selectAFS(struct_select paquete);
+enum estados_insert insertAFS(struct_insert paquete);
 enum estados_create createAFS(struct_create paquete);
 struct_describe_respuesta describeAFS(struct_describe paquete);
 struct_describe_global_respuesta describeGlobalAFS();
+enum estados_drop dropAFS(struct_drop paquete);
 
 #endif /* IPC_H_ */

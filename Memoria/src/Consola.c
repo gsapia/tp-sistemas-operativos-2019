@@ -205,10 +205,18 @@ char *apiMemoria(char* mensaje){
 			free(comando[0]);
 			if(cantArgumentos == 1){
 				char* nombreTabla = comando[1];
-				char* resultado = drop(nombreTabla);
+				enum estados_drop resultado = drop(nombreTabla);
 				free(nombreTabla);
 				free(comando);
-				return resultado;
+
+				switch (resultado) {
+					case ESTADO_DROP_OK:
+						return strdup("Tabla eliminada");
+					case ESTADO_DROP_ERROR_TABLA:
+						return strdup("ERROR: Esa tabla no existe");
+					default:
+						return strdup("ERROR: Ocurrio un error desconocido.");
+				}
 			}
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
@@ -223,7 +231,13 @@ char *apiMemoria(char* mensaje){
 			free(comando[0]);
 			if(cantArgumentos == 0){
 				free(comando);
-				return journal();
+				enum estados_journal resultado = journal();
+				switch (resultado) {
+					case ESTADO_JOURNAL_OK:
+						return strdup("JOURNAL OK");
+					default:
+						return strdup("ERROR: Ocurrio un error desconocido.");
+				}
 			}
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);

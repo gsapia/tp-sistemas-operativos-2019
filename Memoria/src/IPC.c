@@ -30,6 +30,21 @@ struct_select_respuesta selectAFS(struct_select paquete){
 	operacionAFS(operacion);
 	return respuesta;
 }
+
+enum estados_insert insertAFS(struct_insert paquete){
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+	return ESTADO_INSERT_OK;
+	// ----- Fin parte provisoria -----
+	enum estados_insert respuesta;
+	void operacion(int socket){
+		enviar_insert(socket, paquete);
+		respuesta = recibir_respuesta_insert(socket);
+	}
+
+	operacionAFS(operacion);
+	return respuesta;
+}
+
 enum estados_create createAFS(struct_create paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
 	//return ESTADO_CREATE_OK;
@@ -88,6 +103,20 @@ struct_describe_global_respuesta describeGlobalAFS(){
 	void operacion(int socket){
 		enviar_describe_global(socket);
 		respuesta = recibir_respuesta_describe_global(socket);
+	}
+
+	operacionAFS(operacion);
+	return respuesta;
+}
+
+enum estados_drop dropAFS(struct_drop paquete){
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+	return ESTADO_DROP_OK;
+	// ----- Fin parte provisoria -----
+	enum estados_drop respuesta;
+	void operacion(int socket){
+		enviar_drop(socket, paquete);
+		respuesta = recibir_respuesta_drop(socket);
 	}
 
 	operacionAFS(operacion);

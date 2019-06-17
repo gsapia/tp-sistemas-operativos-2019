@@ -101,11 +101,21 @@ struct_describe_global_respuesta describe_global(){
 
 	return resultado;
 }
-char* drop(char* nombreTabla){
+enum estados_drop drop(char* nombreTabla){
 	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
-	return string_from_format("Elegiste DROP");
+
+	// Primero lo elimino de la memoria
+	eliminar_segmento(nombreTabla);
+
+	// Ahora hago el DROP a FS
+	struct_drop paquete;
+	paquete.nombreTabla = nombreTabla;
+
+	enum estados_drop resultado = dropAFS(paquete);
+
+	return resultado;
 }
-char* journal(){
+enum estados_journal journal(){
 	vaciar_memoria();
-	return string_from_format("Elegiste JOURNAL");
+	return ESTADO_JOURNAL_OK;
 }
