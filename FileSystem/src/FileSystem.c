@@ -59,28 +59,40 @@ void crearMetaDataFS(){
 
 // Crea el archivo "Bitmap.bin" del archivo de FileSystem
 void crearBitMapFS(){
-	int sizeBits = 5192;		//Hay que obtener la cantidad de bloques del PuntoMontaje/Metadata/Metadata.bin
-	char* path = string_from_format("%sMetadata/Bitmap.bin", puntoMontaje);
-	FILE* f = fopen(path, "w");
-	iniciarArchivoConCeros(f, sizeBits);
-	crearBitmap(path);
-	free(path);
-}
+	char* path_Metadata = string_from_format("%sMetadata/Metadata.bin",puntoMontaje);
+	FILE* metadataFS = fopen(path_Metadata,"r");
+	char* buffer=NULL;
+	size_t buffer_size = 0;
+	char** linea;
+	if(getline(&buffer, &buffer_size, metadataFS) != -1){
+		linea = string_split(buffer, "="); 	// [BLOCK_SIZE, 64]
+		blockSize = atoi(linea[1]);			// Tamaño de cada bloque
+		free(linea[0]);free(linea[1]);free(linea);
+		free(buffer);
+		buffer = NULL;
 
-void iniciarArchivoConCeros(FILE* f, int sizeBits){
-	for(int i=0;i<sizeBits;i++){
-		fputc('0',f);
+		if(getline(&buffer, &buffer_size, metadataFS) != -1){
+			linea = string_split(buffer, "="); 	//  [BLOCKS, 5192]
+			blocks = atoi(linea[1]);			//Cantidad de Bloques de Metadata
+			free(linea[0]);free(linea[1]);free(linea);
+			free(buffer);
+			buffer = NULL;
+		}
 	}
-	fclose(f);
+
+	char* path = string_from_format("%sMetadata/Bitmap.bin", puntoMontaje);
+	FILE* bitmapFile = fopen(path, "wb");
+	truncate(path, blocks/8);
+	crearBitmap(path);
+	fclose(bitmapFile);
+	free(path);
 }
 
 void crearBitmap(char* path){
 	int fd = open(path, O_RDWR, S_IRUSR | S_IWUSR);
-	struct stat sb;		//Struct con datos del archivo del archivo
-
-	if(fstat(fd,&sb) == -1){ perror("No se pudo obtener el tamaño del archivo\n");}
-
-	bitmap = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //Puntero a un bloque de memoria con el contenido del archivo Bitmap.bin
+	size_t sizeBitmap = blocks/8;
+	bitmap = mmap(NULL, sizeBitmap, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //Puntero a un bloque de memoria con el contenido del archivo Bitmap.bin
+	bitarray = bitarray_create_with_mode(bitmap, sizeBitmap, LSB_FIRST);
 
 //	munmap(bitmap, sb.st_size);
 	close(fd);
@@ -270,7 +282,7 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
 		f = fopen(path_aux, "w");
-		fputs("SIZE=0", f);
+		fputs("SIZE=0  ", f);
 		fputs("\n",f);
 		fputs("BLOCKS=[]",f);
 		fclose(f);

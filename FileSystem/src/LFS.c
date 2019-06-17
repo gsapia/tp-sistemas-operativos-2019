@@ -180,11 +180,14 @@ char *apiLissandra(char* mensaje){
 			free(comando[0]);
 			if(cantArgumentos == 1){ //	DESCRIBE TABLA
 				char* nombreTabla = comando[1];
-				struct_describe_respuesta resultado = describe(nombreTabla);
+				struct_describe_respuesta resultado = describe(nombreTabla);;
 				free(nombreTabla);
 				free(comando);
 				switch (resultado.estado){
 					case ESTADO_DESCRIBE_OK:
+						log_trace(logger,"La consistencia es: %d", resultado.consistencia);
+						log_trace(logger,"Las particiones son: %d", resultado.particiones);
+						log_trace(logger,"El tiempo de compactacion es: %d", resultado.tiempo_compactacion);
 						return strdup("Se hizo el DESCRIBE");
 					case ESTADO_DESCRIBE_ERROR_TABLA:
 						return strdup("ERROR: La tabla solicitada no existe.");
@@ -192,7 +195,9 @@ char *apiLissandra(char* mensaje){
 						return strdup("ERROR: Ocurrio un error desconocido.");
 				}
 			} else if(cantArgumentos == 0){ //DESCRIBE
-				struct_describe_respuesta resultado = describe(NULL);
+
+				struct_describe_global_respuesta resultado = describe_global();
+
 				switch (resultado.estado){
 					case ESTADO_DESCRIBE_OK:
 						return strdup("Se hizo el DESCRIBE");
@@ -316,7 +321,7 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 
 struct_describe_respuesta describe(char* nombreTabla){
 	struct_describe_respuesta describe_respuesta;
-	if(nombreTabla){
+	if(existeTabla(nombreTabla)){
 		FILE* metadata = obtenerMetaDataLectura(nombreTabla);
 		char** valores = malloc(4);
 		int i = 0;
@@ -341,13 +346,49 @@ struct_describe_respuesta describe(char* nombreTabla){
 		free(buffer);
 		fclose(metadata);
 		log_debug(logger, "DESCRIBE: Recibi Tabla: %s", nombreTabla);
-	}else{
-		log_info(logger, "NO me pasaron una tabla con DESCRIBE");
-	}
+		return describe_respuesta;
 
-	return describe_respuesta;
+	}else{
+		describe_respuesta.estado = ESTADO_DESCRIBE_ERROR_TABLA;
+		log_trace(logger, "No existe la tabla");
+		return describe_respuesta;
+	}
 }
 
+struct_describe_global_respuesta describe_global(){
+	struct_describe_global_respuesta respuesta;
+	respuesta.estado = ESTADO_DESCRIBE_OK;
+	respuesta.describes = dictionary_create();
+	struct_describe_respuesta* tabla;
+	struct_describe_respuesta aux;
+	char* path = string_from_format("%sTable/", puntoMontaje);
+	DIR* path_buscado = opendir(path);
+	free(path);
+	struct dirent* carpeta = readdir(path_buscado);
+
+	if(carpeta){
+		while(carpeta){
+			if(strcmp(carpeta->d_name, ".") && strcmp(carpeta->d_name, "..")){
+				log_trace(logger, "Entro a %s", carpeta->d_name);
+				aux = describe(carpeta->d_name);
+				tabla = convertirAPuntero(aux);
+				dictionary_put(respuesta.describes, carpeta->d_name, tabla);
+			}
+			carpeta = readdir(path_buscado);
+		}
+	}else{
+		respuesta.estado = ESTADO_DESCRIBE_ERROR_TABLA;
+	}
+	closedir(path_buscado);
+	return respuesta;
+}
+/*	struct_describe_respuesta* tabla1 = malloc(sizeof(struct_describe_respuesta));
+	tabla1->estado = ESTADO_DESCRIBE_OK;
+	tabla1->consistencia = SC;
+	tabla1->particiones = 5;
+	tabla1->tiempo_compactacion = 60000;
+	dictionary_put(respuesta.describes, "TABLA1", tabla1);
+*/
 char* drop(char* nombreTabla){
 	t_registro *imprimir;
 	for(int i=0;i<cont;i++){
@@ -444,6 +485,12 @@ t_registro* convertirARegistroPuntero(t_registro r){
 	t_registro* registro = malloc(sizeof(t_registro));
 	*registro = r;
 	return registro;
+}
+
+struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe){
+	struct_describe_respuesta* rta = malloc(sizeof(struct_describe_respuesta));
+	*rta = describe;
+	return rta;
 }
 
 //Convierte a un t_registro* a un struct_select_respuesta

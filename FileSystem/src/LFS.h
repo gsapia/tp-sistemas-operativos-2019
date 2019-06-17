@@ -60,6 +60,9 @@ int cont; 			// Contador de cantidad de registros en Memtable
 int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
 int tamValue;
 char* bitmap;
+int blockSize;
+int blocks;
+t_bitarray* bitarray;
 
 //############ FUNCIONES ##############
 void* consola();
@@ -69,6 +72,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 struct_describe_respuesta describe(char* nombreTabla);
+struct_describe_global_respuesta describe_global();
 char* drop(char* nombreTabla);
 bool existeTabla(char* nombreTabla);
 FILE* obtenerMetaDataLectura(char* nombreTabla);
@@ -116,6 +120,14 @@ int obtenerUltimoBloqueBin(char* path, int particion);
 int* obtenerBloques(char* bloques);
 int ultimoBloques(char* bloques);
 void crearBitmap(char* path);
-void iniciarArchivoConCeros(FILE* f, int sizeBits);
-
+void iniciarArchivoConCeros(FILE* f);
+int agregarNuevoBloqueBin();
+void insertarLinea(int bloqueNumero, char* linea);
+void actualizarTableBin(char* nombreTabla, int length, int particion, int bloqueBin, int size);
+int entraEnUltimoBloque(int size, char* line);
+int sizeArchivo(FILE* archivo);
+int existeKeyEnBloques(long key_buffer, int ultimoBloque);
+int obtenerSizeBin(char* path, int particion);
+ulong stringToLong(char* strToInt);
+struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe);
 #endif /* LFS_H_ */

@@ -2,7 +2,6 @@
 #include "serializacion.c"
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
-struct_describe_respuesta describe(char* nombreTabla);
 
 void* servidor(argumentos_servidor* args){
 	uint16_t puerto_escucha = args->puerto_escucha;
@@ -116,7 +115,7 @@ void* servidor(argumentos_servidor* args){
 			}
 			break;
 			case DESCRIBE:
-				{
+			{
 				log_trace(logger, "Recibi un DESCRIBE");
 				struct_describe paquete = recibir_describe(cliente);
 
@@ -129,8 +128,23 @@ void* servidor(argumentos_servidor* args){
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
-				}
+			}
 				break;
+			case DESCRIBE_GLOBAL:
+			{
+				log_trace(logger, "Recibi un DESCRIBE GLOBAL");
+
+				struct_describe_global_respuesta respuesta;
+				respuesta.estado = ESTADO_DESCRIBE_OK;
+				respuesta.describes = dictionary_create();
+
+				respuesta = describe_global();
+
+				enviar_respuesta_describe_global(cliente, respuesta);
+				dictionary_destroy_and_destroy_elements(respuesta.describes, free);
+
+			}
+			break;
 			case DROP:
 			{
 				puts("Recibi un DROP");
