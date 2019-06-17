@@ -100,6 +100,17 @@ typedef struct{
 	t_dictionary* describes; // Lista de struct_describe_respuesta para cada nombre de tabla
 }struct_describe_global_respuesta;
 
+enum estados_drop{
+	ESTADO_DROP_OK,
+	ESTADO_DROP_ERROR_TABLA, // No existe la tabla
+	ESTADO_DROP_ERROR_OTRO
+};
+
+enum estados_journal{
+	ESTADO_JOURNAL_OK,
+	ESTADO_JOURNAL_ERROR_OTRO
+};
+
 
 struct_select recibir_select(int socket);
 
@@ -163,5 +174,13 @@ struct_describe_respuesta recibir_respuesta_describe(int socket);
 void enviar_respuesta_describe_global(int socket, struct_describe_global_respuesta respuesta);
 
 struct_describe_global_respuesta recibir_respuesta_describe_global(int socket);
+
+void responder_drop(int socket, enum estados_drop estado);
+
+enum estados_drop recibir_respuesta_drop(int socket);
+
+void responder_journal(int socket, enum estados_journal estado);
+
+enum estados_journal recibir_respuesta_journal(int socket);
 
 #endif /* SERIALIZACION_H_ */

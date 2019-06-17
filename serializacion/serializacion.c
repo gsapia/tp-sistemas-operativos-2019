@@ -677,3 +677,19 @@ struct_describe_global_respuesta recibir_respuesta_describe_global(int socket){
 enum estados_insert recibir_respuesta_insert(int socket){
 	return recibir_estado(socket);
 }
+
+void responder_drop(int socket, enum estados_drop estado){
+	enviar_estado(socket, estado); // Simplemente mando el estado
+}
+
+enum estados_drop recibir_respuesta_drop(int socket){
+	return recibir_estado(socket);
+}
+
+void responder_journal(int socket, enum estados_journal estado){
+	enviar_estado(socket, estado); // Simplemente mando el estado
+}
+
+enum estados_journal recibir_respuesta_journal(int socket){
+	return recibir_estado(socket);
+}

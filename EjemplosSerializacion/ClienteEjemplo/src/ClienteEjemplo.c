@@ -170,9 +170,32 @@ int main(void) {
 	enviar_drop(cliente, paquete5);
 	// En este caso uso todos string literals, asi que no uso memoria dinamica. Pero si lo hiciese, hay que liberarla
 
+	// Ahora me quedo esperando la respuesta
+	enum estados_drop estado_drop = recibir_respuesta_drop(cliente);
+	switch (estado_drop) {
+		case ESTADO_DROP_OK:
+			puts("DROP OK");
+			break;
+		case ESTADO_DROP_ERROR_TABLA:
+			puts("ERROR: La tabla no existe");
+			break;
+			// Paja hacer los demas case
+	}
+
 	// Por ultimo envio un JOURNAL
 	puts("Enviando JOURNAL");
 	enviar_journal(cliente);
+
+	// Ahora me quedo esperando la respuesta
+	enum estados_journal estado_journal = recibir_respuesta_journal(cliente);
+	switch (estado_journal) {
+	case ESTADO_JOURNAL_OK:
+		puts("JOURNAL OK");
+		break;
+	default:
+		puts("ERROR: Ocurrio un error desconocido");
+		break;
+	}
 
 	// Enviamos un DESCRIBE GLOBAL
 	puts("Enviando DESCRIBE GLOBAL");

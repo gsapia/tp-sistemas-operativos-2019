@@ -195,6 +195,8 @@ int main(void) {
 				 */
 				printf("Comando recibido: DROP %s\n\n", paquete.nombreTabla);
 
+				responder_drop(cliente, ESTADO_DROP_OK);
+
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
 			}
@@ -206,6 +208,8 @@ int main(void) {
 				 * Depues haria lo que tenga que hacer
 				 */
 				printf("Comando recibido: JOURNAL\n\n");
+
+				responder_journal(cliente, ESTADO_JOURNAL_OK);
 			}
 			break;
 			default:
