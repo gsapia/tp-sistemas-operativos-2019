@@ -44,6 +44,56 @@ enum estados_create createAFS(struct_create paquete){
 	return respuesta;
 }
 
+struct_describe_respuesta describeAFS(struct_describe paquete){
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+//	struct_describe_respuesta respuesta;
+//	respuesta.estado = ESTADO_DESCRIBE_OK;
+//	respuesta.consistencia = SC;
+//	respuesta.particiones = 5;
+//	respuesta.tiempo_compactacion = 60000;
+	// return respuesta;
+	// ----- Fin parte provisoria -----
+
+	struct_describe_respuesta respuesta;
+	void operacion(int socket){
+		enviar_describe(socket, paquete);
+		respuesta = recibir_respuesta_describe(socket);
+	}
+
+	operacionAFS(operacion);
+	return respuesta;
+}
+struct_describe_global_respuesta describeGlobalAFS(){
+	// ----- Provisoriamente uso una respuesta por defecto: -----
+//	struct_describe_global_respuesta respuesta;
+//	respuesta.estado = ESTADO_DESCRIBE_OK;
+//
+//	struct_describe_respuesta* describe1 = malloc(sizeof(struct_describe_respuesta));
+//	describe1->consistencia = SC;
+//	describe1->particiones = 5;
+//	describe1->tiempo_compactacion = 60000;
+//
+//	struct_describe_respuesta* describe2 = malloc(sizeof(struct_describe_respuesta));
+//	describe2->consistencia = EC;
+//	describe2->particiones = 7;
+//	describe2->tiempo_compactacion = 60000;
+//
+//	respuesta.describes = dictionary_create();
+//	dictionary_put(respuesta.describes, strdup("TABLA1"), describe1);
+//	dictionary_put(respuesta.describes, strdup("TABLA2"), describe2);
+//	return respuesta;
+	// ----- Fin parte provisoria -----
+
+	struct_describe_global_respuesta respuesta;
+	void operacion(int socket){
+		enviar_describe_global(socket);
+		respuesta = recibir_respuesta_describe_global(socket);
+	}
+
+	operacionAFS(operacion);
+	return respuesta;
+}
+
 void initCliente(){
 	log_trace(logger, "Iniciando cliente");
 
@@ -176,13 +226,27 @@ void kernel_handler(int *socket_cliente){
 				log_trace(logger, "Recibi un DESCRIBE");
 				struct_describe paquete = recibir_describe(socket_kernel);
 
-				/*
-				 * Depues haria lo que tenga que hacer con esta struct ya cargada
-				 */
-				printf("Comando recibido: DESCRIBE %s\n\n", paquete.nombreTabla);
+				struct_describe_respuesta registro;
+				registro = describe(paquete.nombreTabla);
+
+				enviar_respuesta_describe(socket_kernel, registro);
 
 				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
 				free(paquete.nombreTabla);
+			}
+			break;
+			case DESCRIBE_GLOBAL:
+			{
+				log_trace(logger, "Recibi un DESCRIBE GLOBAL");
+
+				struct_describe_global_respuesta respuesta;
+
+				respuesta = describe_global();
+
+				enviar_respuesta_describe_global(socket_kernel, respuesta);
+
+				// Por ultimo, y sabiendo que no voy a usar mas el paquete, libero la memoria dinamica (MUCHO MUY IMPORTANTE)
+				dictionary_destroy_and_destroy_elements(respuesta.describes, free);
 			}
 			break;
 			case DROP:

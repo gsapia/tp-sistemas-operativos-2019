@@ -9,3 +9,14 @@ uint64_t getTimestamp() {
 int msleep(int milisegundos){
 	return usleep(milisegundos * 1000);
 }
+
+char* consistenciaAString(enum consistencias consistencia){ // @suppress("No return")
+	switch(consistencia){
+		case SC:
+			return "SC";
+		case SHC:
+			return "SHC";
+		case EC:
+			return "EC";
+	}
+}

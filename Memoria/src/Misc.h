@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include "serializacion.h"
 
 /**
  * @NAME: getTimestamp
@@ -18,5 +19,11 @@ uint64_t getTimestamp();
  * @DESC: Duerme n milisegundos
  */
 int msleep(int milisegundos);
+
+/**
+ * @NAME: consistenciaAString
+ * @DESC: Recibe una consistencia y devuelve un string para representarla
+ */
+char* consistenciaAString(enum consistencias consistencia);
 
 #endif /* MISC_H_ */

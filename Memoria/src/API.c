@@ -82,9 +82,24 @@ enum estados_create create(char* nombreTabla, enum consistencias tipoConsistenci
 
 	return resultado;
 }
-char* describe(char* nombreTabla){
+struct_describe_respuesta describe(char* nombreTabla){
 	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
-	return string_from_format("Elegiste DESCRIBE");
+
+	// Hago el DESCRIBE a FS
+	struct_describe paquete;
+	paquete.nombreTabla = nombreTabla;
+
+	struct_describe_respuesta resultado = describeAFS(paquete);
+
+	return resultado;
+}
+struct_describe_global_respuesta describe_global(){
+	log_debug(logger, "DESCRIBE");
+
+	// Hago el DESCRIBE a FS
+	struct_describe_global_respuesta resultado = describeGlobalAFS();
+
+	return resultado;
 }
 char* drop(char* nombreTabla){
 	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);

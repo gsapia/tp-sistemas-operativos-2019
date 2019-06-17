@@ -11,37 +11,6 @@
 #include "Memoria.h"
 #include "serializacion.h"
 
-/*
-enum operaciones{
-	SELECT = 1,
-	INSERT,
-	CREATE,
-	DESCRIBE,
-	DROP,
-	JOURNAL
-};
-
-
-typedef struct{
-	uint16_t tamanio_nombre;
-	char* nombreTabla;
-	uint16_t key;
-}struct_select;
-
-typedef struct{
-	uint16_t tamanio_nombre;
-	char* nombreTabla;
-	uint16_t key;
-	uint16_t tamanio_valor;
-	char* valor;
-}struct_insert;
-
-// Capaz es mejor no tener los tamanios en las structs y calcularos solo al enviar?
-// No se, aca pruebo esta opcion, entonces la logica de las funciones de describe es un tanto distinta a las otras.
-typedef struct{
-	char* nombreTabla;
-}struct_describe;
-*/
 
 void initCliente();
 void closeCliente();
@@ -49,5 +18,7 @@ void servidor();
 
 struct_select_respuesta selectAFS(struct_select paquete);
 enum estados_create createAFS(struct_create paquete);
+struct_describe_respuesta describeAFS(struct_describe paquete);
+struct_describe_global_respuesta describeGlobalAFS();
 
 #endif /* IPC_H_ */

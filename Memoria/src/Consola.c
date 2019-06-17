@@ -156,12 +156,40 @@ char *apiMemoria(char* mensaje){
 			//DESCRIBE TABLA1
 
 			free(comando[0]);
-			if(cantArgumentos == 1){
+			if(cantArgumentos == 1){ // Viene con nombre de tabla
 				char* nombreTabla = comando[1];
-				char* resultado = describe(nombreTabla);
+				struct_describe_respuesta resultado = describe(nombreTabla);
 				free(nombreTabla);
 				free(comando);
-				return resultado;
+				switch (resultado.estado) {
+					case ESTADO_DESCRIBE_OK:
+						return string_from_format("Consistencia: %s, Particiones: %d, Tiempo de Compactacion: %ld", consistenciaAString(resultado.consistencia), resultado.particiones, resultado.tiempo_compactacion);
+					case ESTADO_DESCRIBE_ERROR_TABLA:
+						return strdup("ERROR: Esa tabla no existe.");
+					default:
+						return strdup("ERROR: Ocurrio un error desconocido.");
+				}
+			}
+			if(cantArgumentos == 0){ // Estamos ante un DESCRIBE global
+				free(comando);
+				struct_describe_global_respuesta resultado = describe_global();
+
+				switch (resultado.estado) {
+					case ESTADO_DESCRIBE_OK:
+						{
+							char* respuesta = string_new();
+							void iterador_describes(char* nombre_tabla, struct_describe_respuesta* describe){
+								string_append_with_format(&respuesta, "Tabla: %s Consistencia: %s, Particiones: %d, Tiempo de Compactacion: %ld\n", nombre_tabla, consistenciaAString(describe->consistencia), describe->particiones, describe->tiempo_compactacion);
+							}
+							dictionary_iterator(resultado.describes, (void(*)(char*,void*))iterador_describes);
+							dictionary_destroy_and_destroy_elements(resultado.describes, free);
+
+							return respuesta;
+						}
+						break;
+					default:
+						return strdup("ERROR: Ocurrio un error desconocido.");
+				}
 			}
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
@@ -228,6 +256,7 @@ void consola() {
 
 		resultado = apiMemoria(linea);
 		free(linea);
+		string_trim(&resultado);
 		puts(resultado);
 		free(resultado);
 	}
