@@ -35,7 +35,23 @@ void initMemoriaPrincipal(){
 		exit(EXIT_FAILURE);
 	}
 	pthread_detach(hiloJournaling);
+
+	// Inicializo el sistema de gossiping
+	tabla_gossiping = list_create();
+	t_memoria * yo = malloc(sizeof(t_memoria));
+	yo->numero = config.numero_memoria;
+	yo->IP = "127.0.0.1"; // TODO: Arreglar esto
+	yo->puerto = config.puerto_escucha;
+	list_add(tabla_gossiping, yo);
+
+	pthread_t hiloGossiping;
+	if (pthread_create(&hiloGossiping, NULL, (void*)gossiping, NULL)) {
+		log_error(logger, "Hilo gossiping: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+	pthread_detach(hiloGossiping);
 }
+
 
 // Devuelve el marco de una pagina que no haya sido modificada, o -1 en caso de no haber ninguna
 int algoritmo_reemplazo(){

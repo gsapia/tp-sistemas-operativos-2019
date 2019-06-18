@@ -15,6 +15,7 @@
 void initCliente();
 void closeCliente();
 void servidor();
+void gossiping();
 
 struct_select_respuesta selectAFS(struct_select paquete);
 enum estados_insert insertAFS(struct_insert paquete);

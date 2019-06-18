@@ -1,6 +1,7 @@
 #include "IPC.h"
 #include "MemoriaPrincipal.h"
 #include "API.h"
+#include "Memoria.h"
 #include "Misc.h"
 
 int socket_cliente;
@@ -136,7 +137,7 @@ void initCliente(){
 	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
 		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
-		sleep(95); // TODO CAMBIAR POR 5
+		sleep(5);
 	}
 
 	//----------------COMIENZO HANDSHAKE----------------
@@ -161,44 +162,247 @@ void initCliente(){
 	//-------------------FIN HANDSHAKE------------------
 
 	log_trace(logger, "Me conecte con FS!");
-
-	/*
-	 * TODO:
-	 * Enviar datos
-	 */
 }
 
 void closeCliente(){
 	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 
-int conectar(int socket_servidor){
-	struct sockaddr_in direccionCliente;
-	unsigned int tamanoDireccion = sizeof(direccionCliente);
-	int socket_kernel = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
-	//printf("Recibi una conexion en %d\n", socket_kernel);
+bool kernel_conectado = false;
 
+
+
+void agregar_memoria(t_memoria* memoria){
+	bool buscador_memoria(t_memoria* otra_memoria){
+		return !strcmp(memoria->IP, otra_memoria->IP) && memoria->puerto == otra_memoria->puerto;
+	}
+	// Solo la agregamos si no existe todavia
+	if(!list_find(tabla_gossiping, (_Bool (*)(void*))buscador_memoria)){
+		log_debug(logger, "Conocida memoria: %d ", memoria->numero);
+		t_memoria* duplicado = malloc(sizeof(t_memoria));
+		memcpy(duplicado, memoria, sizeof(t_memoria));
+		list_add(tabla_gossiping, duplicado);
+	}
+}
+
+void eliminar_memoria(t_memoria memoria){
+	bool buscador_memoria(t_memoria* otra_memoria){
+		return !strcmp(memoria.IP, otra_memoria->IP) && memoria.puerto == otra_memoria->puerto;
+	}
+	list_remove_and_destroy_by_condition(tabla_gossiping, (_Bool (*)(void*))buscador_memoria, free);
+}
+
+void agregar_memorias(t_list* memorias){
+	list_iterate(memorias, (void (*)(void*))agregar_memoria);
+}
+
+void enviar_tabla_gossiping(int socket, t_list* tabla){
+	uint16_t cantidad_memorias = list_size(tabla);
+
+	size_t tamanio_IP = strlen("000.000.000.000") + 1;
+	size_t tamanio_memoria = sizeof(uint16_t) + tamanio_IP + sizeof(uint32_t);
+	size_t tamanio_paquete = sizeof(cantidad_memorias) + (tamanio_memoria * cantidad_memorias); // Calculo el tamanio del paquete
+	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
+
+	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
+
+	// Primero la cantidad
+	memcpy(buffer, &cantidad_memorias, sizeof(cantidad_memorias));
+	desplazamiento += sizeof(cantidad_memorias);
+
+	void enviar_memoria(t_memoria* memoria){
+		// Primero numero de Memoria
+		memcpy(buffer + desplazamiento, &memoria->numero, sizeof(memoria->numero));
+		desplazamiento += sizeof(memoria->numero);
+
+		// Ahora la IP
+		char* IP = calloc(1, tamanio_IP); // Asi siempre enviamos strings de tamanio fijo
+		strcpy(IP, memoria->IP);
+		memcpy(buffer + desplazamiento, IP, tamanio_IP);
+		desplazamiento += tamanio_IP;
+
+		// Por ultimo el puerto
+		memcpy(buffer + desplazamiento, &memoria->puerto, sizeof(memoria->puerto));
+		desplazamiento += sizeof(memoria->puerto);
+	}
+	list_iterate(tabla, (void(*)(void*)) enviar_memoria);
+
+	send(socket, buffer, tamanio_paquete, 0);
+}
+
+t_list* recibir_tabla_gossiping(int socket){
+	// Primero recibimos la cantidad
+	uint16_t cantidad_memorias;
+	recv(socket, &cantidad_memorias, sizeof(cantidad_memorias), 0);
+
+	size_t tamanio_IP = strlen("000.000.000.000") + 1; // Vamos siempre a enviar IPs de tamanio fijo
+
+	t_list* tabla = list_create();
+	for (int i = 0; i < cantidad_memorias; ++i) {
+		t_memoria* memoria = malloc(sizeof(t_memoria));
+
+		// Primero recibimos el numero de memoria
+		recv(socket, &(memoria->numero), sizeof(memoria->numero), 0);
+
+		// Ahora la IP
+		memoria->IP = calloc(1,tamanio_IP);
+		recv(socket, memoria->IP, tamanio_IP, 0);
+
+		// Por ultimo el puerto
+		recv(socket, &(memoria->puerto), sizeof(memoria->puerto), 0);
+
+		list_add(tabla, memoria);
+	}
+
+	return tabla;
+}
+
+t_list* intercambiar_tabla_gossiping(t_memoria memoria){
+	log_trace(logger, "GOSSIPING: Intercambiando tablas con la memoria en %s:%d ...", memoria.IP, memoria.puerto);
+
+	// Intentamos conectarnos con la memoria
+	struct sockaddr_in direccionServidor;
+	direccionServidor.sin_family= AF_INET;
+	direccionServidor.sin_addr.s_addr = inet_addr(memoria.IP); // Direccion IP
+	direccionServidor.sin_port = htons(memoria.puerto); // PUERTO
+
+	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
+	if(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
+		log_trace(logger, "GOSSIPING: No nos pudimos conectar con la memoria en %s:%d", memoria.IP, memoria.puerto);
+		return NULL;
+	}
 
 	//----------------COMIENZO HANDSHAKE----------------
+	//TODO: Revisar si viene Kernel a pedir la tabla
+	// Envio primer mensaje diciendo que soy Memoria
+	const uint8_t soy = ID_MEMORIA;
+	send(socket_cliente, &soy, sizeof(soy), 0);
 
+	// Recibo confirmacion de que el otro extremo es Memoria
+	uint8_t *otro = malloc(sizeof(uint8_t));
+	if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo que el otro extremo es Memoria
+		// El otro extremo no es Memoria, asi que cierro la conexion / termino el programa
+		log_trace(logger, "GOSSIPING: No nos pudimos conectar con la memoria en %s:%d", memoria.IP, memoria.puerto);
+		return NULL;
+	}
+	free(otro);
+	// El otro extremo es Memoria realmente asi que ahora enviamos/recibimos los datos necesarios
+
+	//-------------------FIN HANDSHAKE------------------
+
+	// Primero enviamos nuestra tabla
+	enviar_tabla_gossiping(socket_cliente, tabla_gossiping);
+
+	// Si el otro extremo es una memoria, entonces tambien recibimos
+	t_list* tabla = recibir_tabla_gossiping(socket_cliente);
+
+	return tabla;
+}
+
+void hacer_gossiping(t_memoria memoria){
+	t_list* tabla = intercambiar_tabla_gossiping(memoria);
+
+	// Si pudimos obtener su tabla de gossiping, agregamos las memorias que tenia. Sino, esa memoria no esta conectada y debemos eliminarla de nuestra tabla
+	if(tabla){
+		agregar_memorias(tabla);
+		list_destroy_and_destroy_elements(tabla, free);
+	}
+	else{
+		eliminar_memoria(memoria);
+	}
+}
+
+void gossiping(){
+	while(1){
+		log_trace(logger, "Iniciando ronda de Gossiping");
+
+		for(int i = 0; config.ip_seeds[i]; i++){
+			t_memoria memoria;
+			memoria.IP = config.ip_seeds[i];
+			memoria.puerto = config.puertos_seeds[i];
+
+			hacer_gossiping(memoria);
+		}
+
+		char* memorias_conocidas = string_new();
+		void iterador(t_memoria* memoria){
+			string_append_with_format(&memorias_conocidas, "%d ", memoria->numero);
+		}
+		list_iterate(tabla_gossiping, (void (*)(void*)) iterador);
+		string_trim(&memorias_conocidas);
+
+		log_trace(logger, "Ronda de Gossiping finalizada. Memorias conocidas: %s", memorias_conocidas);
+		msleep(config.tiempo_gossiping);
+	}
+}
+
+void memoria_handler(int *socket_cliente){
+	int socket_memoria = *socket_cliente;
+	free(socket_cliente);
+
+	// Enviamos y recibimos las tablas
+	enviar_tabla_gossiping(socket_memoria, tabla_gossiping);
+	t_list* tabla = recibir_tabla_gossiping(socket_memoria);
+	agregar_memorias(tabla);
+	list_destroy_and_destroy_elements(tabla, free);
+}
+
+enum id_proceso handshake(int socket_conexion){
 	// Recibo quien es el otro extremo
 	uint8_t *otro = malloc(sizeof(uint8_t));
 
-	if(!(recv(socket_kernel, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
-		// El otro extremo no es Kernel, cierro la conexion / termino el programa
-		log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
-		close(socket_kernel);
+	if(!recv(socket_conexion, otro, sizeof(uint8_t), 0)){
+		// No recibimos nada, algo malo paso
+		log_error(logger, "ERROR en servidor");
+		close(socket_conexion);
 		return 0;
 	}
-	// El otro extremo es Kernel realmente
-	free(otro);
-	// Envio confirmacion de que soy Memoria
-	const uint8_t soy = ID_MEMORIA;
-	send(socket_kernel, &soy, sizeof(soy), 0);
-	//log_trace(logger, "Me conecte con Kernel!");
 
-	return socket_kernel;
+	const uint8_t soy = ID_MEMORIA;
+	send(socket_conexion, &soy, sizeof(soy), 0);
+
+	enum id_proceso id = *otro;
+	free(otro);
+	return id;
 }
+
+/*int conectar(int socket_servidor){
+	struct sockaddr_in direccionCliente;
+	unsigned int tamanoDireccion = sizeof(direccionCliente);
+	while(1){
+		int socket_conexion = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
+		//printf("Recibi una conexion en %d\n", socket_kernel);
+
+
+		//----------------COMIENZO HANDSHAKE----------------
+
+		// Recibo quien es el otro extremo
+		uint8_t *otro = malloc(sizeof(uint8_t));
+
+		if(!recv(socket_conexion, otro, sizeof(uint8_t), 0)){
+			// No recibimos nada, algo malo paso
+			log_error(logger, "ERROR en servidor");
+			close(socket_conexion);
+			return 0;
+		}
+
+
+		if(!(recv(socket_conexion, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
+			// El otro extremo no es Kernel, cierro la conexion / termino el programa
+			log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
+			close(socket_conexion);
+			return 0;
+		}
+		// El otro extremo es Kernel realmente
+		free(otro);
+		// Envio confirmacion de que soy Memoria
+		const uint8_t soy = ID_MEMORIA;
+		send(socket_conexion, &soy, sizeof(soy), 0);
+		//log_trace(logger, "Me conecte con Kernel!");
+
+		return socket_conexion;
+	}
+}*/
 
 void kernel_handler(int *socket_cliente){
 	int socket_kernel = *socket_cliente;
@@ -307,36 +511,7 @@ void kernel_handler(int *socket_cliente){
 
 }
 
-void servidor() {
-	log_trace(logger, "Iniciando servidor");
-
-	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
-
-	int socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-	int activado = 1;
-	setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
-
-	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
-		log_trace(logger, "Fallo el servidor");
-		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
-	}
-
-	listen(socket_servidor, SOMAXCONN);
-	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
-
-	int socket_kernel = conectar(socket_servidor);
-
-	while(!socket_kernel){
-		sleep(5);
-		socket_kernel = conectar(socket_servidor);
-	}
-
-	// Y ahora entonces le enviamos/recibimos los datos necesarios
-
+void conectar_kernel(int socket_kernel){
 	uint16_t cantidadSeeds;
 	for(cantidadSeeds = 0; config.ip_seeds[cantidadSeeds]; cantidadSeeds++);
 
@@ -358,6 +533,92 @@ void servidor() {
 		send(socket_kernel, paquete, tamanio_paquete, 0);
 		free(paquete);
 	}
+	kernel_conectado = true;
+}
+
+void servidor() {
+	log_trace(logger, "Iniciando servidor");
+
+	struct sockaddr_in direccionServidor;
+	direccionServidor.sin_family = AF_INET;
+	direccionServidor.sin_addr.s_addr = INADDR_ANY;
+	direccionServidor.sin_port = htons(config.puerto_escucha); // Puerto
+
+	int socket_servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+	int activado = 1;
+	setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
+
+	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
+		log_trace(logger, "Fallo el servidor");
+		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
+	}
+
+	listen(socket_servidor, SOMAXCONN);
+	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
+
+	struct sockaddr_in direccionCliente;
+	unsigned int tamanoDireccion = sizeof(direccionCliente);
+	while(1){
+		int socket_conexion = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
+		enum id_proceso otro = handshake(socket_conexion);
+		switch (otro) {
+		case ID_KERNEL:
+			if(!kernel_conectado){
+				conectar_kernel(socket_conexion);
+				close(socket_conexion);
+			}
+			else {
+				int *socket_cliente = malloc(sizeof(int));
+				*socket_cliente = socket_conexion;
+
+				// Mando la ejecucion a un hilo deatacheable
+				pthread_t hilo;
+				pthread_attr_t attr;
+				pthread_attr_init(&attr);
+				pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+				while(pthread_create(&hilo, &attr, (void*)kernel_handler, socket_cliente)){
+					sleep(5);
+					log_info(logger, "Error creando hilo cliente");
+				}
+				pthread_attr_destroy(&attr);
+			}
+			break;
+		case ID_MEMORIA:
+		{
+			int *socket_cliente = malloc(sizeof(int));
+			*socket_cliente = socket_conexion;
+
+			log_trace(logger, "GOSSIPING: Intercambiando tablas por peticion de una memoria en %s ...", inet_ntoa(direccionCliente.sin_addr));
+			// Mando la ejecucion a un hilo deatacheable
+			pthread_t hilo;
+			pthread_attr_t attr;
+			pthread_attr_init(&attr);
+			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+			while(pthread_create(&hilo, &attr, (void*)memoria_handler, socket_cliente)){
+				sleep(5);
+				log_info(logger, "Error creando hilo cliente");
+			}
+			pthread_attr_destroy(&attr);
+		}
+		break;
+		default:
+			log_error(logger, "Recibi una conexion de alguien que no es ni Kernel ni Memoria.");
+			close(socket_conexion);
+			break;
+		}
+	}
+
+	/*int socket_kernel = conectar(socket_servidor);
+
+	while(!socket_kernel){
+		sleep(5);
+		socket_kernel = conectar(socket_servidor);
+	}
+
+	// Y ahora entonces le enviamos/recibimos los datos necesarios
+
+	conectar_kernel(socket_kernel);
 
 	//Y por ahora no necesito enviar/recibir mas nada
 	// Asi que el handshake termino y me quedo a la espera de solicitudes de Kernel
@@ -386,5 +647,5 @@ void servidor() {
 		pthread_attr_destroy(&attr);
 	}
 
-	close(socket_servidor); // No me olvido de cerrar el socket que ya no voy a usar mas
+	close(socket_servidor); // No me olvido de cerrar el socket que ya no voy a usar mas*/
 }
