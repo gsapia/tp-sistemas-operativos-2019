@@ -9,6 +9,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <commons/collections/dictionary.h>
+#include <commons/collections/list.h>
 
 enum operaciones{
 	SELECT = 1,
@@ -17,7 +18,8 @@ enum operaciones{
 	DESCRIBE,
 	DESCRIBE_GLOBAL,
 	DROP,
-	JOURNAL
+	JOURNAL,
+	GOSSIP // Se usa por Kernel cuando quiere pedir la tabla de gossiping a memoria
 };
 
 enum consistencias{
@@ -112,6 +114,13 @@ enum estados_journal{
 };
 
 
+typedef struct{
+	uint32_t numero;
+	char* IP;
+	uint16_t puerto;
+}t_memoria; // struct usado para el gossiping
+
+
 struct_select recibir_select(int socket);
 
 /**
@@ -182,5 +191,9 @@ enum estados_drop recibir_respuesta_drop(int socket);
 void responder_journal(int socket, enum estados_journal estado);
 
 enum estados_journal recibir_respuesta_journal(int socket);
+
+void enviar_tabla_gossiping(int socket, t_list* tabla);
+
+t_list* recibir_tabla_gossiping(int socket);
 
 #endif /* SERIALIZACION_H_ */

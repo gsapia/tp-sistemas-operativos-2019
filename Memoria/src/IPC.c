@@ -170,8 +170,6 @@ void closeCliente(){
 
 bool kernel_conectado = false;
 
-
-
 void agregar_memoria(t_memoria* memoria){
 	bool buscador_memoria(t_memoria* otra_memoria){
 		return !strcmp(memoria->IP, otra_memoria->IP) && memoria->puerto == otra_memoria->puerto;
@@ -189,72 +187,16 @@ void eliminar_memoria(t_memoria memoria){
 	bool buscador_memoria(t_memoria* otra_memoria){
 		return !strcmp(memoria.IP, otra_memoria->IP) && memoria.puerto == otra_memoria->puerto;
 	}
-	list_remove_and_destroy_by_condition(tabla_gossiping, (_Bool (*)(void*))buscador_memoria, free);
+	void eliminador(void* dato){
+		t_memoria* memoria = dato;
+		log_trace(logger, "GOSSIPING: La memoria %d se cayo.", memoria->numero);
+		free(dato);
+	}
+	list_remove_and_destroy_by_condition(tabla_gossiping, (_Bool (*)(void*))buscador_memoria, eliminador);
 }
 
 void agregar_memorias(t_list* memorias){
 	list_iterate(memorias, (void (*)(void*))agregar_memoria);
-}
-
-void enviar_tabla_gossiping(int socket, t_list* tabla){
-	uint16_t cantidad_memorias = list_size(tabla);
-
-	size_t tamanio_IP = strlen("000.000.000.000") + 1;
-	size_t tamanio_memoria = sizeof(uint16_t) + tamanio_IP + sizeof(uint32_t);
-	size_t tamanio_paquete = sizeof(cantidad_memorias) + (tamanio_memoria * cantidad_memorias); // Calculo el tamanio del paquete
-	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
-
-	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
-
-	// Primero la cantidad
-	memcpy(buffer, &cantidad_memorias, sizeof(cantidad_memorias));
-	desplazamiento += sizeof(cantidad_memorias);
-
-	void enviar_memoria(t_memoria* memoria){
-		// Primero numero de Memoria
-		memcpy(buffer + desplazamiento, &memoria->numero, sizeof(memoria->numero));
-		desplazamiento += sizeof(memoria->numero);
-
-		// Ahora la IP
-		char* IP = calloc(1, tamanio_IP); // Asi siempre enviamos strings de tamanio fijo
-		strcpy(IP, memoria->IP);
-		memcpy(buffer + desplazamiento, IP, tamanio_IP);
-		desplazamiento += tamanio_IP;
-
-		// Por ultimo el puerto
-		memcpy(buffer + desplazamiento, &memoria->puerto, sizeof(memoria->puerto));
-		desplazamiento += sizeof(memoria->puerto);
-	}
-	list_iterate(tabla, (void(*)(void*)) enviar_memoria);
-
-	send(socket, buffer, tamanio_paquete, 0);
-}
-
-t_list* recibir_tabla_gossiping(int socket){
-	// Primero recibimos la cantidad
-	uint16_t cantidad_memorias;
-	recv(socket, &cantidad_memorias, sizeof(cantidad_memorias), 0);
-
-	size_t tamanio_IP = strlen("000.000.000.000") + 1; // Vamos siempre a enviar IPs de tamanio fijo
-
-	t_list* tabla = list_create();
-	for (int i = 0; i < cantidad_memorias; ++i) {
-		t_memoria* memoria = malloc(sizeof(t_memoria));
-
-		// Primero recibimos el numero de memoria
-		recv(socket, &(memoria->numero), sizeof(memoria->numero), 0);
-
-		// Ahora la IP
-		memoria->IP = calloc(1,tamanio_IP);
-		recv(socket, memoria->IP, tamanio_IP, 0);
-
-		// Por ultimo el puerto
-		recv(socket, &(memoria->puerto), sizeof(memoria->puerto), 0);
-
-		list_add(tabla, memoria);
-	}
-
-	return tabla;
 }
 
 t_list* intercambiar_tabla_gossiping(t_memoria memoria){
@@ -316,6 +258,11 @@ void gossiping(){
 	while(1){
 		log_trace(logger, "Iniciando ronda de Gossiping");
 
+		if(!config.ip_seeds[0]){ // No hay seeds configurados, por lo tanto es al pedo hacer gossiping
+			log_trace(logger, "GOSSIPING: No hay seeds configuradas.");
+			break;
+		}
+
 		for(int i = 0; config.ip_seeds[i]; i++){
 			t_memoria memoria;
 			memoria.IP = config.ip_seeds[i];
@@ -334,6 +281,7 @@ void gossiping(){
 		log_trace(logger, "Ronda de Gossiping finalizada. Memorias conocidas: %s", memorias_conocidas);
 		msleep(config.tiempo_gossiping);
 	}
+
 }
 
 void memoria_handler(int *socket_cliente){
@@ -365,44 +313,6 @@ enum id_proceso handshake(int socket_conexion){
 	free(otro);
 	return id;
 }
-
-/*int conectar(int socket_servidor){
-	struct sockaddr_in direccionCliente;
-	unsigned int tamanoDireccion = sizeof(direccionCliente);
-	while(1){
-		int socket_conexion = accept(socket_servidor, (void*) &direccionCliente, &tamanoDireccion);
-		//printf("Recibi una conexion en %d\n", socket_kernel);
-
-
-		//----------------COMIENZO HANDSHAKE----------------
-
-		// Recibo quien es el otro extremo
-		uint8_t *otro = malloc(sizeof(uint8_t));
-
-		if(!recv(socket_conexion, otro, sizeof(uint8_t), 0)){
-			// No recibimos nada, algo malo paso
-			log_error(logger, "ERROR en servidor");
-			close(socket_conexion);
-			return 0;
-		}
-
-
-		if(!(recv(socket_conexion, otro, sizeof(uint8_t), 0) && *otro == ID_KERNEL)){ // Confirmo que el otro extremo es Kernel
-			// El otro extremo no es Kernel, cierro la conexion / termino el programa
-			log_error(logger, "Recibi una conexion de alguien que no es Kernel.");
-			close(socket_conexion);
-			return 0;
-		}
-		// El otro extremo es Kernel realmente
-		free(otro);
-		// Envio confirmacion de que soy Memoria
-		const uint8_t soy = ID_MEMORIA;
-		send(socket_conexion, &soy, sizeof(soy), 0);
-		//log_trace(logger, "Me conecte con Kernel!");
-
-		return socket_conexion;
-	}
-}*/
 
 void kernel_handler(int *socket_cliente){
 	int socket_kernel = *socket_cliente;
@@ -501,6 +411,12 @@ void kernel_handler(int *socket_cliente){
 				enum estados_journal respuesta = journal();
 
 				responder_journal(socket_kernel, respuesta);
+			}
+			break;
+			case GOSSIP:
+			{
+				log_trace(logger, "GOSSIPING: Intercambiando tabla con Kernel");
+				enviar_tabla_gossiping(socket_kernel, tabla_gossiping);
 			}
 			break;
 			default:
@@ -608,44 +524,4 @@ void servidor() {
 			break;
 		}
 	}
-
-	/*int socket_kernel = conectar(socket_servidor);
-
-	while(!socket_kernel){
-		sleep(5);
-		socket_kernel = conectar(socket_servidor);
-	}
-
-	// Y ahora entonces le enviamos/recibimos los datos necesarios
-
-	conectar_kernel(socket_kernel);
-
-	//Y por ahora no necesito enviar/recibir mas nada
-	// Asi que el handshake termino y me quedo a la espera de solicitudes de Kernel
-
-	close(socket_kernel);
-
-	// Ahora infinitamente me quedo esperando conexiones de Kernel
-	while(1){
-		int *socket_cliente = malloc(sizeof(int));
-		*socket_cliente = conectar(socket_servidor);
-
-		while(!(*socket_cliente)){
-			sleep(5);
-			*socket_cliente = conectar(socket_servidor);
-		}
-
-		// Mando la ejecucion a un hilo deatacheable
-		pthread_t hilo;
-		pthread_attr_t attr;
-		pthread_attr_init(&attr);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-		while(pthread_create(&hilo, &attr, (void*)kernel_handler, socket_cliente)){
-			sleep(5);
-			log_info(logger, "Error creando hilo cliente");
-		}
-		pthread_attr_destroy(&attr);
-	}
-
-	close(socket_servidor); // No me olvido de cerrar el socket que ya no voy a usar mas*/
 }

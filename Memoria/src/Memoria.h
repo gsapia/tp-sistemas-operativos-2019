@@ -30,10 +30,4 @@ struct Config{
 t_log* logger;
 
 t_list* tabla_gossiping;
-typedef struct{
-	uint32_t numero;
-	char* IP;
-	uint16_t puerto;
-}t_memoria;
-
 #endif /* MEMORIA_H_ */

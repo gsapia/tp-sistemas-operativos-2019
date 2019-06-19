@@ -693,3 +693,61 @@ void responder_journal(int socket, enum estados_journal estado){
 enum estados_journal recibir_respuesta_journal(int socket){
 	return recibir_estado(socket);
 }
+
+void enviar_tabla_gossiping(int socket, t_list* tabla){
+	uint16_t cantidad_memorias = list_size(tabla);
+
+	size_t tamanio_memoria = sizeof(uint16_t) + sizeof(uint32_t) + sizeof(uint32_t);
+	size_t tamanio_paquete = sizeof(cantidad_memorias) + (tamanio_memoria * cantidad_memorias); // Calculo el tamanio del paquete
+	void* buffer = malloc(tamanio_paquete); // Pido memoria para el tamanio del paquete completo que voy a enviar
+
+	int desplazamiento = 0; // Voy a usar esta variable para ir moviendome por el buffer
+
+	// Primero la cantidad
+	memcpy(buffer, &cantidad_memorias, sizeof(cantidad_memorias));
+	desplazamiento += sizeof(cantidad_memorias);
+
+	void enviar_memoria(t_memoria* memoria){
+		// Primero numero de Memoria
+		memcpy(buffer + desplazamiento, &memoria->numero, sizeof(memoria->numero));
+		desplazamiento += sizeof(memoria->numero);
+
+		// Ahora la IP
+		uint32_t IP = inet_addr(memoria->IP);
+		memcpy(buffer + desplazamiento, &IP, sizeof(IP));
+		desplazamiento += sizeof(IP);
+
+		// Por ultimo el puerto
+		memcpy(buffer + desplazamiento, &memoria->puerto, sizeof(memoria->puerto));
+		desplazamiento += sizeof(memoria->puerto);
+	}
+	list_iterate(tabla, (void(*)(void*)) enviar_memoria);
+
+	send(socket, buffer, tamanio_paquete, 0);
+}
+
+t_list* recibir_tabla_gossiping(int socket){
+	// Primero recibimos la cantidad
+	uint16_t cantidad_memorias;
+	recv(socket, &cantidad_memorias, sizeof(cantidad_memorias), 0);
+
+	t_list* tabla = list_create();
+	for (int i = 0; i < cantidad_memorias; ++i) {
+		t_memoria* memoria = malloc(sizeof(t_memoria));
+
+		// Primero recibimos el numero de memoria
+		recv(socket, &(memoria->numero), sizeof(memoria->numero), 0);
+
+		// Ahora la IP
+		struct in_addr addr;
+		recv(socket, &addr.s_addr, sizeof(uint32_t), 0);
+		memoria->IP = strdup(inet_ntoa(addr));
+
+		// Por ultimo el puerto
+		recv(socket, &(memoria->puerto), sizeof(memoria->puerto), 0);
+
+		list_add(tabla, memoria);
+	}
+
+	return tabla;
+}
