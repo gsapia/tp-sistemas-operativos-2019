@@ -743,6 +743,15 @@ t_list* recibir_tabla_gossiping(int socket){
 		recv(socket, &addr.s_addr, sizeof(uint32_t), 0);
 		memoria->IP = strdup(inet_ntoa(addr));
 
+		// Chanchada para obtener la IP de la memoria a la que nos conectamos y que no sabe su propia IP
+		if(!strcmp(memoria->IP, "0.0.0.0")){
+			struct sockaddr_in addr;
+			socklen_t addr_size = sizeof(struct sockaddr_in);
+			int res = getpeername(socket, (struct sockaddr *)&addr, &addr_size);
+			memoria->IP = strdup(inet_ntoa(addr.sin_addr));
+		}
+		//printf("IP del otro %s", memoria->IP);
+
 		// Por ultimo el puerto
 		recv(socket, &(memoria->puerto), sizeof(memoria->puerto), 0);
 
