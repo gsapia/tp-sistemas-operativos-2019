@@ -45,7 +45,7 @@ typedef struct{
 typedef struct{
 	char* ip;
 	int puerto;
-}t_memoria;
+}t_memoria1; // REVISAR T_MEMORIA1
 
 
 void aniadirScript(t_script *script);

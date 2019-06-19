@@ -60,7 +60,7 @@ void initCliente(){
 	memorias = list_create();
 
 	// Primero aniadimos la que conocemos
-	t_memoria* memoria = malloc(sizeof(t_memoria));
+	t_memoria1* memoria = malloc(sizeof(t_memoria1)); // REVISAR T_MEMORIA1
 	memoria->ip = config.ip_memoria;
 	memoria->puerto = config.puerto_memoria;
 	list_add(memorias, memoria);
@@ -78,7 +78,7 @@ void initCliente(){
 		uint16_t puerto;
 		recv(socket_cliente, &puerto, sizeof(puerto), 0); // Recibo el puerto
 
-		memoria = malloc(sizeof(t_memoria));
+		memoria = malloc(sizeof(t_memoria1)); // REVISAR T_MEMORIA1
 		memoria->ip = ip;
 		memoria->puerto = puerto;
 
