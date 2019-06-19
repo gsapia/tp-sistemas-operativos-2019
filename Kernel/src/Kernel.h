@@ -30,6 +30,7 @@ struct ConfigKernel{
 	int refresh_metadata;
 	int retardo_ciclico;
 	int multiprocesamiento;
+	int retardo_gossiping;
 
 }config;
 

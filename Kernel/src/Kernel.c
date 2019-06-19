@@ -39,6 +39,7 @@ void inicializarColas(){
     	config.multiprocesamiento = config_get_int_value(configk,"MULTIPROCESAMIENTO");
     	config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
     	config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
+    	config.retardo_gossiping = config_get_int_value(configk,"RETARDO_GOSSIPING");
 
     }
 
