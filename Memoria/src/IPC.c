@@ -1,7 +1,7 @@
 #include "IPC.h"
 #include "MemoriaPrincipal.h"
 #include "API.h"
-#include "Memoria.h"
+#include "Gossiping.h"
 #include "Misc.h"
 
 int socket_cliente;
@@ -170,37 +170,7 @@ void closeCliente(){
 
 bool kernel_conectado = false;
 
-void agregar_memoria(t_memoria* memoria){
-	bool buscador_memoria(t_memoria* otra_memoria){
-		return !strcmp(memoria->IP, otra_memoria->IP) && memoria->puerto == otra_memoria->puerto;
-	}
-	// Solo la agregamos si no existe todavia
-	if(!list_find(tabla_gossiping, (_Bool (*)(void*))buscador_memoria)){
-		log_debug(logger, "Conocida memoria: %d ", memoria->numero);
-		t_memoria* duplicado = malloc(sizeof(t_memoria));
-		memcpy(duplicado, memoria, sizeof(t_memoria));
-		list_add(tabla_gossiping, duplicado);
-	}
-}
-
-void eliminar_memoria(t_memoria memoria){
-	bool buscador_memoria(t_memoria* otra_memoria){
-		return !strcmp(memoria.IP, otra_memoria->IP) && memoria.puerto == otra_memoria->puerto;
-	}
-	void eliminador(void* dato){
-		t_memoria* memoria = dato;
-		log_trace(logger, "GOSSIPING: La memoria %d se cayo.", memoria->numero);
-		free(dato);
-	}
-	list_remove_and_destroy_by_condition(tabla_gossiping, (_Bool (*)(void*))buscador_memoria, eliminador);
-}
-
-void agregar_memorias(t_list* memorias){
-	list_iterate(memorias, (void (*)(void*))agregar_memoria);
-}
-
 t_list* intercambiar_tabla_gossiping(t_memoria memoria){
-	log_trace(logger, "GOSSIPING: Intercambiando tablas con la memoria en %s:%d ...", memoria.IP, memoria.puerto);
 
 	// Intentamos conectarnos con la memoria
 	struct sockaddr_in direccionServidor;
@@ -210,12 +180,11 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 
 	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	if(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
-		log_trace(logger, "GOSSIPING: No nos pudimos conectar con la memoria en %s:%d", memoria.IP, memoria.puerto);
 		return NULL;
 	}
 
 	//----------------COMIENZO HANDSHAKE----------------
-	//TODO: Revisar si viene Kernel a pedir la tabla
+
 	// Envio primer mensaje diciendo que soy Memoria
 	const uint8_t soy = ID_MEMORIA;
 	send(socket_cliente, &soy, sizeof(soy), 0);
@@ -224,7 +193,6 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 	uint8_t *otro = malloc(sizeof(uint8_t));
 	if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo que el otro extremo es Memoria
 		// El otro extremo no es Memoria, asi que cierro la conexion / termino el programa
-		log_trace(logger, "GOSSIPING: No nos pudimos conectar con la memoria en %s:%d", memoria.IP, memoria.puerto);
 		return NULL;
 	}
 	free(otro);
@@ -239,49 +207,6 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 	t_list* tabla = recibir_tabla_gossiping(socket_cliente);
 
 	return tabla;
-}
-
-void hacer_gossiping(t_memoria memoria){
-	t_list* tabla = intercambiar_tabla_gossiping(memoria);
-
-	// Si pudimos obtener su tabla de gossiping, agregamos las memorias que tenia. Sino, esa memoria no esta conectada y debemos eliminarla de nuestra tabla
-	if(tabla){
-		agregar_memorias(tabla);
-		list_destroy_and_destroy_elements(tabla, free);
-	}
-	else{
-		eliminar_memoria(memoria);
-	}
-}
-
-void gossiping(){
-	while(1){
-		log_trace(logger, "Iniciando ronda de Gossiping");
-
-		if(!config.ip_seeds[0]){ // No hay seeds configurados, por lo tanto es al pedo hacer gossiping
-			log_trace(logger, "GOSSIPING: No hay seeds configuradas.");
-			break;
-		}
-
-		for(int i = 0; config.ip_seeds[i]; i++){
-			t_memoria memoria;
-			memoria.IP = config.ip_seeds[i];
-			memoria.puerto = config.puertos_seeds[i];
-
-			hacer_gossiping(memoria);
-		}
-
-		char* memorias_conocidas = string_new();
-		void iterador(t_memoria* memoria){
-			string_append_with_format(&memorias_conocidas, "%d ", memoria->numero);
-		}
-		list_iterate(tabla_gossiping, (void (*)(void*)) iterador);
-		string_trim(&memorias_conocidas);
-
-		log_trace(logger, "Ronda de Gossiping finalizada. Memorias conocidas: %s", memorias_conocidas);
-		msleep(config.tiempo_gossiping);
-	}
-
 }
 
 void memoria_handler(int *socket_cliente){

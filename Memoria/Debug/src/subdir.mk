@@ -6,6 +6,7 @@
 C_SRCS += \
 ../src/API.c \
 ../src/Consola.c \
+../src/Gossiping.c \
 ../src/IPC.c \
 ../src/Memoria.c \
 ../src/MemoriaPrincipal.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 OBJS += \
 ./src/API.o \
 ./src/Consola.o \
+./src/Gossiping.o \
 ./src/IPC.o \
 ./src/Memoria.o \
 ./src/MemoriaPrincipal.o \
@@ -22,6 +24,7 @@ OBJS += \
 C_DEPS += \
 ./src/API.d \
 ./src/Consola.d \
+./src/Gossiping.d \
 ./src/IPC.d \
 ./src/Memoria.d \
 ./src/MemoriaPrincipal.d \

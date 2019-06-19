@@ -15,7 +15,8 @@
 void initCliente();
 void closeCliente();
 void servidor();
-void gossiping();
+
+t_list* intercambiar_tabla_gossiping(t_memoria memoria);
 
 struct_select_respuesta selectAFS(struct_select paquete);
 enum estados_insert insertAFS(struct_insert paquete);

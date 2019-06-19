@@ -29,5 +29,4 @@ struct Config{
 
 t_log* logger;
 
-t_list* tabla_gossiping;
 #endif /* MEMORIA_H_ */

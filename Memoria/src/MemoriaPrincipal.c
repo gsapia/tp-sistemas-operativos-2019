@@ -1,6 +1,7 @@
 #include "MemoriaPrincipal.h"
 #include "Misc.h"
 #include "IPC.h"
+#include "Gossiping.h"
 
 uint64_t* paginas_usadas; // Habria que modificar esto para usar LRU
 bool full = false;
@@ -36,14 +37,7 @@ void initMemoriaPrincipal(){
 	}
 	pthread_detach(hiloJournaling);
 
-	// Inicializo el sistema de gossiping
-	tabla_gossiping = list_create();
-	t_memoria * yo = malloc(sizeof(t_memoria));
-	yo->numero = config.numero_memoria;
-	yo->IP = "127.0.0.1"; // TODO: Arreglar esto
-	yo->puerto = config.puerto_escucha;
-	list_add(tabla_gossiping, yo);
-
+	// Inciamos el gossiping
 	pthread_t hiloGossiping;
 	if (pthread_create(&hiloGossiping, NULL, (void*)gossiping, NULL)) {
 		log_error(logger, "Hilo gossiping: Error - pthread_create()");
