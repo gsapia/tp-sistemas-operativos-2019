@@ -52,7 +52,7 @@ void gossiping(){
 	tabla_gossiping = list_create();
 	t_memoria * yo = malloc(sizeof(t_memoria));
 	yo->numero = config.numero_memoria;
-	yo->IP = "0.0.0.0"; // TODO: Arreglar esto
+	yo->IP = "0.0.0.0"; // Como no podemos saber nuestra IP, hacemos esta chanchada
 	yo->puerto = config.puerto_escucha;
 	list_add(tabla_gossiping, yo);
 
