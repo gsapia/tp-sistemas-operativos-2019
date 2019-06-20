@@ -102,8 +102,7 @@ void inicializarListasDeMemorias(){
 						free(nombreTabla);
 						free(keystr);
 						free(comando);
-						respuesta.resultado = resultado;
-						return resultado;
+						return respuesta;
 					}
 				}
 				while(cantArgumentos){
@@ -136,7 +135,7 @@ void inicializarListasDeMemorias(){
 						ulong key = strtoul(keystr, &endptr, 10);
 						char* valor = ultimoArgumento[0];
 						if (*endptr == '\0' && key < 65536) {
-							char* resultado = insert(nombreTabla, key, valor);
+							t_resultado resultado = insert(nombreTabla, key, valor);
 							while(cantArgumentos){
 								free(comando[cantArgumentos]);
 								cantArgumentos--;
@@ -158,7 +157,10 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”");
+				return resultado;
 			}
 			else if(!strcmp(comando[0],"CREATE")){
 				//CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]
@@ -178,9 +180,12 @@ void inicializarListasDeMemorias(){
 						consistencia = SHC;
 					else if(!strcmp(tipoConsistenciaStr, "EC"))
 						consistencia = EC;
-					else
-
-						return string_from_format("Tipo de consistencia invalido.");
+					else{
+						t_resultado resultado;
+						resultado.falla = true;
+						resultado.resultado = string_from_format("Tipo de consistencia invalido.");
+						return resultado;
+					}
 
 					char* cantidadParticionesstr = comando[3];
 					char* compactionTimestr = comando[4];
@@ -191,7 +196,7 @@ void inicializarListasDeMemorias(){
 						compactionTime = strtoul(compactionTimestr, &endptr, 10);
 					if(*endptr == '\0'){
 						// Faltaria revisar si el tipo de consistencia es valido ^
-						char* resultado = create(nombreTabla, consistencia, cantidadParticiones, compactionTime);
+						t_resultado resultado = create(nombreTabla, consistencia, cantidadParticiones, compactionTime);
 						free(nombreTabla);
 						free(tipoConsistenciaStr);
 						free(cantidadParticionesstr);
@@ -205,7 +210,10 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]");
+				return resultado;
 			}
 			else if(!strcmp(comando[0],"DESCRIBE")){
 				//DESCRIBE [NOMBRE_TABLA]
@@ -214,7 +222,7 @@ void inicializarListasDeMemorias(){
 				free(comando[0]);
 				if(cantArgumentos == 1){
 					char* nombreTabla = comando[1];
-					char* resultado = describe(nombreTabla);
+					t_resultado resultado = describe(nombreTabla);
 					free(nombreTabla);
 					free(comando);
 					return resultado;
@@ -224,7 +232,10 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: DESCRIBE [NOMBRE_TABLA]");
+				return resultado;
 			}
 			else if(!strcmp(comando[0],"DROP")){
 				//DROP [NOMBRE_TABLA]
@@ -233,7 +244,7 @@ void inicializarListasDeMemorias(){
 				free(comando[0]);
 				if(cantArgumentos == 1){
 					char* nombreTabla = comando[1];
-					char* resultado = drop(nombreTabla);
+					t_resultado resultado = drop(nombreTabla);
 					free(nombreTabla);
 					free(comando);
 					return resultado;
@@ -243,7 +254,10 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: DROP [NOMBRE_TABLA]");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: DROP [NOMBRE_TABLA]");
+				return resultado;
 			}
 
 			else if(!strcmp(comando[0],"JOURNAL")){
@@ -259,7 +273,10 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: JOURNAL");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: JOURNAL");
+				return resultado;
 			}
 
 			else if(! strcmp(comando[0],"RUN")){
@@ -268,7 +285,7 @@ void inicializarListasDeMemorias(){
 				if (cantArgumentos == 1)
 				{
 					char* rutaPath = comando[1];
-					char* resultado = run(rutaPath);
+					t_resultado resultado = run(rutaPath);
 					free(rutaPath);
 					free(comando);
 					return resultado;
@@ -280,7 +297,10 @@ void inicializarListasDeMemorias(){
 				}
 
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: RUN <PATH>");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: RUN <PATH>");
+				return resultado;
 
 			}
 
@@ -299,7 +319,10 @@ void inicializarListasDeMemorias(){
 				}
 
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: METRICS");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: METRICS");
+				return resultado;
 
 			}
 
@@ -322,14 +345,17 @@ void inicializarListasDeMemorias(){
 						criterio = SHC;
 					else if(!strcmp(criterioStr, "EC"))
 						criterio = EC;
-					else
-
-						return string_from_format("Tipo de consistencia invalido.");
+					else{
+						t_resultado resultado;
+						resultado.falla = true;
+						resultado.resultado = string_from_format("Tipo de consistencia invalido.");
+						return resultado;
+					}
 
 					char* endptr = 0;
 					ulong numeroMemoria = strtoul(numerostr, &endptr, 10);
 					if(*endptr == '\0'&& numeroMemoria < 65536){
-						char* resultado = add(numeroMemoria,criterio);
+						t_resultado resultado = add(numeroMemoria,criterio);
 						free(numerostr);
 						free(criterioStr);
 						free(comando);
@@ -342,7 +368,10 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: ADD MEMORY [NUMERO] TO [CRITERIO]");
+				t_resultado resultado;
+				resultado.falla = true;
+				resultado.resultado = string_from_format("Sintaxis invalida. Uso: ADD MEMORY [NUMERO] TO [CRITERIO]");
+				return resultado;
 			}
 
 
@@ -353,11 +382,14 @@ void inicializarListasDeMemorias(){
 			free(comando[0]);
 
 
-			free(comando);
-			return string_from_format("Comando invalido");
+
 
 		}
-
+		free(comando);
+		t_resultado resultado;
+		resultado.falla = true;
+		resultado.resultado = string_from_format("Comando invalido");
+		return resultado;
 
 	} //end Char* apiKernel ..
 
@@ -401,11 +433,11 @@ void inicializarListasDeMemorias(){
 		t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
 		for (int q = config.quantum; q > 0 && !queue_is_empty(requests); q--){
 			char* request = queue_pop(requests);
-			char* resultado = apiKernel(request);
-			log_info(logger, "La request %s retorno como resultado: %s", request, resultado);
+			t_resultado resultado = apiKernel(request);
+			log_info(logger, "La request %s retorno como resultado: %s", request, resultado.resultado);
 
 			free(request);
-			free(resultado);
+			free(resultado.resultado);
 
 			usleep(config.retardo_ciclico * 1000);
 		}
