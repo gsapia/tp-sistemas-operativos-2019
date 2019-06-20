@@ -5,24 +5,42 @@
 
 
 
-char* selects(char* nombreTabla, u_int16_t key){
+t_resultado selects(char* nombreTabla, u_int16_t key){
+	t_resultado respuesta;
+	if(!existeTabla(nombreTabla)){
+		respuesta.falla = true;
+		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
+		return respuesta;
+	}
+	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla);
+	if(!memoria){
+		respuesta.falla = true;
+		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+		return respuesta;
+	}
+	respuesta.falla = false;
 	struct_select paquete;
 	paquete.key = key;
 	paquete.nombreTabla = nombreTabla;
 
-	struct_select_respuesta resultado = selectAMemoria(paquete);
+	struct_select_respuesta resultado = selectAMemoria(paquete, memoria);
 
 	switch(resultado.estado) {
 	case ESTADO_SELECT_OK:
-		return resultado.valor;
+		respuesta.resultado = resultado.valor;
+		break;
 	case ESTADO_SELECT_ERROR_TABLA:
-		return strdup("ERROR: La tabla solicitada no existe.");
+		respuesta.resultado = strdup("ERROR: La tabla solicitada no existe.");
+		break;
 	case ESTADO_SELECT_ERROR_KEY:
-		return strdup("ERROR: Esa tabla no contiene ningun registro con la clave solicitada.");
+		respuesta.resultado = strdup("ERROR: Esa tabla no contiene ningun registro con la clave solicitada.");
+		break;
 	default:
-		return strdup("ERROR: Ocurrio un error desconocido.");
+		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
+	return respuesta;
 }
+
 char* insert(char* nombreTabla, u_int16_t key, char* valor){
 	struct_insert paquete;
 	paquete.nombreTabla = nombreTabla;
@@ -115,7 +133,6 @@ char* add(uint16_t numeroMemoria,enum consistencias criterio){
 		return strdup("Memoria invalida");
 	}
 }
-
 
 
 

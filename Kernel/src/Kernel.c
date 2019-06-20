@@ -33,7 +33,7 @@ void inicializarListasDeMemorias(){
  void leerConfig();// Esta no se si esta demas xd .
 
     void consola();
-    char* apiKernel(char*);
+    t_resultado apiKernel(char*);
 
     //Levanto la configuracion
     t_config* configk;
@@ -79,7 +79,7 @@ void inicializarListasDeMemorias(){
 
 	//API Kernel
 
-	char *apiKernel(char* mensaje){
+	t_resultado apiKernel(char* mensaje){
 		char** comando = string_split(mensaje, " "); // Separa el mensaje por espacios " ", y los mete en un array de char.
 		if(comando[0]){
 			u_int16_t cantArgumentos = 0;
@@ -90,7 +90,7 @@ void inicializarListasDeMemorias(){
 			if(!strcmp(comando[0],"SELECT")){
 				//SELECT [NOMBRE_TABLA] [KEY]
 				//SELECT TABLA1 3
-
+				t_resultado respuesta;
 				free(comando[0]);
 				if(cantArgumentos == 2){
 					char* nombreTabla = comando[1];
@@ -98,10 +98,11 @@ void inicializarListasDeMemorias(){
 					char* endptr;
 					ulong key = strtoul(keystr, &endptr, 10); //String To Unsigned Long, le paso un String y me retorna un ulong con ese numero.
 					if(*endptr == '\0'&& key < 65536){       // Atoi era otra opcion pero no maneja errores como strtoul o strtol
-						char* resultado = selects(nombreTabla, key); // Como deben ser Keys de 16 bits debe ser < 65536
+						respuesta = selects(nombreTabla, key); // Como deben ser Keys de 16 bits debe ser < 65536
 						free(nombreTabla);
 						free(keystr);
 						free(comando);
+						respuesta.resultado = resultado;
 						return resultado;
 					}
 				}
@@ -110,7 +111,9 @@ void inicializarListasDeMemorias(){
 					cantArgumentos--;
 				}
 				free(comando);
-				return string_from_format("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
+				respuesta.falla = true;
+				respuesta.resultado = strdup("Sintaxis invalida. Uso: SELECT [NOMBRE_TABLA] [KEY]");
+				return respuesta;
 			}
 			else if(!strcmp(comando[0],"INSERT")){
 				//INSERT [NOMBRE_TABLA] [KEY] “[VALUE]”

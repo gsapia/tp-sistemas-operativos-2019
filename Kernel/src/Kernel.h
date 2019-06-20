@@ -44,6 +44,11 @@ typedef struct{
 }t_script;
 
 
+typedef struct{
+	bool falla;
+	char* resultado;
+}t_resultado;
+
 
 
 void aniadirScript(t_script *script);
