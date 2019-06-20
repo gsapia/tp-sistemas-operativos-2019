@@ -15,6 +15,8 @@
 void initCliente();
 void closeCliente();
 
+int conectar(char* ip, uint16_t puerto);
+
 struct_select_respuesta selectAMemoria(struct_select paquete);
 enum estados_insert insertAMemoria(struct_insert paquete);
 enum estados_create createAMemoria(struct_create paquete);

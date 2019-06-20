@@ -103,30 +103,17 @@ char* run(char* runPath){
 char* metrics(){
 	return string_from_format("Elegiste METRICS");
 }
-
 char* add(uint16_t numeroMemoria,enum consistencias criterio){
-
-	t_memoria1* memoria = getMemoria(numeroMemoria);
+	t_memoria* memoria = getMemoria(numeroMemoria);
 
 	if(memoria){
-
-		list_add(listasMemorias[criterio],memoria);
+		list_add(listasMemorias[criterio], memoria);
 
 		return strdup("Memoria Agregada!");
 	}
-
 	else{
 		return strdup("Memoria invalida");
 	}
-
-
-	/*uint16_t getMemoria(numeroMemoria){
-
-	} falta terminar
-	*/
-
-
-	return string_from_format("Elegiste ADD");
 }
 
 

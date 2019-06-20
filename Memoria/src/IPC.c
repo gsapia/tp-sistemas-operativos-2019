@@ -352,7 +352,7 @@ void kernel_handler(int *socket_cliente){
 
 }
 
-void conectar_kernel(int socket_kernel){
+/*void conectar_kernel(int socket_kernel){
 	uint16_t cantidadSeeds;
 	for(cantidadSeeds = 0; config.ip_seeds[cantidadSeeds]; cantidadSeeds++);
 
@@ -375,7 +375,7 @@ void conectar_kernel(int socket_kernel){
 		free(paquete);
 	}
 	kernel_conectado = true;
-}
+}*/
 
 void servidor() {
 	log_trace(logger, "Iniciando servidor");
@@ -405,11 +405,10 @@ void servidor() {
 		enum id_proceso otro = handshake(socket_conexion);
 		switch (otro) {
 		case ID_KERNEL:
-			if(!kernel_conectado){
+			/*if(!kernel_conectado){
 				conectar_kernel(socket_conexion);
-				close(socket_conexion);
 			}
-			else {
+			else {*/{
 				int *socket_cliente = malloc(sizeof(int));
 				*socket_cliente = socket_conexion;
 

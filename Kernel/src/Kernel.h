@@ -22,7 +22,6 @@
 //Borre los define de kernel.h dado que estan definidos en serializacion.h
 
 
-t_list* listasMemorias[3]; //Array de listas de memorias para el ADD
 
 
 struct ConfigKernel{
@@ -46,15 +45,9 @@ typedef struct{
 
 
 
-typedef struct{
-	char* ip;
-	int puerto;
-}t_memoria1; // REVISAR T_MEMORIA1
-
 
 void aniadirScript(t_script *script);
 
-t_list *memorias;
 t_log* logger;
 
 

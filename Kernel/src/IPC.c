@@ -1,8 +1,8 @@
 #include "IPC.h"
 #include "Kernel.h"
 #include "serializacion.h"
+#include "Memorias.h"
 
-//SOCKET CLIENTE (Dado que Kernel solo es Cliente con Memoria)
 int conectar(char* ip, uint16_t puerto){
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
@@ -44,6 +44,9 @@ int conectar(char* ip, uint16_t puerto){
 	//Fin de HandShake - Ahora podemos realizar solicitudes a Memoria.
 	return socket_cliente;
 }
+
+
+
 void initCliente(){
 	log_trace(logger, "Iniciando socket_cliente kernel");
 
@@ -56,12 +59,13 @@ void initCliente(){
 
 	log_trace(logger,"Contectado a Memoria !");
 
+	/*
 	// Recibimos IPs del resto de memorias
 	memorias = list_create();
 
 	// Primero aniadimos la que conocemos
-	t_memoria1* memoria = malloc(sizeof(t_memoria1)); // REVISAR T_MEMORIA1
-	memoria->ip = config.ip_memoria;
+	t_memoria* memoria = malloc(sizeof(t_memoria));
+	memoria->IP = config.ip_memoria;
 	memoria->puerto = config.puerto_memoria;
 	list_add(memorias, memoria);
 
@@ -78,18 +82,30 @@ void initCliente(){
 		uint16_t puerto;
 		recv(socket_cliente, &puerto, sizeof(puerto), 0); // Recibo el puerto
 
-		memoria = malloc(sizeof(t_memoria1)); // REVISAR T_MEMORIA1
-		memoria->ip = ip;
+		memoria = malloc(sizeof(t_memoria));
+		memoria->IP = ip;
 		memoria->puerto = puerto;
 
 		list_add(memorias, memoria);
 		log_trace(logger, "Recibi memoria %s:%d", ip, puerto);
 	}
 
-	close(socket_cliente);
+	close(socket_cliente);*/
 	//**Fin conexion Kernel-Memoria**//
 
+	close(socket_cliente);
+	// Inciamos el gossiping
+	pthread_t hiloGossip;
+	if (pthread_create(&hiloGossip, NULL, (void*)gossip, NULL)) {
+		log_error(logger, "Hilo gossip: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+	pthread_detach(hiloGossip);
+
+
 } //End Cliente
+
+
 
 void closeCliente(){
 	//close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar

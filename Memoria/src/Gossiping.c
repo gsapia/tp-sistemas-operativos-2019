@@ -5,7 +5,7 @@
 
 void agregar_memoria(t_memoria* memoria){
 	bool buscador_memoria(t_memoria* otra_memoria){
-		return !strcmp(memoria->IP, otra_memoria->IP) && memoria->puerto == otra_memoria->puerto;
+		return (!strcmp(memoria->IP, otra_memoria->IP) && memoria->puerto == otra_memoria->puerto) || (!strcmp(otra_memoria->IP,"0.0.0.0") && memoria->numero == otra_memoria->numero);
 	}
 	// Solo la agregamos si no existe todavia
 	if(!list_find(tabla_gossiping, (_Bool (*)(void*))buscador_memoria)){

@@ -1,6 +1,7 @@
 #include "Kernel.h"
 #include "ApiKernel.h"
 #include "IPC.h"
+#include "Memorias.h"
 
 sem_t new;
 sem_t ready;
