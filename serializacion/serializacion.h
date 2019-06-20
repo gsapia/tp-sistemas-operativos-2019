@@ -23,7 +23,7 @@ enum operaciones{
 };
 
 enum consistencias{
-	SC = 1,
+	SC ,
 	SHC,
 	EC
 };

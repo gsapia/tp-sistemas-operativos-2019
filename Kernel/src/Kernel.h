@@ -22,6 +22,9 @@
 //Borre los define de kernel.h dado que estan definidos en serializacion.h
 
 
+t_list* listasMemorias[3]; //Array de listas de memorias para el ADD
+
+
 struct ConfigKernel{
 
 	char* ip_memoria;

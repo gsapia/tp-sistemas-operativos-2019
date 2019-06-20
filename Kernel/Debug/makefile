@@ -25,14 +25,11 @@ endif
 # All Target
 all: Kernel
 
-dependents:
-	-cd /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug && $(MAKE) clean all
-
 # Tool invocations
-Kernel: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so
+Kernel: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug" -o "Kernel" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "Kernel" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -42,6 +39,5 @@ clean:
 	-@echo ' '
 
 .PHONY: all clean dependents
-/home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so:
 
 -include ../makefile.targets

@@ -58,3 +58,4 @@ dkms.conf
 /FileSystem/Debug/FileSystem
 /Kernel/Debug/Kernel
 /Memoria/Debug/Memoria 
+/.metadata/

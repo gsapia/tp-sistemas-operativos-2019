@@ -14,4 +14,6 @@ char* run(char* runPath);
 char* metrics();
 char* add(uint16_t numeroMemoria, enum consistencias criterio);
 
+t_list* listasMemorias[3]; //Array de listas de memorias para el ADD
+
 #endif /* APIKERNEL_H_ */

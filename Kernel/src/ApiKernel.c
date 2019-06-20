@@ -3,6 +3,8 @@
 #include "IPC.h"
 #include "serializacion.h"
 
+
+
 char* selects(char* nombreTabla, u_int16_t key){
 	struct_select paquete;
 	paquete.key = key;
@@ -103,6 +105,27 @@ char* metrics(){
 }
 
 char* add(uint16_t numeroMemoria,enum consistencias criterio){
+
+	t_memoria1* memoria = getMemoria(numeroMemoria);
+
+	if(memoria){
+
+		list_add(listasMemorias[criterio],memoria);
+
+		return strdup("Memoria Agregada!");
+	}
+
+	else{
+		return strdup("Memoria invalida");
+	}
+
+
+	/*uint16_t getMemoria(numeroMemoria){
+
+	} falta terminar
+	*/
+
+
 	return string_from_format("Elegiste ADD");
 }
 

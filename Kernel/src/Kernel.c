@@ -21,6 +21,13 @@ void inicializarColas(){
 	colaFinish = queue_create();
 }
 
+void inicializarListasDeMemorias(){
+
+	listasMemorias[SHC]= list_create();
+	listasMemorias[SC]= list_create();
+	listasMemorias[EC]= list_create();
+
+}
 
  void leerConfig();// Esta no se si esta demas xd .
 
@@ -472,6 +479,7 @@ int main(void) {
 	//Inicializo colas de estados
 
 	inicializarColas();
+	inicializarListasDeMemorias();
 
     printf ("Prueba de hilo \n");
 
