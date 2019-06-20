@@ -7,7 +7,6 @@ void* servidor(argumentos_servidor* args){
 	uint16_t puerto_escucha = args->puerto_escucha;
 	uint16_t tamValue = args->tamValue;
 	log_trace(logger, "Iniciando servidor...");
-	log_trace(logger, "Puerto: %u, Tamanio: %d", puerto_escucha, tamValue);
 
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
@@ -21,38 +20,61 @@ void* servidor(argumentos_servidor* args){
 
 	if(bind(servidor,(void*) &direccionServidor,sizeof(direccionServidor))){
 		log_error(logger, "Fallo el servidor");
-		exit(EXIT_FAILURE); ///
+		exit(EXIT_FAILURE);
 	}
 
 	listen(servidor,SOMAXCONN);
-	log_trace(logger, "Escuchandoen el puerto %d...", puerto_escucha);
+	log_trace(logger, "Escuchando en el puerto %d...", puerto_escucha);
 
-	bool conectado = false;
-	int cliente;
-	while(!conectado){
-		struct sockaddr_in direccionCliente;
-		unsigned int tamanoDireccion = sizeof(direccionCliente);
-		cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-		log_trace(logger, "Recibi una conexion en %d", cliente);
+	while(1){
+		bool conectado = false;
+		int cliente;
+		while(!conectado){
+			struct sockaddr_in direccionCliente;
+			unsigned int tamanoDireccion = sizeof(direccionCliente);
+			cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
+			log_trace(logger, "Recibi una conexion en %d", cliente);
 
-		//COMIENZO HANDSHAKE
+			//COMIENZO HANDSHAKE
 
-		uint8_t *otro = malloc(sizeof(uint8_t));
-		if(!(recv(cliente, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo si es Memoria
-			log_error(logger, "Recibi una conexion de alguien que no es Memoria.");
-			close(cliente);
-		}else{
-			const uint8_t soy = ID_FILESYSTEM;
-			send(cliente, &soy, sizeof(soy), 0); // Le hacemos saber que somos FS
-			send(cliente, &tamValue, sizeof(tamValue), 0); // Le envio a memoria el valor que necesita (Tamaño del Value)
-			//TERMINO HANSHAKE
-			conectado = true;
-			log_trace(logger, "¡Me conecte a Memoria!");
+			uint8_t *otro = malloc(sizeof(uint8_t));
+			if(!(recv(cliente, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo si es Memoria
+				log_error(logger, "Recibi una conexion de alguien que no es Memoria.");
+				close(cliente);
+			}else{
+				const uint8_t soy = ID_FILESYSTEM;
+				send(cliente, &soy, sizeof(soy), 0); // Le hacemos saber que somos FS
+				send(cliente, &tamValue, sizeof(tamValue), 0); // Le envio a memoria el valor que necesita (Tamaño del Value)
+				//TERMINO HANSHAKE
+				conectado = true;
+				log_trace(logger, "¡Me conecte a Memoria!");
+			}
+
 		}
 
-	}
+		// Conexion con una memoria establecida, asi que ahora creamos un hilo para atender sus peticiones
+		int *socket_cliente = malloc(sizeof(int));
+		*socket_cliente = cliente;
 
-	//Espero Solicitudes
+		// Mando la ejecucion a un hilo deatacheable
+		pthread_t hilo;
+		pthread_attr_t attr;
+		pthread_attr_init(&attr);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		while(pthread_create(&hilo, &attr, (void*)memoria_handler, socket_cliente)){
+			sleep(5);
+			log_info(logger, "Error creando hilo cliente");
+		}
+		pthread_attr_destroy(&attr);
+		}
+
+	close(servidor);
+}
+
+void memoria_handler(int *socket_cliente){
+	int cliente = *socket_cliente;
+	free(socket_cliente);
+
 	while(1){
 		uint8_t cod_op;
 
@@ -135,8 +157,6 @@ void* servidor(argumentos_servidor* args){
 				log_trace(logger, "Recibi un DESCRIBE GLOBAL");
 
 				struct_describe_global_respuesta respuesta;
-				respuesta.estado = ESTADO_DESCRIBE_OK;
-				respuesta.describes = dictionary_create();
 
 				respuesta = describe_global();
 
@@ -160,7 +180,6 @@ void* servidor(argumentos_servidor* args){
 			break;
 		}
 	}
-	close(servidor);
+	close(cliente);
 }
-
 

@@ -533,6 +533,7 @@ int obtenerParticion(char* nombreTabla, u_int16_t key){
 	int particiones = obtenerParticiones(metadata);
 	int particion_busqueda = funcionModulo(key, particiones);
 	fclose(metadata);
+	log_trace(logger, "La particion es: %d", particion_busqueda);
 	return particion_busqueda;
 }
 

@@ -64,22 +64,54 @@ int blockSize;
 int blocks;
 t_bitarray* bitarray;
 
-//############ FUNCIONES ##############
+/*############ FUNCIONES ##############*/
+
+//Lee una linea ingresada por teclado, y la envia por parametro a apiLissandra()
 void* consola();
+
+//Discrimina el mensaje por parametro con un switch, y dependiendo el caso, retorna el valor esperado para ese caso
 char* apiLissandra(char*);
+
+//Realiza la compactacion de una carpeta especifica
 void *compactacion(argumentos_compactacion *args);
+
+//Realiza la operacion SELECT
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
+
+//Realiza la operacion INSERT
 char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
+
+//Realiza la operacion CREATE
 uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
+
+//Realiza la operacion DESCRIBE
 struct_describe_respuesta describe(char* nombreTabla);
+
+//Realiza la operacion DESCRIBE en todas las tablas existentes
 struct_describe_global_respuesta describe_global();
+
+//Realiza la operacion DROP
 char* drop(char* nombreTabla);
+
+//Indica si una tabla (una carpeta) existe en "puntoMontaje/Table/"
 bool existeTabla(char* nombreTabla);
+
+//Devuelve el archivo Metadata abierto para lectura, de una tabla
 FILE* obtenerMetaDataLectura(char* nombreTabla);
+
+//Obtiene la particion a la que pertenece la Key asociada
 int obtenerParticion(char *nombreTabla, u_int16_t key);
+
+//Devuelve el resto entre la divicion de key / particiones
 int funcionModulo(int key, int particiones);
+
+//Obtiene la cantidad de particiones del archivo Metadata
 int obtenerParticiones(FILE* metadata);
+
+//Agrega los registros con una determinada key, con el mayor timestamp de .bin, .tmp y .tmpc a listaFiltro.
 void agregarRegDeBinYTemps(t_list *listaFiltro, char* nombreTabla, u_int16_t key, int particion_busqueda);
+
+//Devuelve un el archivo ".bin" que corresponde a la particion enviada por parametro
 FILE* obtenerBIN(int particion, char* nombreTabla);
 void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
@@ -113,21 +145,33 @@ void casoParticular(char* path, int particion, FILE* bin, char* line, int renglo
 t_config *leer_config();
 t_log* iniciar_logger();
 void* servidor(argumentos_servidor* args);
+void memoria_handler(int *socket_cliente);
 void* fileSystem();
 void* dump(int tiempo_dump);
 bool esArchivoTemporalC(char* nombre);
-int obtenerUltimoBloqueBin(char* path, int particion);
-int* obtenerBloques(char* bloques);
+int obtenerUltimoBloqueBin(FILE* bin);
 int ultimoBloques(char* bloques);
 void crearBitmap(char* path);
 void iniciarArchivoConCeros(FILE* f);
-int agregarNuevoBloqueBin();
+char* agregarNuevoBloqueBin();
 void insertarLinea(int bloqueNumero, char* linea);
-void actualizarTableBin(char* nombreTabla, int length, int particion, int bloqueBin, int size);
 int entraEnUltimoBloque(int size, char* line);
 int sizeArchivo(FILE* archivo);
-int existeKeyEnBloques(long key_buffer, int ultimoBloque);
-int obtenerSizeBin(char* path, int particion);
+char* existeKeyEnBloques(ulong key_tmpc, FILE* binTabla);
+int obtenerSizeBin(FILE* bin);
 ulong stringToLong(char* strToInt);
 struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe);
+char** obtenerBloques(char* bloques);
+
+//Indica true, si la key pertenece al bloque asignado con bloque_numero. False en caso contrario.
+bool existeKey(ulong key, char* bloque_numero, char* append);
+bool entraEnBloque(char* line, int bloque);
+void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin);
+
+//Calcula el tamañano del bloque: "puntoMontaje/Bloques/numeroBloque.bin"
+int calcularTamanoBloque(int numeroBloque);
+
+//Obtiene la ultima linea de un bloque y la retorna
+char* obtenerUltimaLinea(char* bloque);
+
 #endif /* LFS_H_ */
