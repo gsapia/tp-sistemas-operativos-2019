@@ -17,7 +17,7 @@ void closeCliente();
 
 int conectar(char* ip, uint16_t puerto);
 
-struct_select_respuesta selectAMemoria(struct_select paquete);
+struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria);
 enum estados_insert insertAMemoria(struct_insert paquete);
 enum estados_create createAMemoria(struct_create paquete);
 

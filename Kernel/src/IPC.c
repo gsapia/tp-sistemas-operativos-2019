@@ -111,8 +111,8 @@ void closeCliente(){
 	//close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 
-struct_select_respuesta selectAMemoria(struct_select paquete){
-	int socket_cliente = conectar(config.ip_memoria, config.puerto_memoria);
+struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria){
+	int socket_cliente = conectar(memoria->IP, memoria->puerto);
 	enviar_select(socket_cliente, paquete);
 	struct_select_respuesta respuesta = recibir_registro(socket_cliente);
 	close(socket_cliente);
