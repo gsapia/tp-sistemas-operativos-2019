@@ -233,7 +233,6 @@ int obtenerParticiones(FILE* metadata){
 	return particiones;
 }
 
-//Devuelve un el archivo ".bin" que corresponde a la particion enviada por parametro
 FILE* obtenerBIN(int particion, char* nombreTabla){
 	char* nombre_bin = intToString(particion);
 	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, nombre_bin);
@@ -275,17 +274,24 @@ void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int canti
 
 // Crea todos los archivos ".bin" necesarios en la tabla correspondiente.
 void crearBinDeTabla(char* nombreTabla, int cantParticiones){
-	FILE* f;
+	FILE* f; FILE *bloque;
 	char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
 	char* particion;
 	for(int i=0;i<cantParticiones;i++){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
+		char* numeroBloque = agregarNuevoBloqueBin();
+		char* path_bloque = string_from_format("%sBloques/%s.bin", puntoMontaje, numeroBloque);
+		bloque = fopen(path_bloque, "w");
+		fclose(bloque);
 		f = fopen(path_aux, "w");
 		fputs("SIZE=0  ", f);
 		fputs("\n",f);
-		fputs("BLOCKS=[]",f);
+		char* auxBloques = string_from_format("BLOCKS=[%s]", numeroBloque);
+		fputs(auxBloques,f);
 		fclose(f);
+		free(auxBloques);
+		free(path_bloque);
 		free(path_aux);
 		free(particion);
 	}
