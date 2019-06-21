@@ -26,7 +26,7 @@ endif
 all: Kernel
 
 dependents:
-	-cd /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug && $(MAKE) clean all
 
 # Tool invocations
 Kernel: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-UnNombre/serializacion/Debug/libserializacion.so
