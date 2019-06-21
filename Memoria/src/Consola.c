@@ -1,4 +1,8 @@
-#include "Consola.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <commons/string.h>
+#include <string.h>
+#include <readline/readline.h>
 #include "API.h"
 
 char *apiMemoria(char* mensaje){
@@ -255,7 +259,6 @@ char *apiMemoria(char* mensaje){
 	free(comando);
 	return string_from_format("Comando invalido");
 }
-
 
 void consola() {
 	char *linea;

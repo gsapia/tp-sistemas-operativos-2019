@@ -5,6 +5,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../src/API.c \
+../src/Config.c \
 ../src/Consola.c \
 ../src/Gossiping.c \
 ../src/IPC.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 
 OBJS += \
 ./src/API.o \
+./src/Config.o \
 ./src/Consola.o \
 ./src/Gossiping.o \
 ./src/IPC.o \
@@ -23,6 +25,7 @@ OBJS += \
 
 C_DEPS += \
 ./src/API.d \
+./src/Config.d \
 ./src/Consola.d \
 ./src/Gossiping.d \
 ./src/IPC.d \

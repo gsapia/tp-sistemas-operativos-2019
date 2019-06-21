@@ -1,9 +1,9 @@
 #include "MemoriaPrincipal.h"
 #include "Misc.h"
+#include "Config.h"
 #include "IPC.h"
-#include "Gossiping.h"
 
-uint64_t* paginas_usadas; // Habria que modificar esto para usar LRU
+uint64_t* paginas_usadas; // Ultima vez que se uso cada pagina. Posiciones en 0 indican paginas libres.
 bool full = false;
 
 void auto_journaling(){
@@ -16,7 +16,7 @@ void auto_journaling(){
 void initMemoriaPrincipal(){
 	log_trace(logger, "Inicializando la memoria principal con un tamanio de %d bytes", config.tamanio_memoria);
 	memoria_principal = malloc(config.tamanio_memoria);
-	if(memoria_principal == NULL){
+	if(!memoria_principal){
 		log_error(logger, "No se pudo reservar espacio para la memoria principal. Hay suficiente RAM disponible?");
 		exit(EXIT_FAILURE);
 	}
@@ -28,22 +28,16 @@ void initMemoriaPrincipal(){
 	// Inicializo la tabla de segmentos
 	tabla_segmentos = list_create();
 
+	// Inicializo array de paginas usadas
 	paginas_usadas = calloc(CANT_PAGINAS, sizeof(*paginas_usadas));
 
+	// Iniciamos el proceso de journaling
 	pthread_t hiloJournaling;
 	if (pthread_create(&hiloJournaling, NULL, (void*)auto_journaling, NULL)) {
 		log_error(logger, "Hilo auto_journaling: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
 	pthread_detach(hiloJournaling);
-
-	// Inciamos el gossiping
-	pthread_t hiloGossiping;
-	if (pthread_create(&hiloGossiping, NULL, (void*)gossiping, NULL)) {
-		log_error(logger, "Hilo gossiping: Error - pthread_create()");
-		exit(EXIT_FAILURE);
-	}
-	pthread_detach(hiloGossiping);
 }
 
 

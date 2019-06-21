@@ -2,6 +2,7 @@
 #include "MemoriaPrincipal.h"
 #include "API.h"
 #include "Gossiping.h"
+#include "Config.h"
 #include "Misc.h"
 
 int socket_cliente;
@@ -124,6 +125,23 @@ enum estados_drop dropAFS(struct_drop paquete){
 	return respuesta;
 }
 
+enum id_proceso handshake(int socket_conexion){
+	// Envio primer mensaje diciendo que soy Memoria
+	const uint8_t soy = ID_MEMORIA;
+	send(socket_conexion, &soy, sizeof(soy), 0);
+
+	// Recibo quien es el otro extremo
+	uint8_t otro;
+	if(!recv(socket_conexion, &otro, sizeof(otro), 0)){
+		// No recibimos nada, algo malo paso
+		log_error(logger, "ERROR en servidor");
+		close(socket_conexion);
+		return 0;
+	}
+
+	return otro;
+}
+
 void initCliente(){
 	log_trace(logger, "Iniciando cliente");
 
@@ -135,31 +153,13 @@ void initCliente(){
 	log_trace(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
 
 	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
-	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
+	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor)) || handshake(socket_cliente) != ID_FILESYSTEM){
 		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
 		sleep(5);
 	}
 
-	//----------------COMIENZO HANDSHAKE----------------
-
-	// Envio primer mensaje diciendo que soy Memoria
-	const uint8_t soy = ID_MEMORIA;
-	send(socket_cliente, &soy, sizeof(soy), 0);
-
-	// Recibo confirmacion de que el otro extremo es FS
-	uint8_t *otro = malloc(sizeof(uint8_t));
-	if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_FILESYSTEM)){ // Confirmo que el otro extremo es FS
-		// El otro extremo no es FS, asi que cierro la conexion / termino el programa
-		log_error(logger, "Error, no pudimos conectar con FileSystem");
-		exit(EXIT_FAILURE);
-	}
-	free(otro);
-	// El otro extremo es FS realmente asi que ahora enviamos/recibimos los datos necesarios
-
-	// En este caso recibimos el tamaño del value
+	// Una vez conectados, recibimos el tamanio del value
 	recv(socket_cliente, &tamanio_value, sizeof(tamanio_value), 0);
-
-	//-------------------FIN HANDSHAKE------------------
 
 	log_trace(logger, "Me conecte con FS!");
 }
@@ -171,7 +171,6 @@ void closeCliente(){
 bool kernel_conectado = false;
 
 t_list* intercambiar_tabla_gossiping(t_memoria memoria){
-
 	// Intentamos conectarnos con la memoria
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family= AF_INET;
@@ -179,26 +178,9 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 	direccionServidor.sin_port = htons(memoria.puerto); // PUERTO
 
 	int socket_memoria = socket(AF_INET, SOCK_STREAM, 0);
-	if(connect(socket_memoria, (void*) &direccionServidor, sizeof(direccionServidor))){
+	if(connect(socket_memoria, (void*) &direccionServidor, sizeof(direccionServidor)) || handshake(socket_memoria) != ID_MEMORIA){
 		return NULL;
 	}
-
-	//----------------COMIENZO HANDSHAKE----------------
-
-	// Envio primer mensaje diciendo que soy Memoria
-	const uint8_t soy = ID_MEMORIA;
-	send(socket_memoria, &soy, sizeof(soy), 0);
-
-	// Recibo confirmacion de que el otro extremo es Memoria
-	uint8_t *otro = malloc(sizeof(uint8_t));
-	if(!(recv(socket_memoria, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo que el otro extremo es Memoria
-		// El otro extremo no es Memoria, asi que cierro la conexion / termino el programa
-		return NULL;
-	}
-	free(otro);
-	// El otro extremo es Memoria realmente asi que ahora enviamos/recibimos los datos necesarios
-
-	//-------------------FIN HANDSHAKE------------------
 
 	// Primero enviamos nuestra tabla
 	enviar_tabla_gossiping(socket_memoria, tabla_gossiping);
@@ -211,41 +193,21 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 	return tabla;
 }
 
-void memoria_handler(int *socket_cliente){
-	int socket_memoria = *socket_cliente;
-	free(socket_cliente);
-
+void memoria_handler(int *socket_memoria){
 	// Enviamos y recibimos las tablas
-	enviar_tabla_gossiping(socket_memoria, tabla_gossiping);
-	t_list* tabla = recibir_tabla_gossiping(socket_memoria);
+	enviar_tabla_gossiping(*socket_memoria, tabla_gossiping);
+	t_list* tabla = recibir_tabla_gossiping(*socket_memoria);
 	agregar_memorias(tabla);
+
 	list_destroy_and_destroy_elements(tabla, free);
-}
-
-enum id_proceso handshake(int socket_conexion){
-	// Recibo quien es el otro extremo
-	uint8_t *otro = malloc(sizeof(uint8_t));
-
-	if(!recv(socket_conexion, otro, sizeof(uint8_t), 0)){
-		// No recibimos nada, algo malo paso
-		log_error(logger, "ERROR en servidor");
-		close(socket_conexion);
-		return 0;
-	}
-
-	const uint8_t soy = ID_MEMORIA;
-	send(socket_conexion, &soy, sizeof(soy), 0);
-
-	enum id_proceso id = *otro;
-	free(otro);
-	return id;
+	free(socket_memoria);
 }
 
 void kernel_handler(int *socket_cliente){
 	int socket_kernel = *socket_cliente;
 	free(socket_cliente);
 	while(1){
-		// Recibo el codigo de op
+		// Recibo el codigo de operacion
 		uint8_t cod_op;
 		if(!recv(socket_kernel, &cod_op, sizeof(uint8_t), 0)){
 			log_trace(logger, "El cliente se desconecto");
@@ -350,34 +312,9 @@ void kernel_handler(int *socket_cliente){
 				log_trace(logger, "Recibi una operacion invalida...");
 		}
 	}
+
 	close(socket_kernel); // No me olvido de cerrar el socket que ya no voy a usar mas
-
 }
-
-/*void conectar_kernel(int socket_kernel){
-	uint16_t cantidadSeeds;
-	for(cantidadSeeds = 0; config.ip_seeds[cantidadSeeds]; cantidadSeeds++);
-
-	send(socket_kernel, &cantidadSeeds, sizeof(cantidadSeeds), 0); // Mando la cantidad de seeds
-
-	for(int i = 0; i < cantidadSeeds; i++){
-		uint16_t tamanio_ip = strlen(config.ip_seeds[i])+1;
-		size_t tamanio_paquete = sizeof(tamanio_ip) + tamanio_ip + sizeof(config.puertos_seeds[i]);
-
-		void* paquete = malloc(tamanio_paquete);
-		int despl = 0;
-
-		memcpy(paquete, &tamanio_ip, sizeof(tamanio_ip)); // Primero el tamanio del string IP
-		despl += sizeof(tamanio_ip);
-		memcpy(paquete + despl, config.ip_seeds[i], tamanio_ip); // Ahora la IP
-		despl += tamanio_ip;
-		memcpy(paquete + despl, &config.puertos_seeds[i], sizeof(config.puertos_seeds[i])); // Por ultimo el puerto
-
-		send(socket_kernel, paquete, tamanio_paquete, 0);
-		free(paquete);
-	}
-	kernel_conectado = true;
-}*/
 
 void servidor() {
 	log_trace(logger, "Iniciando servidor");
@@ -407,41 +344,33 @@ void servidor() {
 		enum id_proceso otro = handshake(socket_conexion);
 		switch (otro) {
 		case ID_KERNEL:
-			/*if(!kernel_conectado){
-				conectar_kernel(socket_conexion);
-			}
-			else {*/{
-				int *socket_cliente = malloc(sizeof(int));
-				*socket_cliente = socket_conexion;
+		{
+			int *socket_cliente = malloc(sizeof(int));
+			*socket_cliente = socket_conexion;
 
-				// Mando la ejecucion a un hilo deatacheable
-				pthread_t hilo;
-				pthread_attr_t attr;
-				pthread_attr_init(&attr);
-				pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-				while(pthread_create(&hilo, &attr, (void*)kernel_handler, socket_cliente)){
-					sleep(5);
-					log_info(logger, "Error creando hilo cliente");
-				}
-				pthread_attr_destroy(&attr);
+			// Mando la ejecucion a un hilo deatacheable
+			pthread_t hilo_kernel;
+			while(pthread_create(&hilo_kernel, NULL, (void*)kernel_handler, socket_cliente)){
+				log_info(logger, "Error creando hilo kernel_handler");
+				sleep(5);
 			}
-			break;
+			pthread_detach(hilo_kernel);
+		}
+		break;
 		case ID_MEMORIA:
 		{
 			int *socket_cliente = malloc(sizeof(int));
 			*socket_cliente = socket_conexion;
 
 			log_trace(logger, "GOSSIPING: Intercambiando tablas por peticion de una memoria en %s ...", inet_ntoa(direccionCliente.sin_addr));
+
 			// Mando la ejecucion a un hilo deatacheable
-			pthread_t hilo;
-			pthread_attr_t attr;
-			pthread_attr_init(&attr);
-			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-			while(pthread_create(&hilo, &attr, (void*)memoria_handler, socket_cliente)){
+			pthread_t hilo_memoria;
+			while(pthread_create(&hilo_memoria, NULL, (void*)memoria_handler, socket_cliente)){
+				log_info(logger, "Error creando hilo memoria_handler");
 				sleep(5);
-				log_info(logger, "Error creando hilo cliente");
 			}
-			pthread_attr_destroy(&attr);
+			pthread_detach(hilo_memoria);
 		}
 		break;
 		default:

@@ -1,5 +1,7 @@
 #include "Gossiping.h"
 #include <stdbool.h>
+#include <commons/string.h>
+#include "Config.h"
 #include "IPC.h"
 #include "Misc.h"
 
@@ -82,5 +84,4 @@ void gossiping(){
 		log_trace(logger, "Ronda de Gossiping finalizada. Memorias conocidas: %s", memorias_conocidas);
 		msleep(config.tiempo_gossiping);
 	}
-
 }

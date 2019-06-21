@@ -11,7 +11,6 @@
 #include "Memoria.h"
 #include "serializacion.h"
 
-
 void initCliente();
 void closeCliente();
 void servidor();

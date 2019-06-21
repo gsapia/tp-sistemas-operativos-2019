@@ -7,7 +7,6 @@
 #include <stdbool.h>
 #include <commons/collections/list.h>
 #include <pthread.h>
-
 #include "Memoria.h"
 
 #define CANT_PAGINAS ( config.tamanio_memoria / tamanio_pagina )
