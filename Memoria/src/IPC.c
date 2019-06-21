@@ -178,8 +178,8 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 	direccionServidor.sin_addr.s_addr = inet_addr(memoria.IP); // Direccion IP
 	direccionServidor.sin_port = htons(memoria.puerto); // PUERTO
 
-	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
-	if(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
+	int socket_memoria = socket(AF_INET, SOCK_STREAM, 0);
+	if(connect(socket_memoria, (void*) &direccionServidor, sizeof(direccionServidor))){
 		return NULL;
 	}
 
@@ -187,11 +187,11 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 
 	// Envio primer mensaje diciendo que soy Memoria
 	const uint8_t soy = ID_MEMORIA;
-	send(socket_cliente, &soy, sizeof(soy), 0);
+	send(socket_memoria, &soy, sizeof(soy), 0);
 
 	// Recibo confirmacion de que el otro extremo es Memoria
 	uint8_t *otro = malloc(sizeof(uint8_t));
-	if(!(recv(socket_cliente, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo que el otro extremo es Memoria
+	if(!(recv(socket_memoria, otro, sizeof(uint8_t), 0) && *otro == ID_MEMORIA)){ // Confirmo que el otro extremo es Memoria
 		// El otro extremo no es Memoria, asi que cierro la conexion / termino el programa
 		return NULL;
 	}
@@ -201,10 +201,12 @@ t_list* intercambiar_tabla_gossiping(t_memoria memoria){
 	//-------------------FIN HANDSHAKE------------------
 
 	// Primero enviamos nuestra tabla
-	enviar_tabla_gossiping(socket_cliente, tabla_gossiping);
+	enviar_tabla_gossiping(socket_memoria, tabla_gossiping);
 
 	// Si el otro extremo es una memoria, entonces tambien recibimos
-	t_list* tabla = recibir_tabla_gossiping(socket_cliente);
+	t_list* tabla = recibir_tabla_gossiping(socket_memoria);
+
+	close(socket_memoria);
 
 	return tabla;
 }
