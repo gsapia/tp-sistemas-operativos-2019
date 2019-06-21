@@ -47,7 +47,7 @@ typedef struct{
 typedef struct{
 	bool falla;
 	char* resultado;
-}t_resultado;
+}t_resultado;  //    Para que exec sepa cuando parar, en caso de fallar lo muestra.
 
 
 

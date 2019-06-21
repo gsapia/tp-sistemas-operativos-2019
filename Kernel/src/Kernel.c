@@ -465,7 +465,7 @@ void inicializarListasDeMemorias(){
 
 			// Mando la ejecucion a un hilo_exec deatacheable
 			pthread_t hilo_exec;
-			pthread_attr_t attr;
+			pthread_attr_t attr;                                //Para darle atributos al hilo: Que sea detachable
 			pthread_attr_init(&attr);
 			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 			while(pthread_create(&hilo_exec, &attr, (void*)ejecutarScript, script)){
