@@ -6,9 +6,9 @@ t_memoria* getMemoria(int numero){
 	bool buscador_memoria(t_memoria* memoria){
 		return memoria->numero == numero;
 	}
-	t_memoria* memoria = list_find(pool_memorias, (_Bool(*)(void*)) buscador_memoria);
-	t_memoria* resultado = malloc(sizeof(t_memoria));
-	memcpy(resultado, memoria, sizeof(t_memoria));
+	t_memoria* memoria = list_find(pool_memorias, (_Bool(*)(void*)) buscador_memoria); //Agarra el pool de memorias, levanta la primera y la busca con la funcion
+	t_memoria* resultado = malloc(sizeof(t_memoria));                                  //retorna si o no la encuentra, en caso de false vuelve a buscar hasta que sea true
+	memcpy(resultado, memoria, sizeof(t_memoria));                                     //si la encuentra retorna un puntero ,si no retorna NULL.
 
 	return resultado; // Devolvemos una copia, para no joder la lista actual
 }
