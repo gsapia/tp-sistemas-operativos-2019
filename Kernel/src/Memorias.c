@@ -1,6 +1,7 @@
 #include "Memorias.h"
 #include "IPC.h"
 
+
 t_memoria* getMemoria(int numero){
 	bool buscador_memoria(t_memoria* memoria){
 		return memoria->numero == numero;
@@ -10,6 +11,30 @@ t_memoria* getMemoria(int numero){
 	memcpy(resultado, memoria, sizeof(t_memoria));
 
 	return resultado; // Devolvemos una copia, para no joder la lista actual
+}
+
+bool existeTabla(char* nombre_tabla){
+	// TODO
+	return true;
+}
+t_memoria* obtener_memoria_random(){
+	// TODO
+	return NULL;
+}
+t_memoria* obtener_memoria_SC(){
+	return list_get(listasMemorias[SC], 0);
+}
+t_memoria* obtener_memoria_SHC(uint16_t key){
+	// TODO:
+	return NULL;
+}
+t_memoria* obtener_memoria_EC(){
+	// TODO:
+	return NULL;
+}
+t_memoria* obtener_memoria_segun_tabla(char* nombre_tabla){
+	// TODO
+	return NULL;
 }
 
 void gossip(){

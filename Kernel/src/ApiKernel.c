@@ -1,9 +1,8 @@
 #include "ApiKernel.h"
 #include "Kernel.h"
 #include "IPC.h"
+#include "Memorias.h"
 #include "serializacion.h"
-
-
 
 t_resultado selects(char* nombreTabla, u_int16_t key){
 	t_resultado respuesta;
@@ -62,7 +61,7 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 	paquete.key = key;
 	paquete.valor = valor;
 
-	enum estados_insert resultado = insertAMemoria(paquete);
+	enum estados_insert resultado = insertAMemoria(paquete, memoria);
 
 	switch (resultado) {
 	case ESTADO_INSERT_OK:
@@ -78,12 +77,6 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 }
 t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
 	t_resultado respuesta;
-	t_memoria * memoria = obtener_memoria_segun_consistencia(tipoConsistencia);
-	if(!memoria){
-		respuesta.falla = true;
-		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
-		return respuesta;
-	}
 	respuesta.falla = false;
 
 	struct_create paquete;

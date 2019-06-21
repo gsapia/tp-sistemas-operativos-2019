@@ -118,15 +118,15 @@ struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria
 	close(socket_cliente);
 	return respuesta;
 }
-enum estados_insert insertAMemoria(struct_insert paquete){
-	int socket_cliente = conectar(config.ip_memoria, config.puerto_memoria);
+enum estados_insert insertAMemoria(struct_insert paquete, t_memoria* memoria){
+	int socket_cliente = conectar(memoria->IP, memoria->puerto);
 	enviar_insert(socket_cliente, paquete);
 	enum estados_insert respuesta = recibir_respuesta_insert(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
 enum estados_create createAMemoria(struct_create paquete){
-	int socket_cliente = conectar(config.ip_memoria, config.puerto_memoria);
+	int socket_cliente = conectar(config.ip_memoria, config.puerto_memoria); // Teoricamente puede ir a cualquier memoria
 	enviar_create(socket_cliente, paquete);
 	enum estados_create respuesta = recibir_respuesta_create(socket_cliente);
 	close(socket_cliente);
