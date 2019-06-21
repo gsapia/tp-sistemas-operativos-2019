@@ -7,6 +7,10 @@ t_memoria* getMemoria(int numero){
 		return memoria->numero == numero;
 	}
 	t_memoria* memoria = list_find(pool_memorias, (_Bool(*)(void*)) buscador_memoria);
+	if(!memoria){
+		return NULL;
+	}
+
 	t_memoria* resultado = malloc(sizeof(t_memoria));
 	memcpy(resultado, memoria, sizeof(t_memoria));
 
