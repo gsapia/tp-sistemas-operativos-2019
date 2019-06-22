@@ -23,7 +23,7 @@ void initMemoriaPrincipal(){
 
 	// Inicializo el tamanio de pagina
 	tamanio_pagina = sizeof(uint64_t) + sizeof(uint16_t) + tamanio_value;
-	log_trace(logger, "Tendremos un total de %d paginas de un tamanio de %d bytes cada una", CANT_PAGINAS, tamanio_pagina);
+	log_info(logger, "Tendremos un total de %d paginas de un tamanio de %d bytes cada una", CANT_PAGINAS, tamanio_pagina);
 
 	// Inicializo la tabla de segmentos
 	tabla_segmentos = list_create();
@@ -80,7 +80,6 @@ int getMarco(){
 		marco = algoritmo_reemplazo();
 		if(marco == -1){
 			log_trace(logger, "La memoria esta FULL.");
-			// TODO: Logica de memoria llena
 			full = true;
 			return -1;
 		}
@@ -275,7 +274,7 @@ t_segmento* agregar_segmento(char* nombreTabla){
 }
 
 void vaciar_memoria(){
-	log_trace(logger, "Realizando Journaling.");
+	log_info(logger, "Realizando Journaling.");
 	pthread_mutex_lock(&mutex_memoria_principal); // Evitamos que alguien tome nuevas paginas mientras tanto
 
 	void liberar_segmento(t_segmento* segmento){

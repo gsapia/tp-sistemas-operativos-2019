@@ -3,8 +3,6 @@
 #include "IPC.h"
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
-	log_debug(logger, "SELECT: Recibi Tabla:%s Key:%d", nombreTabla, key);
-
 	struct_select_respuesta respuesta;
 	pthread_mutex_lock(&mutex_memoria_principal); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer, o que el valor sea modificado mientras se lee
 	t_registro* registro = buscar_registro(nombreTabla, key);
@@ -38,7 +36,6 @@ enum estados_insert insert(char* nombreTabla, u_int16_t clave, char* valor){
 	if(strlen(valor) > tamanio_value)
 		valor[tamanio_value] = '\0';
 
-	log_debug(logger, "INSERT: Recibi Tabla:%s Key:%d Valor:%s", nombreTabla, clave, valor);
 	pthread_mutex_lock(&mutex_memoria_principal); // Mutex para evitar que dos hilos distintos tomen la misma pagina sin querer, o que la pagina se limpie mientras se modifica debido a un journal inoportuno
 	// Busco si el segmento correspondiente existe en la tabla de segmentos
 	t_segmento* segmento = buscar_segmento(nombreTabla);
@@ -82,8 +79,6 @@ enum estados_create create(char* nombreTabla, enum consistencias tipoConsistenci
 	return resultado;
 }
 struct_describe_respuesta describe(char* nombreTabla){
-	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
-
 	// Hago el DESCRIBE a FS
 	struct_describe paquete;
 	paquete.nombreTabla = nombreTabla;
@@ -93,16 +88,12 @@ struct_describe_respuesta describe(char* nombreTabla){
 	return resultado;
 }
 struct_describe_global_respuesta describe_global(){
-	log_debug(logger, "DESCRIBE");
-
 	// Hago el DESCRIBE a FS
 	struct_describe_global_respuesta resultado = describeGlobalAFS();
 
 	return resultado;
 }
 enum estados_drop drop(char* nombreTabla){
-	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
-
 	// Primero lo elimino de la memoria
 	eliminar_segmento(nombreTabla);
 

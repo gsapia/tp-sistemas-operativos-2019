@@ -11,7 +11,7 @@ void agregar_memoria(t_memoria* memoria){
 	}
 	// Solo la agregamos si no existe todavia
 	if(!list_find(tabla_gossiping, (_Bool (*)(void*))buscador_memoria)){
-		log_debug(logger, "Conocida memoria: %d ", memoria->numero);
+		log_trace(logger, "Conocida memoria: %d ", memoria->numero);
 		t_memoria* duplicado = malloc(sizeof(t_memoria));
 		memcpy(duplicado, memoria, sizeof(t_memoria));
 		list_add(tabla_gossiping, duplicado);
@@ -24,7 +24,7 @@ void eliminar_memoria(t_memoria memoria){
 	}
 	void eliminador(void* dato){
 		t_memoria* memoria = dato;
-		log_trace(logger, "GOSSIPING: La memoria %d se cayo.", memoria->numero);
+		log_info(logger, "GOSSIPING: La memoria %d se cayo.", memoria->numero);
 		free(dato);
 	}
 	list_remove_and_destroy_by_condition(tabla_gossiping, (_Bool (*)(void*))buscador_memoria, eliminador);
@@ -59,12 +59,12 @@ void gossiping(){
 	list_add(tabla_gossiping, yo);
 
 	if(!config.ip_seeds[0]){ // No hay seeds configurados, por lo tanto es al pedo hacer gossiping
-		log_trace(logger, "GOSSIPING: No hay seeds configuradas.");
+		log_warning(logger, "GOSSIPING: No hay seeds configuradas.");
 		return;
 	}
 
 	while(1){
-		log_trace(logger, "Iniciando ronda de Gossiping");
+		log_info(logger, "Iniciando ronda de Gossiping");
 
 		for(int i = 0; config.ip_seeds[i]; i++){
 			t_memoria memoria;
@@ -81,7 +81,7 @@ void gossiping(){
 		list_iterate(tabla_gossiping, (void (*)(void*)) iterador);
 		string_trim(&memorias_conocidas);
 
-		log_trace(logger, "Ronda de Gossiping finalizada. Memorias conocidas: %s", memorias_conocidas);
+		log_info(logger, "Ronda de Gossiping finalizada. Memorias conocidas: %s", memorias_conocidas);
 		msleep(config.tiempo_gossiping);
 	}
 }

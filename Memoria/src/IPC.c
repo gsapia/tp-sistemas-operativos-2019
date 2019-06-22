@@ -150,18 +150,18 @@ void initCliente(){
 	direccionServidor.sin_addr.s_addr = inet_addr(config.ip_fs); // Direccion IP
 	direccionServidor.sin_port = htons(config.puerto_fs); // PUERTO
 
-	log_trace(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
+	log_info(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
 
 	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor)) || handshake(socket_cliente) != ID_FILESYSTEM){
-		log_trace(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
+		log_warning(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
 		sleep(5);
 	}
 
 	// Una vez conectados, recibimos el tamanio del value
 	recv(socket_cliente, &tamanio_value, sizeof(tamanio_value), 0);
 
-	log_trace(logger, "Me conecte con FS!");
+	log_info(logger, "Me conecte con FS!");
 }
 
 void closeCliente(){
@@ -330,12 +330,12 @@ void servidor() {
 	setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
 
 	if (bind(socket_servidor, (void*) &direccionServidor, sizeof(direccionServidor))) {
-		log_trace(logger, "Fallo el servidor");
+		log_error(logger, "Fallo el servidor");
 		exit(EXIT_FAILURE); // No seria la manera mas prolija de atender esto
 	}
 
 	listen(socket_servidor, SOMAXCONN);
-	log_trace(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
+	log_info(logger, "Escuchando en el puerto %d...",config.puerto_escucha);
 
 	struct sockaddr_in direccionCliente;
 	unsigned int tamanoDireccion = sizeof(direccionCliente);
@@ -351,7 +351,7 @@ void servidor() {
 			// Mando la ejecucion a un hilo deatacheable
 			pthread_t hilo_kernel;
 			while(pthread_create(&hilo_kernel, NULL, (void*)kernel_handler, socket_cliente)){
-				log_info(logger, "Error creando hilo kernel_handler");
+				log_error(logger, "Error creando hilo kernel_handler");
 				sleep(5);
 			}
 			pthread_detach(hilo_kernel);
@@ -367,14 +367,14 @@ void servidor() {
 			// Mando la ejecucion a un hilo deatacheable
 			pthread_t hilo_memoria;
 			while(pthread_create(&hilo_memoria, NULL, (void*)memoria_handler, socket_cliente)){
-				log_info(logger, "Error creando hilo memoria_handler");
+				log_error(logger, "Error creando hilo memoria_handler");
 				sleep(5);
 			}
 			pthread_detach(hilo_memoria);
 		}
 		break;
 		default:
-			log_error(logger, "Recibi una conexion de alguien que no es ni Kernel ni Memoria.");
+			log_warning(logger, "Recibi una conexion de alguien que no es ni Kernel ni Memoria.");
 			close(socket_conexion);
 			break;
 		}
