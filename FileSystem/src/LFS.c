@@ -40,9 +40,10 @@ char *apiLissandra(char* mensaje){
 					free(nombreTabla);
 					free(keystr);
 					free(comando);
-					char* valor = malloc(strlen(resultado.valor));
-					strcpy(valor, resultado.valor);
+					char** valorS = string_split(resultado.valor, "\n");
 					free(resultado.valor);
+					char* valor = valorS[0];
+					free(valorS);
 					switch (resultado.estado){
 						case ESTADO_SELECT_OK:
 							return valor;
@@ -250,12 +251,10 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	t_list *listaFiltro = NULL;
 
 	if(existeTabla(nombreTabla)){
-		int particion_busqueda = obtenerParticion(nombreTabla, key);
-
 		bool registro_IgualKey(t_registro *registro){return registro->key == key && !strcmp(registro->nombre_tabla,nombreTabla);}
 
 		listaFiltro = list_filter(memTable, (_Bool (*)(void*))registro_IgualKey);
-		agregarRegDeBinYTemps(listaFiltro, nombreTabla, key, particion_busqueda);
+		agregarRegDeBloquesYTemps(listaFiltro, nombreTabla, key);
 
 		if(!list_is_empty(listaFiltro)){
 			list_sort(listaFiltro, (_Bool (*)(void*,void*))ordenarDeMayorAMenorTimestamp);
@@ -280,7 +279,7 @@ char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
 	if(existeTabla(nombreTabla)){
 		if(sizeof(timeStamp) <= tamValue){
 			agregarAMemTable(nombreTabla, key, valor, timeStamp);
-			log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %ul", nombreTabla, key, valor, timeStamp);
+			log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %llu", nombreTabla, key, valor, timeStamp);
 			return string_from_format("Se realizo el INSERT");
 		}else{
 			return string_from_format("Tamaño de timestamp mayor al tamaño maximo");
@@ -533,7 +532,6 @@ int obtenerParticion(char* nombreTabla, u_int16_t key){
 	int particiones = obtenerParticiones(metadata);
 	int particion_busqueda = funcionModulo(key, particiones);
 	fclose(metadata);
-	log_trace(logger, "La particion es: %d", particion_busqueda);
 	return particion_busqueda;
 }
 
@@ -541,25 +539,141 @@ bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2){
 	return r1->timeStamp>r2->timeStamp;
 }
 
-void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int particion_busqueda){
+void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key){
+	agregarRegistrosTempYTempc(nombreTabla, lista, key);	//Agrego de los tmp y tmpc de "/Table/An.tmp" y "/Table/An.tmpc", el registro con el mayor timestamp a la lista.
+	agregarRegistroBloques(nombreTabla, lista, key); 	//Agrego del /Bloques/n.bin, el registro con el mayor timestamp a la lista
+}
+
+void agregarRegistroBloques(char* nombreTabla, t_list *lista, u_int16_t key){
+	int particion = obtenerParticion(nombreTabla, key);
+	char* path_bin = string_from_format("%sTable/%s/%d.bin", puntoMontaje, nombreTabla, particion);
+	FILE* binTabla = fopen(path_bin, "r+");
+	char* lineaBin = NULL; size_t lineaBin_size = 0;
+
+	if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){		//SIZE=250
+		free(lineaBin);
+		lineaBin = NULL;
+		if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){	//char BLOCKS=[40,21,82,3]
+			char** bloques = string_split(lineaBin, "=");	//char [BLOCKS,[40,21,82,3]]
+			char** blocks = obtenerBloques(bloques[1]);		//char [40,21,82,3]
+
+			if(existeKeySELECT(key, blocks, lista)){	//Como en los bloques solo va a existir una sola entrada de la key y va a ser la mas actualizada por Compactacion, solo tengo que econtrar que exista
+				//log_trace(logger, "Existe key %d", key);
+			}else{
+				//log_trace(logger, "No existe key %d", key);
+			}
+
+			int j=0;
+			while(bloques[j]){
+				free(bloques[j]);
+				j++;
+			}
+			free(bloques);
+		}
+	}
+	fclose(binTabla);
+}
+
+bool existeKeySELECT(u_int16_t key, char** bloques, t_list* lista){
+	int i = 0;
+	while(bloques[i]){
+		char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloques[i]);
+		FILE* bloque_bin = fopen(path, "r");
+		free(path);
+
+		char* buffer_bloque_bin = NULL; size_t size_buffer_bloque_bin = 0; 	// Preparo datos para el buffer
+
+		while(getline(&buffer_bloque_bin, &size_buffer_bloque_bin, bloque_bin) != -1){	//Dame la linea del archivo
+
+			if(feof(bloque_bin) && bloques[i+1]){	//Si quedo el puntero del archivo en el final, y existe otro bloque siguiente, es porque el resto de la linea esta en ese otro bloque
+				char* fstLine = obtenerPrimeraLinea(bloques[i+1]);
+				char* linea = string_from_format("%s%s", buffer_bloque_bin, fstLine);		//[TIMESTAMP;KEY;VALUE]
+				log_trace(logger, "Leo linea append: %s", linea);
+				free(fstLine); free(buffer_bloque_bin); buffer_bloque_bin = NULL;		//Libero los char*
+				char** line = string_split(linea, ";");
+				free(linea);
+				ulong key_bloque = stringToLong(line[1]);
+				if(key==key_bloque){
+					fclose(bloque_bin);
+					uint64_t timestamp = stringToLong(line[0]);
+					t_registro* registro = creadorRegistroPuntero(key, NULL, timestamp, line[2]);
+					list_add(lista,registro);
+					free(line[0]);free(line[1]);free(line[2]);free(line);
+					return true;
+				}
+				free(line[0]);free(line[1]);free(line[2]);free(line);
+
+			}else{												//Si no es fin de archivo, o no existe un proximo bloque, es porque esa linea es valida
+				log_trace(logger, "Leo %s", buffer_bloque_bin);
+				char** line = string_split(buffer_bloque_bin, ";");	//[TIMESTAMP,KEY,VALUE]
+				free(buffer_bloque_bin); buffer_bloque_bin = NULL;
+				if(line[1] && line[2]){		//Es el caso en que la primera linea de un bloque esta cortada, y no me sirve que solo tenga uno o dos valores
+					log_trace(logger, "Linea[1] y linea[2] existen");
+					ulong key_bloque = stringToLong(line[1]);
+					if(key==key_bloque){
+						log_trace(logger, "%d es igual a %d", key_bloque, key);
+						uint64_t timestamp = stringToLong(line[0]);
+						log_trace(logger, "Asigno TimeStamp");
+						t_registro* registro = creadorRegistroPuntero(key, NULL, timestamp, line[2]);
+						log_trace(logger, "Creo el registro");
+						list_add(lista,registro);
+						log_trace(logger,  "Lo añado");
+						free(line[0]);free(line[1]);free(line[2]);free(line);
+						log_trace(logger,"Free line");
+						fclose(bloque_bin);
+						log_trace(logger,"Cierro el archivo bloque");
+						return true;
+					}
+					log_trace(logger, "La key %d NO es igual a la key %d", key, key_bloque);
+				}else{
+					log_trace(logger, "Linea[1] o linea[2] NO existen, leo la siguiente");
+				}
+				int j=0;
+				while(line[j]){
+					free(line[j]);
+					j++;
+				}
+				free(line);
+			}
+		}
+		fclose(bloque_bin);
+		i++;
+	}
+	return false;
+}
+
+char* obtenerPrimeraLinea(char* bloque){
+	char* path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloque);
+	FILE* bloque_bin = fopen(path, "r");
+	char* buffer = NULL; size_t buffer_size = 0;
+
+	if(getline(&buffer, &buffer_size, bloque_bin)){
+		fclose(bloque_bin);
+		return buffer;
+	}
+	fclose(bloque_bin);
+	return NULL;
+}
+
+void agregarRegistrosTempYTempc(char* nombreTabla, t_list* lista, u_int16_t key){
+	int particion_busqueda = obtenerParticion(nombreTabla, key);
 	char* particion = intToString(particion_busqueda);
 	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
 	free(particion);
-	FILE* f = fopen(path, "r");
 	free(path);
+	FILE* f = fopen(path, "r");
 
-//	agregarRegistroMayorTimeStamDeArchivo(f, lista, key); --> agrego del /Bloques/n.bin, el registro con el mayor timestamp a la lista. HAY QUE HACERLA
-
-	log_trace(logger,"Antes del .tmp");
-	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
-		path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
-		if(access(path, F_OK) != -1){
-			f = fopen(path, "r");
-			agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
+//	log_trace(logger,"Antes del .tmp");
+		for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
+			path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
+			if(access(path, F_OK) != -1){
+				f = fopen(path, "r");
+				agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
+			}
+			free(path);
 		}
-		free(path);
-	}
-	log_trace(logger,"Antes del .tmpc");
+
+//	log_trace(logger,"Antes del .tmpc");
 	int i = 0;
 	path = string_from_format("%sTable/%s/A%s.tmpc", puntoMontaje, nombreTabla, i);
 	while(access(path, F_OK) != -1){// agrego de los .tmpc, el registro con el mayor timestamp de cada uno a la lista
@@ -569,7 +683,6 @@ void agregarRegDeBinYTemps(t_list *lista, char* nombreTabla, u_int16_t key, int 
 		i++;
 		path = string_from_format("%s/A%d.tmpc", path, i);
 	}
-
 	free(path);
 }
 
@@ -587,7 +700,7 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 
 		char* timestampstr = linea[0];
 		char* endptrTimestamp;
-		ulong timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
+		uint64_t timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
 
 		if(timestamp_buffer > aux->timeStamp && key_buffer == key){
 			aux->timeStamp = timestamp_buffer;
@@ -614,13 +727,21 @@ void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key
 }
 
 t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value){
+	log_trace(logger, "Entro a creadorRegistroPuntero()");
 	t_registro* retornado = malloc(sizeof(t_registro));
 	retornado->key = key;
-	retornado->nombre_tabla = malloc(strlen(nombreTabla));
-	strcpy(retornado->nombre_tabla, nombreTabla);
+	log_trace(logger, "Asigno Key");
+	if(nombreTabla){
+		retornado->nombre_tabla = malloc(strlen(nombreTabla));
+		strcpy(retornado->nombre_tabla, nombreTabla);
+	}else{
+		log_trace(logger, "No existe nombre de tabla");
+		retornado->nombre_tabla = NULL;
+	}
 	retornado->timeStamp = timeStamp;
-	retornado->value = malloc(strlen(value));
-	strcpy(retornado->value, value);
+	log_trace(logger, "Asigno timestamp");
+	retornado->value = string_from_format("%s", value);
+	log_trace(logger, "Asigno Value");
 	return retornado;
 }
 

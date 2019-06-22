@@ -35,8 +35,8 @@ void analizarTmpc(char* path, char* nombreTabla){
 			while(getline(&lineaTmpc, &lineaTmpc_size, tempc) != -1){				//Mientras existan lineas/renglones en el .tmpc
 				log_trace(logger, "Linea: %s", lineaTmpc);
 				char** linea = string_split(lineaTmpc, ";"); 						//Dividi el renglon => [TIMESTAMP];[KEY];[VALUE]
-				ulong key_tmpc = stringToLong(linea[1]);				//KEY
-				ulong timestamp_tmpc = stringToLong(linea[0]);		//TIMESTAMP
+				uint16_t key_tmpc = stringToLong(linea[1]);				//KEY
+				uint64_t timestamp_tmpc = stringToLong(linea[0]);		//TIMESTAMP
 
 				particion = obtenerParticion(nombreTabla, key_tmpc); 		//Con la key del .tmpc, busco la particion .bin
 				char* path_bin = string_from_format("%s/%d.bin", path, particion);
@@ -61,6 +61,7 @@ void analizarTmpc(char* path, char* nombreTabla){
 						log_trace(logger, "ENTRA, no es necesario otro bloque");
 						insertarLinea(ultimoBloque, line);
 						modificarBinTabla(line, NULL, fBin, path_bin);	//Actualizar SIZE del .bin de Tablas
+						log_trace(logger, "Termino de modificar la Tabla");
 						free(line);
 					}else{			//No entra en el ultimo bloque
 						log_trace(logger, "NO ENTRA");
@@ -82,16 +83,17 @@ void analizarTmpc(char* path, char* nombreTabla){
 							free(elseLine);
 							fclose(bloque);
 							modificarBinTabla(line, nuevoBloque, fBin, path_bin);
+							log_trace(logger, "Salgo de modificarBinTabla");
 							free(nuevoBloque);
 						}else{
 							log_error(logger, "No existen bloques libres.");
 						}
+						log_trace(logger, "Antes del free(line)");
 						free(line);
 					}
-
 				}
 				free(path_bin);
-				fclose(fBin);
+				log_trace(logger, "free(path_bin);");
 			}
 
 			remove(pathTempc);
@@ -134,7 +136,7 @@ void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin
 	if(getline(&lineaBin, &lineaBin_size, bin) != -1){		//SIZE=250
 		free(lineaBin);
 		lineaBin = NULL;
-		if(getline(&lineaBin, &lineaBin_size, bin) != -1){}	//char BLOCKS=[40,21,82,3]
+		if(getline(&lineaBin, &lineaBin_size, bin) != -1){}	//char* BLOCKS=[40,21,82,3]
 	}
 	fclose(bin);
 	bin = fopen(path_bin, "w+");
@@ -143,16 +145,18 @@ void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin
 
 	if(nuevoBloque != NULL){		//Si me pasaron un bloque para asignar
 		char* bloques_escritura = string_substring_until(lineaBin, strlen(lineaBin)-1);
-		free(lineaBin); lineaBin = NULL;
 		char* input = string_from_format("%s,%s]", bloques_escritura, nuevoBloque);
 		free(bloques_escritura);
 		fputs(input, bin);
 		log_trace(logger, "Bloques: %s", input);
 		free(input);
+		log_trace(logger, "free(input)");
 	}else{
 		fputs(lineaBin, bin);
-		free(lineaBin);
 	}
+	free(lineaBin); lineaBin = NULL;
+	log_trace(logger, "free(lineaBin); lineaBin = NULL;");
+	fclose(bin);
 }
 
 bool entraEnBloque(char* line, int bloque){
@@ -165,35 +169,87 @@ bool entraEnBloque(char* line, int bloque){
 	return (size + lengthLinea <= blockSize);	//Si la longitud de linea + tamaño de archivo, es menor al tamaño del bloque, es porque entra
 }
 
-char* existeKeyEnBloques(ulong key_tmpc, FILE* binTabla){
+char* existeKey(u_int16_t key, char** bloques){
+	int i = 0;
+	while(bloques[i]){
+		char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloques[i]);
+		FILE* bloque_bin = fopen(path, "r");
+		free(path);
+
+		char* buffer_bloque_bin = NULL; size_t size_buffer_bloque_bin = 0; 	// Preparo datos para el buffer
+
+		while(getline(&buffer_bloque_bin, &size_buffer_bloque_bin, bloque_bin) != -1){	//Dame la linea del archivo
+
+			if(feof(bloque_bin) && bloques[i+1]){	//Si quedo el puntero del archivo en el final, y existe otro bloque siguiente, es porque el resto de la linea esta en ese otro bloque
+				char* fstLine = obtenerPrimeraLinea(bloques[i+1]);
+				char* linea = string_from_format("%s%s", buffer_bloque_bin, fstLine);		//[TIMESTAMP;KEY;VALUE]
+				log_trace(logger, "Leo linea append: %s", linea);
+				free(fstLine); free(buffer_bloque_bin); buffer_bloque_bin = NULL;		//Libero los char*
+				char** line = string_split(linea, ";");
+				free(linea);
+				ulong key_bloque = stringToLong(line[1]);
+				if(key==key_bloque){
+					return bloques[i];
+				}
+				free(line[0]);free(line[1]);free(line[2]);free(line);
+
+			}else{												//Si no es fin de archivo, o no existe un proximo bloque, es porque esa linea es valida
+				log_trace(logger, "Leo %s", buffer_bloque_bin);
+				char** line = string_split(buffer_bloque_bin, ";");	//[TIMESTAMP,KEY,VALUE]
+				free(buffer_bloque_bin); buffer_bloque_bin = NULL;
+				if(line[1] && line[2]){		//Es el caso en que la primera linea de un bloque esta cortada, y no me sirve que solo tenga uno o dos valores
+					log_trace(logger, "Linea[1] y linea[2] existen");
+					ulong key_bloque = stringToLong(line[1]);
+					if(key==key_bloque){
+						log_trace(logger, "%d es igual a %d", key_bloque, key);
+						free(line[0]);free(line[1]);free(line[2]);free(line);
+						fclose(bloque_bin);
+						return bloques[i];
+					}
+					log_trace(logger, "La key %d NO es igual a la key %d", key, key_bloque);
+				}else{
+					log_trace(logger, "Linea[1] o linea[2] NO existen, leo la siguiente");
+				}
+				int j=0;
+				while(line[j]){
+					free(line[j]);
+					j++;
+				}
+				free(line);
+			}
+		}
+		fclose(bloque_bin);
+		i++;
+	}
+	return NULL;
+}
+
+char* existeKeyEnBloques(uint16_t key_tmpc, FILE* binTabla){
 	char* lineaBin = NULL; size_t lineaBin_size = 0;
-	char* append = NULL;
+	char* bloque_keyExistente;
 	if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){		//SIZE=250
 		free(lineaBin);
 		lineaBin = NULL;
 		if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){	//char BLOCKS=[40,21,82,3]
 			char** bloques = string_split(lineaBin, "=");	//char [BLOCKS,[40,21,82,3]]
 			char** blocks = obtenerBloques(bloques[1]);		//char [40,21,82,3]
-			int i=0;
-			if(blocks){
-				while(blocks[i]){		//Mientras existan bloques
-					log_trace(logger, "Entro en el bloque %s.bin", blocks[i]);
-
-					if(existeKey(key_tmpc, blocks[i], append)){	//Existe key en el bloque?
-						free(bloques[0]);free(bloques[1]);free(bloques);
-						fseek(binTabla, 0, SEEK_SET);
-						return blocks[i];
-					}
-					append = obtenerUltimaLinea(blocks[i]);
-					log_trace(logger, "El append es: %s", append);
-					i++;
-				}
-				free(bloques[0]);free(bloques[1]);free(bloques);
+			bloque_keyExistente = existeKey(key_tmpc, blocks);
+			int j=0;
+			while(bloques[j]){
+				free(bloques[j]);
+				j++;
 			}
+			free(bloques);
+			free(lineaBin); lineaBin=NULL;
 		}
 	}
 	fseek(binTabla, 0, SEEK_SET);
-	return "false";
+
+	if(bloque_keyExistente){
+		return bloque_keyExistente;
+	}else{
+		return "false";
+	}
 }
 
 char* obtenerUltimaLinea(char* bloque){
@@ -218,49 +274,6 @@ char* obtenerUltimaLinea(char* bloque){
 
 	fclose(bloque_bin);
 	return buffer_bloque_bin;
-}
-
-bool existeKey(ulong key, char* bloque_numero, char* append){
-	char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloque_numero);
-	FILE* bloque_bin = fopen(path, "r");
-	free(path);
-	char* buffer_bloque_bin = NULL; size_t size_buffer_bloque_bin = 0;
-
-	if(append){	//Si existe "append", es porque la ultima linea del bloque anterior estaba cortada y tengo que unirla con la primera de este bloque
-		if(getline(&buffer_bloque_bin, &size_buffer_bloque_bin, bloque_bin) != -1){
-			char* line = string_from_format("%s%s",append, buffer_bloque_bin);
-			log_trace(logger, "La linea final queda: %s", line);
-			char** linea = string_split(line, ";");
-			free(line);
-			ulong key_bloque = stringToLong(linea[1]);
-			if(key==key_bloque){
-				free(linea[0]);free(linea[1]);free(linea[2]);free(linea);
-				return true;
-			}
-			free(linea[0]);free(linea[1]);free(linea[2]);free(linea);
-			free(buffer_bloque_bin);
-			buffer_bloque_bin = NULL;
-		}
-	}
-
-	while(getline(&buffer_bloque_bin, &size_buffer_bloque_bin, bloque_bin) != -1){	//[TIMESTAMP];[KEY];[VALUE]
-		log_trace(logger, "%s", buffer_bloque_bin);
-		char** linea = string_split(buffer_bloque_bin, ";");
-		if(!linea[1] || !linea[2]){
-			break;
-		}
-		ulong key_bloque = stringToLong(linea[1]);
-		if(key==key_bloque){
-			free(linea[0]);free(linea[1]);free(linea[2]);free(linea);
-			return true;
-		}
-		free(linea[0]);free(linea[1]);free(linea[2]);free(linea);
-		free(buffer_bloque_bin);
-		buffer_bloque_bin = NULL;
-
-	}
-	fclose(bloque_bin);
-	return false;
 }
 
 char** obtenerBloques(char* bloques){		//char [40,21,82,3]
@@ -406,10 +419,6 @@ int ultimoBloques(char* bloques){ //[0, 23, 251, 539, 2]
 	}
 	free(blocksFree);
 	return ultimoBloque;
-
-//	}else{
-//		return -1;
-//	}
 }
 
 bool renombrarArchivosTemporales(char* path){
@@ -435,83 +444,8 @@ bool renombrarArchivosTemporales(char* path){
 	return flag;
 }
 
-ulong stringToLong(char* strToInt){
+uint64_t stringToLong(char* strToInt){
 	char* endptr, *str = strToInt;
-	ulong numero = strtoul(str, &endptr, 10);
+	uint64_t numero = strtoul(str, &endptr, 10);
 	return numero;
 }
-
-/*
-
-
-				if(ultimoBloque != -1){ //Si existe un ultimo bloque, voy a tener que comparar key
-					log_trace(logger,"El ultimo bloque es: %d.bin", ultimoBloque);
-
-					ulong timestampBin = tieneKeyIgual(key_buffer, ultimoBloque);
-					if(timestampBin != -1){			//Si existe una KEY en el bloque, igual a la del .tmpc, entra
-						log_trace(logger, "El bloque %d.bin tiene igual key: %d", ultimoBloque, key_buffer);
-
-						if(timestamp_buffer > timestampBin){ //Si el timestamp del .tmpc es mayor al del .bin, se cambia, sino no.
-							log_trace(logger, "Timestamp del .tmpc mayor, cambio");
-							line = string_from_format("%s;%s;%s",linea[0], linea[1], linea[2]);	//La linea que voy a ingresar en el archivo Bloques/n.bin
-						}else{
-							log_trace(logger, "Timestamp del .tmpc menor, no cambio");
-						}
-
-					}else{
-						line = string_from_format("%s;%s;%s",linea[0], linea[1], linea[2]);	//La linea que voy a ingresar en el archivo Bloques/n.bin
-					}
-					int entra = entraEnUltimoBloque(size, line);
-					if(entra != -1){								//Ver si la frase entra en el ultimo bloque
-						log_trace(logger, "La linea entra en el ultimo bloque, la inserto.");
-						insertarLinea(ultimoBloque, line);						//Si entra, insertlo la frase
-						int length = strlen(line) - 1;
-//						actualizarTableBin(nombreTabla, length, particion, bloqueBin);
-						free(line);
-					}else{
-						log_trace(logger,"No entra en el ultimo bloque, agrego otro.");
-						int bloqueBin = agregarNuevoBloqueBin();					//Agregar un bloque nuevo
-						if(bloqueBin != -1){										//Si existe un bloque libre nuevo
-							log_trace(logger, "El nuevo bloque es: %d", bloqueBin);
-							char* line = string_from_format("%s;%s;%s",linea[0], linea[1], linea[2]);
-							insertarLinea(bloqueBin, line);							//Insertar la linea en el bloque
-							int length = strlen(line)-1;
-							free(line);
-							actualizarTableBin(nombreTabla, entra, particion, bloqueBin);		//Actualizar SIZE y la lista de BLOCKS en .bin de /Tables/TablaN/M.bin
-						}else{
-							log_error(logger, "No hay bloques disponibles para compactar.");
-						}
-						//Si no entra, agregar un Bloque Nuevo
-						//Insertar la linea
-
-					}
-
-				}else{											//Si no existe un ultimo bloque, por ende, no tengo que comparar Keys
-
-
-				}
-
-				free(linea[0]);
-				free(linea[1]);
-				free(linea[2]);
-				free(linea);
-				free(buffer);
-				buffer = NULL;
-			}
-*/
-
-/*				if(ultimoBloque == -1){ 									// No existe un ultimo bloque, por ende, no tengo que comparar Keys
-					log_trace(logger,"No hay bloques, agrego uno.");
-					int bloqueBin = agregarNuevoBloqueBin();					//Agregar un bloque nuevo
-					if(bloqueBin != -1){										//Si existe un bloque libre nuevo
-						log_trace(logger, "El nuevo bloque es: %d", bloqueBin);
-						char* line = string_from_format("%s;%s;%s",linea[0], linea[1], linea[2]);
-						insertarLinea(bloqueBin, line);							//Insertar la linea
-						int length = strlen(line)-1;
-						free(line);
-						actualizarTableBin(nombreTabla, length, particion, bloqueBin, size);	//Actualizar SIZE y la lista de BLOCKS en .bin de /Tables/TablaN/M.bin
-					}else{
-						log_error(logger, "No hay bloques disponibles para utilizar.");
-					}
-				}else{					//Existe un ultimo bloque
-*/

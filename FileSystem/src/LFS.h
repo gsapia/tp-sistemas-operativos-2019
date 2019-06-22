@@ -108,11 +108,22 @@ int funcionModulo(int key, int particiones);
 //Obtiene la cantidad de particiones del archivo Metadata
 int obtenerParticiones(FILE* metadata);
 
-//Agrega los registros con una determinada key, con el mayor timestamp de .bin, .tmp y .tmpc a listaFiltro.
-void agregarRegDeBinYTemps(t_list *listaFiltro, char* nombreTabla, u_int16_t key, int particion_busqueda);
+//Agrega los registros con una determinada key, con el mayor timestamp de bloques, .tmp y .tmpc a listaFiltro.
+void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key);
+
+//Agrega el registro con una determinada key el mayor timestamp de bloques a una lista.
+void agregarRegistroBloques(char* nombreTabla, t_list *lista, u_int16_t key);
 
 //Devuelve un el archivo ".bin" que corresponde a la particion enviada por parametro
 FILE* obtenerBIN(int particion, char* nombreTabla);
+
+//Agrega el registro con la key y el timestamp mas alto a la lista
+void agregarRegistrosTempYTempc(char* nombreTabla, t_list* lista, u_int16_t key);
+
+bool existeKeySELECT(u_int16_t key, char** bloques, t_list* lista);
+
+char* obtenerPrimeraLinea(char* bloque);
+
 void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
@@ -157,14 +168,14 @@ char* agregarNuevoBloqueBin();
 void insertarLinea(int bloqueNumero, char* linea);
 int entraEnUltimoBloque(int size, char* line);
 int sizeArchivo(FILE* archivo);
-char* existeKeyEnBloques(ulong key_tmpc, FILE* binTabla);
+char* existeKeyEnBloques(uint16_t key_tmpc, FILE* binTabla);
 int obtenerSizeBin(FILE* bin);
-ulong stringToLong(char* strToInt);
+uint64_t stringToLong(char* strToInt);
 struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe);
 char** obtenerBloques(char* bloques);
 
 //Indica true, si la key pertenece al bloque asignado con bloque_numero. False en caso contrario.
-bool existeKey(ulong key, char* bloque_numero, char* append);
+char* existeKey(u_int16_t key, char** bloques);
 bool entraEnBloque(char* line, int bloque);
 void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin);
 

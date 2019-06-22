@@ -196,7 +196,7 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 }
 
 void escribirEnArchivo(FILE* f, t_registro* r){
-	char* timestamp = intToString(r->timeStamp);
+	char* timestamp = string_from_format("%llu", r->timeStamp);
 	char* key = intToString(r->key);
 	char* linea = string_from_format("%s;%s;%s\n", timestamp, key, r->value); // [TIMESTAMP];[KEY];[VALUE]
 	fputs(linea, f);
