@@ -55,7 +55,13 @@ typedef struct{
 	char* value;
 }t_registroBusqueda;
 
+typedef struct{
+	char* nombreTabla;
+	pthread_attr_t *attrHilo;
+}t_hiloCompactacion;
+
 t_list *memTable;
+t_list *hilosCompactacion;
 int cont; 			// Contador de cantidad de registros en Memtable
 int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
 int tamValue;
@@ -131,6 +137,7 @@ void dumpDeTablas(t_list *memTableAux);
 void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 uint64_t getTimestamp();
 bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2);
+bool registro_IgualNombreTabla(t_hiloCompactacion *registro);
 void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_busqueda, char* nombreTabla);
 t_registro* convertirARegistroPuntero(t_registro r);
 struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
@@ -185,4 +192,6 @@ int calcularTamanoBloque(int numeroBloque);
 //Obtiene la ultima linea de un bloque y la retorna
 char* obtenerUltimaLinea(char* bloque);
 
+//Borra todos los archivos de una tabla, sus bloques, y luego la tabla en si.
+void borrarTabla(char* path);
 #endif /* LFS_H_ */

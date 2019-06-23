@@ -2,21 +2,26 @@
 
 void *compactacion(argumentos_compactacion *args){
 	//Tomo los datos del struct por parametro
-	char* nombreTabla = malloc(strlen(args->nombreTabla));
-	strcpy(nombreTabla, args->nombreTabla);
+	char* nombreTabla = string_from_format("%s", args->nombreTabla);
 	int tiempo = args->compactation_time/1000;
 	free(args->nombreTabla); free(args);
+	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
 
-	while(1){
-		sleep(tiempo);
-		char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
+
+	sleep(tiempo);
+	DIR* directorio = opendir(path);
+	while(directorio){
+		closedir(directorio);
 		if(renombrarArchivosTemporales(path)){		//Si hay para renombrar, hay para compactar.
 			analizarTmpc(path, nombreTabla);
 			log_info(logger, "Se realizo la compactacion de la tabla: %s", nombreTabla);
 		}else{
 			log_info(logger, "No hay .tmp para compactar");
 		}
+		sleep(tiempo);
+		directorio = opendir(path);
 	}
+	free(path);
 }
 
 void analizarTmpc(char* path, char* nombreTabla){

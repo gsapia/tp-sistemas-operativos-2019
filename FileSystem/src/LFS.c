@@ -294,6 +294,9 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 //	CREATE TABLA1 SC 4 60000
 	uint16_t estado;
 	if(!existeTabla(nombreTabla)){
+		t_hiloCompactacion* hiloC = malloc(sizeof(t_hiloCompactacion));
+		hiloC->nombreTabla = string_from_format("%s", nombreTabla);
+
 		crearDirectiorioDeTabla(nombreTabla);
 		crearMetadataDeTabla(nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 		crearBinDeTabla(nombreTabla, cantidadParticiones);
@@ -303,8 +306,15 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 		args->nombreTabla = malloc(strlen(nombreTabla)+1);
 		strcpy(args->nombreTabla, nombreTabla);
 
+		//Creo el hilo
+		pthread_attr_t attr;
 		pthread_t hiloCompactacion;
-		if(pthread_create(&hiloCompactacion, NULL, compactacion, args)){
+
+		pthread_attr_init(&attr);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		hiloC->attrHilo = &attr;
+		list_add(hilosCompactacion, hiloC);
+		if(pthread_create(&hiloCompactacion, &attr, compactacion, args)){
 			log_error(logger, "Hilo compactacion: Error - pthread_create()");
 			exit(EXIT_FAILURE);
 		}
@@ -381,22 +391,46 @@ struct_describe_global_respuesta describe_global(){
 	closedir(path_buscado);
 	return respuesta;
 }
-/*	struct_describe_respuesta* tabla1 = malloc(sizeof(struct_describe_respuesta));
-	tabla1->estado = ESTADO_DESCRIBE_OK;
-	tabla1->consistencia = SC;
-	tabla1->particiones = 5;
-	tabla1->tiempo_compactacion = 60000;
-	dictionary_put(respuesta.describes, "TABLA1", tabla1);
-*/
+
 char* drop(char* nombreTabla){
-	t_registro *imprimir;
-	for(int i=0;i<cont;i++){
-			imprimir = list_get(memTable,i);
-			printf("Nombre de Tabla: %s \nKey: %u \nValue: %s \n", imprimir->nombre_tabla, imprimir->key, imprimir->value);
-		}
-		cont = 0;
-	log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
+	t_hiloCompactacion *hiloCompactacion;
+	if(existeTabla(nombreTabla)){	//Tengo certeza que existe la tabla, entonces va a estar en la lista
+		char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
+
+		bool registro_IgualNombreTabla(t_hiloCompactacion *registro){return !strcmp(registro->nombreTabla,nombreTabla);}
+
+		borrarTabla(path);
+		log_trace(logger, "Antes de borrar el path");
+		rmdir(path);
+		log_trace(logger, "Borro path");
+
+		log_trace(logger, "Empiezo a borrar el hilo");
+		hiloCompactacion = list_remove_by_condition(hilosCompactacion, (_Bool (*)(void*))registro_IgualNombreTabla);	//Dame al registro que tenga el mismo nombre de tabla
+		pthread_attr_destroy(hiloCompactacion->attrHilo);
+		log_trace(logger, "Elimino el hilo");
+
+		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
+	}else{
+		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
+		log_error(logger, "No existe la tabla: %s", nombreTabla);
+	}
+
 	return string_from_format("Elegiste DROP");
+}
+
+void borrarTabla(char* path){
+	DIR* path_buscado = opendir(path);
+	struct dirent* archivo = readdir(path_buscado);
+	char* path_aux;
+	while(archivo){
+		path_aux = string_from_format("%s%s", path, archivo->d_name);
+		if(access(path_aux, F_OK) != -1){	//Si existe el archivo .tmp y puedo acceder, borralo
+			remove(path_aux);
+		}
+		free(path_aux);
+		archivo = readdir(path_buscado);
+	}
+	closedir(path_buscado);
 }
 
 //Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla). Luego se limpia la memtable.

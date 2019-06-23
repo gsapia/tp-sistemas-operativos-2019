@@ -2,6 +2,7 @@
 
 int main(void){
 	memTable = list_create(); cont = 0; cantDumps = 0;
+	hilosCompactacion = list_create();
 	config = leer_config();
 	puntoMontaje = config_get_string_value(config,"PUNTOMONTAJE");
 	int tiempo_dump = config_get_int_value(config, "TIEMPODUMP");

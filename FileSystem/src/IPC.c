@@ -1,5 +1,4 @@
 #include "LFS.h"
-#include "serializacion.c"
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 
