@@ -45,7 +45,47 @@ int conectar(char* ip, uint16_t puerto){
 	return socket_cliente;
 }
 
+void updateMetadata(){
+	while(1){
+		t_memoria* memoria = obtener_memoria_random_del_pool();
+		log_trace(logger, "Actualizando metadata de tablas a travez de la memoria %d", memoria->numero);
+		int socket = conectar(memoria->IP, memoria->puerto);
+		if(!socket){
+			log_trace(logger, "No nos pudimos conectar con la memoria para pedir su metadata.");
+		}
+		else{
+			// Mandamos un DESCRIBE global
+			const uint8_t cod_op = DESCRIBE_GLOBAL;
+			send(socket, &cod_op, sizeof(cod_op), 0);
 
+			struct_describe_global_respuesta respuesta = recibir_respuesta_describe_global(socket);
+
+			if(respuesta.estado == ESTADO_DESCRIBE_OK){
+				// TODO: Mutex para la metadata.
+				metadata = dictionary_create();
+
+				void iterador(char* nombre_tabla, struct_describe_respuesta* describe){
+					t_metadata *metadata_tabla = malloc(sizeof(t_metadata));
+					metadata_tabla->consistencia = describe->consistencia;
+					metadata_tabla->particiones = describe->particiones;
+					metadata_tabla->tiempo_compactacion = describe->tiempo_compactacion;
+
+					dictionary_put(metadata, nombre_tabla, metadata_tabla);
+				}
+
+				dictionary_iterator(respuesta.describes, (void(*)(char*,void*)) iterador);
+
+				log_info(logger, "Metadata de tablas actualizada. Hay %d tablas conocidas.", dictionary_size(metadata));
+			}
+			else{
+				log_warning(logger, "Hubo un error al pedir la metadata de las tablas.");
+			}
+			dictionary_destroy_and_destroy_elements(respuesta.describes, free);
+		}
+		usleep(config.refresh_metadata * 1000);
+	}
+
+}
 
 void initCliente(){
 	log_trace(logger, "Iniciando socket_cliente kernel");
@@ -94,6 +134,8 @@ void initCliente(){
 	//**Fin conexion Kernel-Memoria**//
 
 	close(socket_cliente);
+
+	sem_init(&primer_gossip_hecho,0,0);
 	// Inciamos el gossiping
 	pthread_t hiloGossip;
 	if (pthread_create(&hiloGossip, NULL, (void*)gossip, NULL)) {
@@ -101,6 +143,15 @@ void initCliente(){
 		exit(EXIT_FAILURE);
 	}
 	pthread_detach(hiloGossip);
+
+	sem_wait(&primer_gossip_hecho);
+	// Lo mismo con la metadata
+	pthread_t hiloMetadata;
+	if (pthread_create(&hiloMetadata, NULL, (void*)updateMetadata, NULL)) {
+		log_error(logger, "Hilo metadata: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+	pthread_detach(hiloMetadata);
 
 
 } //End Cliente
@@ -112,6 +163,7 @@ void closeCliente(){
 }
 
 struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria){
+	log_debug(logger, "Enviando request a la memoria %d (%s:%d)", memoria->numero, memoria->IP, memoria->puerto);
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
 	enviar_select(socket_cliente, paquete);
 	struct_select_respuesta respuesta = recibir_registro(socket_cliente);
@@ -119,6 +171,7 @@ struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria
 	return respuesta;
 }
 enum estados_insert insertAMemoria(struct_insert paquete, t_memoria* memoria){
+	log_debug(logger, "Enviando request a la memoria %d (%s:%d)", memoria->numero, memoria->IP, memoria->puerto);
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
 	enviar_insert(socket_cliente, paquete);
 	enum estados_insert respuesta = recibir_respuesta_insert(socket_cliente);

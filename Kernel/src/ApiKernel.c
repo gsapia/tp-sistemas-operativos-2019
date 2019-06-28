@@ -11,10 +11,10 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
 		return respuesta;
 	}
-	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla);
+	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla, key);
 	if(!memoria){
 		respuesta.falla = true;
-		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+		respuesta.resultado = strdup("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
 		return respuesta;
 	}
 	respuesta.falla = false;
@@ -24,6 +24,7 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 	paquete.nombreTabla = nombreTabla;
 
 	struct_select_respuesta resultado = selectAMemoria(paquete, memoria);
+	free(memoria);
 
 	switch(resultado.estado) {
 	case ESTADO_SELECT_OK:
@@ -48,7 +49,7 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
 		return respuesta;
 	}
-	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla);
+	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla, key);
 	if(!memoria){
 		respuesta.falla = true;
 		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
@@ -62,6 +63,7 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 	paquete.valor = valor;
 
 	enum estados_insert resultado = insertAMemoria(paquete, memoria);
+	free(memoria);
 
 	switch (resultado) {
 	case ESTADO_INSERT_OK:
@@ -164,6 +166,7 @@ t_resultado metrics(){
 	return respuesta;
 }
 t_resultado add(uint16_t numeroMemoria, enum consistencias criterio){
+	log_debug(logger, "Criterio %d", criterio);
 	t_resultado respuesta;
 	t_memoria* memoria = getMemoria(numeroMemoria);
 

@@ -56,5 +56,4 @@ void aniadirScript(t_script *script);
 t_log* logger;
 
 
-
 #endif /* KERNEL_H_ */

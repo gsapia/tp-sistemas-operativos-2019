@@ -3,41 +3,87 @@
 
 
 t_memoria* getMemoria(int numero){
+	pthread_mutex_lock(&mutex_pool_memorias);
+	if(!pool_memorias){
+		// El pool todavia no fue inicializado
+		pthread_mutex_unlock(&mutex_pool_memorias);
+		return NULL;
+	}
 	bool buscador_memoria(t_memoria* memoria){
 		return memoria->numero == numero;
 	}
 	t_memoria* memoria = list_find(pool_memorias, (_Bool(*)(void*)) buscador_memoria); //Agarra el pool de memorias, levanta la primera y la busca con la funcion
 	if(!memoria){ 																	   //retorna si o no la encuentra, en caso de false vuelve a buscar hasta que sea true
-		return NULL;																   //si la encuentra retorna un puntero ,si no retorna NULL.
+		pthread_mutex_unlock(&mutex_pool_memorias);								  	   //si la encuentra retorna un puntero ,si no retorna NULL.
+		return NULL;
 	}
 
 	t_memoria* resultado = malloc(sizeof(t_memoria));
 	memcpy(resultado, memoria, sizeof(t_memoria));
 
+	pthread_mutex_unlock(&mutex_pool_memorias);
 	return resultado; // Devolvemos una copia, para no joder la lista actual
 }
 
-bool existeTabla(char* nombre_tabla){
-	// TODO
-	return true;
+enum consistencias obtener_consistencia(char* nombre_tabla){
+	t_metadata* metadata_tabla = dictionary_get(metadata, nombre_tabla);
+	if(metadata_tabla){
+		return metadata_tabla->consistencia;
+	}
+	return -1;
 }
-t_memoria* obtener_memoria_random(){
-	// TODO
-	return NULL;
+
+bool existeTabla(char* nombre_tabla){
+	return dictionary_has_key(metadata, nombre_tabla);
+}
+t_memoria* obtener_memoria_random(t_list* lista_memorias){
+	pthread_mutex_lock(&mutex_pool_memorias);
+	if(!lista_memorias || list_is_empty(lista_memorias)){
+		pthread_mutex_unlock(&mutex_pool_memorias);
+		return NULL;
+	}
+	int cantidad = list_size(lista_memorias);
+	int indice = rand() % cantidad;
+	t_memoria* memoria = list_get(lista_memorias, indice);
+
+	t_memoria* resultado = malloc(sizeof(t_memoria));
+	memcpy(resultado, memoria, sizeof(t_memoria));
+
+	pthread_mutex_unlock(&mutex_pool_memorias);
+	return resultado; // Devolvemos una copia, para no joder la lista actual
+}
+t_memoria* obtener_memoria_random_del_pool(){
+	return obtener_memoria_random(pool_memorias);
 }
 t_memoria* obtener_memoria_SC(){
-	return list_get(listasMemorias[SC], 0);
+	pthread_mutex_lock(&mutex_pool_memorias);
+	t_memoria * memoria = list_get(listasMemorias[SC], 0);
+	t_memoria* resultado = NULL;
+	if(memoria){
+		resultado = malloc(sizeof(t_memoria));
+		memcpy(resultado, memoria, sizeof(t_memoria));
+	}
+	pthread_mutex_unlock(&mutex_pool_memorias);
+	return resultado; // Devolvemos una copia, para no joder la lista actual
 }
 t_memoria* obtener_memoria_SHC(uint16_t key){
 	// TODO:
 	return NULL;
 }
 t_memoria* obtener_memoria_EC(){
-	// TODO:
-	return NULL;
+	return obtener_memoria_random(listasMemorias[EC]);
 }
-t_memoria* obtener_memoria_segun_tabla(char* nombre_tabla){
-	// TODO
+t_memoria* obtener_memoria_segun_tabla(char* nombre_tabla, uint16_t key){
+	enum consistencias consistencia = obtener_consistencia(nombre_tabla);
+	switch(consistencia){
+	case SC:
+		return obtener_memoria_SC();
+	case SHC:
+		return obtener_memoria_SHC(key);
+	case EC:
+		return obtener_memoria_EC();
+	}
+	log_debug(logger, "Consistencia invalida");
 	return NULL;
 }
 
@@ -52,31 +98,33 @@ void gossip(){
 			const uint8_t cod_op = GOSSIP;
 			send(socket, &cod_op, sizeof(cod_op), 0);
 
+			pthread_mutex_lock(&mutex_pool_memorias);
 			pool_memorias = recibir_tabla_gossiping(socket);
 
 			// Ahora hay que eliminar las memorias que ya no existen de los criterios
-			bool filtrador(t_memoria* memoria){
-				bool son_iguales(t_memoria* otra_memoria){
-					return otra_memoria->numero == memoria->numero;
-				}
-				return list_find(pool_memorias, (_Bool(*)(void*)) son_iguales);
-			}
 			for(int i = 0; i < 3; ++i){
-				t_list* nueva = list_filter(listasMemorias[i], (_Bool(*)(void*)) filtrador);
+				bool filtrador(t_memoria* memoria){
+					bool son_iguales(t_memoria* otra_memoria){
+						return otra_memoria->numero == memoria->numero;
+					}
+					return list_find(listasMemorias[i], (_Bool(*)(void*)) son_iguales);
+				}
+				t_list* nueva = list_filter(pool_memorias, (_Bool(*)(void*)) filtrador);
 				list_destroy_and_destroy_elements(listasMemorias[i], free);
 				listasMemorias[i] = nueva;
 			}
 
 			char* memorias_conocidas = string_new();
 			void iterador(t_memoria* memoria){
-				string_append_with_format(&memorias_conocidas, "%d ", memoria->numero);
+				string_append_with_format(&memorias_conocidas, "%d (%s:%d) ", memoria->numero, memoria->IP, memoria->puerto);
 			}
 			list_iterate(pool_memorias, (void (*)(void*)) iterador);
 			string_trim(&memorias_conocidas);
+			pthread_mutex_unlock(&mutex_pool_memorias);
 
 			log_trace(logger, "Tabla de memorias actualizada. Memorias conocidas: %s", memorias_conocidas);
 		}
-
+		sem_post(&primer_gossip_hecho);
 		usleep(config.retardo_gossiping * 1000);
 	}
 
