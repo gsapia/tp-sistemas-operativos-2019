@@ -61,6 +61,7 @@ void crearMetaDataFS(){
 void crearBitMapFS(){
 	char* path_Metadata = string_from_format("%sMetadata/Metadata.bin",puntoMontaje);
 	FILE* metadataFS = fopen(path_Metadata,"r");
+	free(path_Metadata);
 	char* buffer=NULL;
 	size_t buffer_size = 0;
 	char** linea;
@@ -288,6 +289,7 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 		fputs("SIZE=0  ", f);
 		fputs("\n",f);
 		char* auxBloques = string_from_format("BLOCKS=[%s]", numeroBloque);
+		free(numeroBloque);
 		fputs(auxBloques,f);
 		fclose(f);
 		free(auxBloques);

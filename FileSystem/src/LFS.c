@@ -88,7 +88,7 @@ char *apiLissandra(char* mensaje){
 					uint64_t timestamp = getTimestamp();
 
 					if (*endptr == '\0' && key < 65536) {
-						char* resultado = insert(nombreTabla, key, valor, timestamp);
+						enum estados_insert resultado = insert(nombreTabla, key, valor, timestamp);
 						while(cantArgumentos){
 							free(comando[cantArgumentos]);
 							cantArgumentos--;
@@ -96,7 +96,14 @@ char *apiLissandra(char* mensaje){
 						free(valor);
 						free(ultimoArgumento);
 						free(comando);
-						return resultado;
+						switch(resultado){
+						case ESTADO_INSERT_OK:
+							return strdup("Se realizo INSERT");
+						case ESTADO_INSERT_ERROR_TABLA:
+							return strdup("ERROR: No existe tabla");
+						case ESTADO_INSERT_ERROR_OTRO:
+							return strdup("Ocurrio un error desconocido");
+						}
 					}
 				}else{ // Si viene CON TIMESTAMP
 					char* nombreTabla = comando[1];
@@ -107,7 +114,7 @@ char *apiLissandra(char* mensaje){
 					char* endptr2;
 					uint64_t timestamp = strtoull(ultimoArgumento[1], &endptr2, 10);
 					if (*endptr == '\0' && key < 65536) {
-						char* resultado = insert(nombreTabla, key, valor, timestamp);
+						enum estados_insert resultado = insert(nombreTabla, key, valor, timestamp);
 						while(cantArgumentos){
 							free(comando[cantArgumentos]);
 							cantArgumentos--;
@@ -115,7 +122,14 @@ char *apiLissandra(char* mensaje){
 						free(valor);
 						free(ultimoArgumento);
 						free(comando);
-						return resultado;
+						switch(resultado){
+						case ESTADO_INSERT_OK:
+							return strdup("Se realizo INSERT");
+						case ESTADO_INSERT_ERROR_TABLA:
+							return strdup("ERROR: No existe tabla");
+						case ESTADO_INSERT_ERROR_OTRO:
+							return strdup("Ocurrio un error desconocido");
+						}
 					}
 				}
 				for(int i = 0; ultimoArgumento[i]; i++){
@@ -275,18 +289,19 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 
 }
 
-char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
+enum estados_insert insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
+
 	if(existeTabla(nombreTabla)){
 		if(sizeof(timeStamp) <= tamValue){
 			agregarAMemTable(nombreTabla, key, valor, timeStamp);
 			log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %llu", nombreTabla, key, valor, timeStamp);
-			return string_from_format("Se realizo el INSERT");
+			return ESTADO_INSERT_OK;
 		}else{
-			return string_from_format("Tamaño de timestamp mayor al tamaño maximo");
+			return ESTADO_INSERT_ERROR_OTRO;
 		}
 	}else{
 		log_debug(logger, "No existe en el File System la tabla: %s",nombreTabla);
-		return string_from_format("No existe en el File System la tabla: %s",nombreTabla);
+		return ESTADO_INSERT_ERROR_TABLA;
 	}
 }
 
@@ -386,7 +401,7 @@ struct_describe_global_respuesta describe_global(){
 			carpeta = readdir(path_buscado);
 		}
 	}else{
-		respuesta.estado = ESTADO_DESCRIBE_ERROR_TABLA;
+		respuesta.estado = ESTADO_DESCRIBE_ERROR_OTRO;
 	}
 	closedir(path_buscado);
 	return respuesta;
@@ -402,11 +417,14 @@ char* drop(char* nombreTabla){
 		borrarTabla(path);
 		log_trace(logger, "Antes de borrar el path");
 		rmdir(path);
+		free(path);
 		log_trace(logger, "Borro path");
 
 		log_trace(logger, "Empiezo a borrar el hilo");
 		hiloCompactacion = list_remove_by_condition(hilosCompactacion, (_Bool (*)(void*))registro_IgualNombreTabla);	//Dame al registro que tenga el mismo nombre de tabla
 		pthread_attr_destroy(hiloCompactacion->attrHilo);
+		free(hiloCompactacion->nombreTabla);
+		free(hiloCompactacion);
 		log_trace(logger, "Elimino el hilo");
 
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
@@ -424,7 +442,10 @@ void borrarTabla(char* path){
 	char* path_aux;
 	while(archivo){
 		path_aux = string_from_format("%s%s", path, archivo->d_name);
-		if(access(path_aux, F_OK) != -1){	//Si existe el archivo .tmp y puedo acceder, borralo
+		if(access(path_aux, F_OK) != -1){	//Si existe algun archivo y puedo acceder, borralo
+//			if(string_ends_with(path_aux, ".bin")){		//si es un .bin, tengo que desenlazar el numero de bloque en el bitmap
+//				quitarEnlaceBloques(path_aux);
+//			}
 			remove(path_aux);
 		}
 		free(path_aux);
@@ -432,7 +453,28 @@ void borrarTabla(char* path){
 	}
 	closedir(path_buscado);
 }
-
+/*
+void quitarEnlaceBloques(char* bin_string){
+	FILE* bin = fopen(bin_string, "r");
+	char* bloques = obtenerBloquesDetabla(bin);		// 0 // 4,2,6,1
+	if(strlen(bloques)==1){		//Si hay un solo bloque, no me molesto en separarlo y tener que usar un array de strings
+		int bloque = stringToLong(bloques);
+		bitarray_clean_bit(bitarray, bloque);
+	}else{
+		char** bloquesS = string_split(bloques, ",");	// 0 4 6 1
+		int i = 0;
+		while(bloquesS[i]){
+			int bloque = stringToLong(bloquesS[i]);
+			bitarray_clean_bit(bitarray, bloque);
+			free(bloquesS[i]);
+			i++;
+		}
+		free(bloquesS);
+	}
+	log_trace(logger, "Termino de quitar enlace de bloques");
+	free(bloques);
+}
+*/
 //Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla). Luego se limpia la memtable.
 void* dump(int tiempo_dump){
 	int tiempo = tiempo_dump/1000;

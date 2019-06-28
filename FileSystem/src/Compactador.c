@@ -54,6 +54,7 @@ void analizarTmpc(char* path, char* nombreTabla){
 
 				if(strcmp(bloque_keyRepetida, "false")){		//Existe la key en algun bloque
 					log_trace(logger, "EXISTE la key en el bloque: %s", bloque_keyRepetida);
+					free(bloque_keyRepetida);
 					//Si existe la key en alguno de los bloques, comparo timestamp
 						//Si el timestamp del bloque es mayor, no pasa naranja
 						//Si el timestamp del .tmpc es mayor, tengo que reemplazar esa LINEA
@@ -100,8 +101,9 @@ void analizarTmpc(char* path, char* nombreTabla){
 				free(path_bin);
 				log_trace(logger, "free(path_bin);");
 			}
-
+			free(lineaTmpc);
 			remove(pathTempc);
+			free(pathTempc);
 		}
 
 		archivo = readdir(path_buscado);
@@ -194,7 +196,7 @@ char* existeKey(u_int16_t key, char** bloques){
 				free(linea);
 				ulong key_bloque = stringToLong(line[1]);
 				if(key==key_bloque){
-					return bloques[i];
+					return string_from_format("%s", bloques[i]);
 				}
 				free(line[0]);free(line[1]);free(line[2]);free(line);
 
@@ -209,7 +211,7 @@ char* existeKey(u_int16_t key, char** bloques){
 						log_trace(logger, "%d es igual a %d", key_bloque, key);
 						free(line[0]);free(line[1]);free(line[2]);free(line);
 						fclose(bloque_bin);
-						return bloques[i];
+						return string_from_format("%s", bloques[i]);
 					}
 					log_trace(logger, "La key %d NO es igual a la key %d", key, key_bloque);
 				}else{
@@ -223,6 +225,7 @@ char* existeKey(u_int16_t key, char** bloques){
 				free(line);
 			}
 		}
+		free(buffer_bloque_bin);
 		fclose(bloque_bin);
 		i++;
 	}
@@ -239,12 +242,8 @@ char* existeKeyEnBloques(uint16_t key_tmpc, FILE* binTabla){
 			char** bloques = string_split(lineaBin, "=");	//char [BLOCKS,[40,21,82,3]]
 			char** blocks = obtenerBloques(bloques[1]);		//char [40,21,82,3]
 			bloque_keyExistente = existeKey(key_tmpc, blocks);
-			int j=0;
-			while(bloques[j]){
-				free(bloques[j]);
-				j++;
-			}
-			free(bloques);
+			liberarArrayString(blocks);
+			liberarArrayString(bloques);
 			free(lineaBin); lineaBin=NULL;
 		}
 	}
@@ -257,6 +256,14 @@ char* existeKeyEnBloques(uint16_t key_tmpc, FILE* binTabla){
 	}
 }
 
+void liberarArrayString(char** array){
+	int i = 0;
+	while(array[i]){
+			free(array[i]);
+			i++;
+		}
+		free(array);
+}
 char* obtenerUltimaLinea(char* bloque){
 	char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloque);
 	FILE* bloque_bin = fopen(path, "r");

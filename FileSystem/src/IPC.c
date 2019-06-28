@@ -103,7 +103,9 @@ void memoria_handler(int *socket_cliente){
 				log_trace(logger, "Recibi un INSERT");
 				struct_insert paquete = recibir_insert(cliente);
 
-				//Hacer algo con el paquete
+				enum estados_insert estado= insert(paquete.nombreTabla, paquete.key, paquete.valor, paquete.timestamp);
+
+				responder_insert(cliente, estado);
 
 				printf("Comando recibido: INSERT %s %d \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
 
@@ -122,10 +124,13 @@ void memoria_handler(int *socket_cliente){
 						break;
 					case SHC:
 						consistencia = "SHC";
+						break;
 					case EC:
 						consistencia = "EC";
+						break;
 					default:
 						consistencia = ""; // TODO esto esta como el orto. Lo ideal es redefinir create para levantar un numero y no un char*
+						break;
 				}
 
 				int estado = create(paquete.nombreTabla, consistencia, paquete.particiones, paquete.tiempoCompactacion);

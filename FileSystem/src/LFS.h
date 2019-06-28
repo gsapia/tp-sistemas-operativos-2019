@@ -85,7 +85,7 @@ void *compactacion(argumentos_compactacion *args);
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key);
 
 //Realiza la operacion INSERT
-char* insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
+enum estados_insert insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
 
 //Realiza la operacion CREATE
 uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
@@ -180,7 +180,7 @@ int obtenerSizeBin(FILE* bin);
 uint64_t stringToLong(char* strToInt);
 struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe);
 char** obtenerBloques(char* bloques);
-
+char* obtenerBloquesDetabla(FILE* f);
 //Indica true, si la key pertenece al bloque asignado con bloque_numero. False en caso contrario.
 char* existeKey(u_int16_t key, char** bloques);
 bool entraEnBloque(char* line, int bloque);
@@ -194,4 +194,10 @@ char* obtenerUltimaLinea(char* bloque);
 
 //Borra todos los archivos de una tabla, sus bloques, y luego la tabla en si.
 void borrarTabla(char* path);
+
+//Quita el enlace en el bitmap sobre los bloques asignados a los .bin de la tabla
+void quitarEnlaceBloques(char* bin_string);
+
+//Libera la memoria de cada posicion del array, y el puntero al array
+void liberarArrayString(char** array);
 #endif /* LFS_H_ */
