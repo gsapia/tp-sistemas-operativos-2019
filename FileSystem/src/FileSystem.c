@@ -110,7 +110,19 @@ void crearTables(){
 void crearBloquesDatos(){
 	char* path = string_from_format("%sBloques/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
+	crearBloques(path);
 	free(path);
+}
+
+void crearBloques(char* path){
+	FILE* f;
+	for(int i=0; i<blocks;i++){
+		char* path_aux = string_from_format("%s%d.bin", path,i);
+		f = fopen(path_aux, "w");
+		truncate(path_aux, blockSize);
+		fclose(f);
+		free(path_aux);
+	}
 }
 
 // Corrobora la existencia de una carpeta dentro de la carpeta "Table/"
@@ -163,6 +175,7 @@ void dumpDeTablas(t_list *memTableAux){
 
 			if(!list_is_empty(datosParaDump)){
 				dumpear(datosParaDump, carpeta->d_name);
+				log_trace(logger, "Salgo de dumplear");
 				list_destroy(datosParaDump);
 				datosParaDump = NULL;
 				flag = 1;
@@ -172,6 +185,7 @@ void dumpDeTablas(t_list *memTableAux){
 		}
 		carpeta = readdir(path_buscado);
 	}
+	list_destroy(memTableAux);
 	if(flag==1){
 		cantDumps++;
 	}
@@ -180,38 +194,108 @@ void dumpDeTablas(t_list *memTableAux){
 
 //Dumpeo los datos dentro de un archivo ".tmp" que se encuentra dentro de "/Table/carpetaNombre"
 void dumpear(t_list *datosParaDump, char* carpetaNombre){
-	char* particionTemp;
-	particionTemp = intToString(cantDumps);
-	FILE* temp = crearArchivoTemporal(carpetaNombre, particionTemp);
+	char** bloques = malloc(sizeof(char)*10);
+	char* particionTemp = intToString(cantDumps);
+
+	//Lo escribo
+	char* linea = lineasEntera(datosParaDump);
+	int cant = strlen(linea)/blockSize;
+	char** lineas = dividirLinea(linea);
+
+	for(int i=0; i<(cant+1);i++){
+		bloques[i] = getNewBloque();
+		char* temp_path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloques[i]);
+		FILE* temp = fopen(temp_path, "r+");
+		free(temp_path);
+
+		fputs(lineas[i], temp);
+		fclose(temp);
+	}
+	liberarArrayString(lineas);
+	crearArchivoTemporal(carpetaNombre, particionTemp, bloques, strlen(linea), cant+1);	//Creo el .tmp con el bloque que pedí y el size
+	free(linea);
 	free(particionTemp);
+
+}
+
+char** dividirLinea(char* linea){
+	int delim = 0;
+	int cant = strlen(linea)/blockSize;
+	char** lineas = malloc(strlen(linea)*(cant+1));
+
+	for(int i=0; i<cant+1; i++){
+		int length_aux = strlen(linea) - blockSize * i;
+
+		if(length_aux > blockSize){		//Osea tiene menos de 64 caracteres
+			lineas[i] = string_substring(linea, delim, blockSize);
+			delim = delim + blockSize;
+		}else{
+			if(length_aux < 0){
+				lineas[i] = string_substring(linea, delim, -length_aux);
+			}else{
+				lineas[i] = string_substring(linea, delim, length_aux);
+			}
+		}
+	}
+	return lineas;
+}
+
+char* lineasEntera(t_list* lista){
+	char* linea_return = string_new();
 	t_registro *registro;
 
-	while(!list_is_empty(datosParaDump)){
-		registro = list_remove(datosParaDump,0);
-		escribirEnArchivo(temp, registro);
+	while(!list_is_empty(lista)){
+		registro = list_remove(lista,0);
+		char* timestamp = string_from_format("%llu", registro->timeStamp);
+		char* key = intToString(registro->key);
+		char* linea_list = string_from_format("%s;%s;%s\n", timestamp, key, registro->value); // [TIMESTAMP];[KEY];[VALUE]
+		free(key); free(timestamp);
+
+		string_append(&linea_return, linea_list);
+
+		free(linea_list);
+		free(registro->nombre_tabla);
+		free(registro->value);
+		free(registro);
 	}
-	free(registro->nombre_tabla);
-	free(registro->value);
-	free(registro);
-	fclose(temp);
+	return linea_return;
 }
 
-void escribirEnArchivo(FILE* f, t_registro* r){
-	char* timestamp = string_from_format("%llu", r->timeStamp);
-	char* key = intToString(r->key);
-	char* linea = string_from_format("%s;%s;%s\n", timestamp, key, r->value); // [TIMESTAMP];[KEY];[VALUE]
-	fputs(linea, f);
-	free(timestamp);
-	free(key);
-	free(linea);
-}
 
-FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp){
+void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques, int size, int cantidadBloques){
 	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
-	FILE* f = fopen(path, "w+");
+	FILE* f = fopen(path, "w");
+	char* auxSize = string_from_format("SIZE=%d", size);
+	fputs(auxSize, f);
+	free(auxSize);
+	fputs("\n",f);
+
+	char* auxBloques;
+	char* bloque = string_new();
+	string_append(&bloque, bloques[0]);
+	log_trace(logger, "Bloque: %s", bloque);
+	free(bloques[0]);
+	log_trace(logger, "%Cantidad de bloques usados: d");
+	for(int i=1;i<cantidadBloques;i++){
+		string_append(&bloque,",");
+		string_append(&bloque, bloques[i]);
+		log_trace(logger, "Bloque: %s", bloque);
+	}
+	auxBloques = string_from_format("BLOCKS=[%s]", bloque);
+	free(bloque);
+
+	fputs(auxBloques,f);
+
+	for(int i=0;i<cantidadBloques;i++){
+		free(bloques[i]);
+	}
+	free(bloques);
+
+	free(auxBloques);
 	free(path);
-	return f;
+	fclose(f);
 }
+
 
 FILE* obtenerMetaDataLectura(char* nombreTabla){
 	char* path = string_from_format("%sTable/%s/Metadata", puntoMontaje, nombreTabla);
@@ -220,8 +304,7 @@ FILE* obtenerMetaDataLectura(char* nombreTabla){
 	return metadata;
 }
 
-// Se obtiene la cantidad de particiones (.bin) que existen en una carpeta, desde
-// el archivo Metadata
+
 int obtenerParticiones(FILE* metadata){
 	char aux[20];int particiones;
 	fgets(aux, 20, metadata);
@@ -243,14 +326,12 @@ FILE* obtenerBIN(int particion, char* nombreTabla){
 	return bin;
 }
 
-// Crea la carpeta dentro de "Table/" con el nombreTabla
 void crearDirectiorioDeTabla(char* nombreTabla){
 	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
 	if(mkdir(path, 0777) != 0){}
 	free(path);
 }
 
-// Crea el archivo Metadata y no incializa con los parametros enviados.
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
 	char* path = string_from_format("%sTable/%s/Metadata", puntoMontaje, nombreTabla);
 	FILE* metadata = fopen(path, "w");
@@ -273,18 +354,14 @@ void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int canti
 	fclose(metadata);
 }
 
-// Crea todos los archivos ".bin" necesarios en la tabla correspondiente.
 void crearBinDeTabla(char* nombreTabla, int cantParticiones){
-	FILE* f; FILE *bloque;
+	FILE* f;
 	char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
 	char* particion;
 	for(int i=0;i<cantParticiones;i++){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
-		char* numeroBloque = agregarNuevoBloqueBin();
-		char* path_bloque = string_from_format("%sBloques/%s.bin", puntoMontaje, numeroBloque);
-		bloque = fopen(path_bloque, "w");
-		fclose(bloque);
+		char* numeroBloque = getNewBloque();
 		f = fopen(path_aux, "w");
 		fputs("SIZE=0  ", f);
 		fputs("\n",f);
@@ -293,7 +370,6 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 		fputs(auxBloques,f);
 		fclose(f);
 		free(auxBloques);
-		free(path_bloque);
 		free(path_aux);
 		free(particion);
 	}
@@ -303,12 +379,10 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 
 // ##### FUNCIONES SECUNDARIAS #####
 
-// Convierte un u_int en un string
 char* intToString(long a){
 	return string_from_format("%ld", a);
 }
 
-// Convierte un t_registro* a un t_registro
 t_registro convertirAStruct(t_registro *registro){
 	t_registro r;
 	r.key = registro->key;

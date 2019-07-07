@@ -7,7 +7,6 @@ void *compactacion(argumentos_compactacion *args){
 	free(args->nombreTabla); free(args);
 	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
 
-
 	sleep(tiempo);
 	DIR* directorio = opendir(path);
 	while(directorio){
@@ -21,6 +20,7 @@ void *compactacion(argumentos_compactacion *args){
 		sleep(tiempo);
 		directorio = opendir(path);
 	}
+	free(nombreTabla);
 	free(path);
 }
 
@@ -72,13 +72,13 @@ void analizarTmpc(char* path, char* nombreTabla){
 					}else{			//No entra en el ultimo bloque
 						log_trace(logger, "NO ENTRA");
 						int sizeBloque = calcularTamanoBloque(ultimoBloque);
-						int until = 64 - sizeBloque;
+						int until = blockSize - sizeBloque;
 						char* newLine = string_substring_until(line, until);		//Inserto hasta donde puedo, el resto va en otro bloque
 						log_trace(logger, "Inserto %d caracteres, y %d en otro", until, strlen(line)-until);
 						insertarLinea(ultimoBloque, newLine);
 						free(newLine);
 
-						char* nuevoBloque = agregarNuevoBloqueBin();
+						char* nuevoBloque = getNewBloque();
 						int newBlock = atoi(nuevoBloque);
 						if(nuevoBloque){
 							char* path_bloque = string_from_format("%sBloques/%s.bin", puntoMontaje, nuevoBloque);
@@ -112,7 +112,7 @@ void analizarTmpc(char* path, char* nombreTabla){
 }
 
 bool crearNuevoBloque(){
-	char* nuevoBloque = agregarNuevoBloqueBin();
+	char* nuevoBloque = getNewBloque();
 	if(nuevoBloque){
 		char* path_bloque = string_from_format("%sBloques/%s.bin", puntoMontaje, nuevoBloque);
 		FILE* bloque = fopen(path_bloque, "w");
@@ -264,6 +264,7 @@ void liberarArrayString(char** array){
 		}
 		free(array);
 }
+
 char* obtenerUltimaLinea(char* bloque){
 	char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloque);
 	FILE* bloque_bin = fopen(path, "r");
@@ -326,14 +327,10 @@ char* obtenerBloquesDetabla(FILE* f){
 }
 
 int sizeArchivo(FILE* archivo){
-	int i = 0;
-	while(!feof(archivo)){
-		if(fgetc(archivo) != '\n'){
-			i++;
-		}
-	}
+	fseek(archivo, 0, SEEK_END);
+	int size = ftell(archivo);
 	fseek(archivo, 0, SEEK_SET);
-	return i;
+	return size;
 }
 
 void insertarLinea(int bloqueNumero, char* linea){
@@ -350,7 +347,7 @@ void insertarLinea(int bloqueNumero, char* linea){
 	fclose(bloqueBin);
 }
 
-char* agregarNuevoBloqueBin(){
+char* getNewBloque(){
 	for(int i=0;i<blocks;i++){
 		if(!bitarray_test_bit(bitarray, i)){ //Si existe un bloque libre
 			bitarray_set_bit(bitarray, i);

@@ -9,6 +9,7 @@
 #include<stdlib.h>
 #include<commons/collections/list.h>
 #include<commons/string.h>
+#include<commons/txt.h>
 #include<readline/readline.h>
 #include<pthread.h>
 #include<unistd.h>
@@ -130,6 +131,8 @@ bool existeKeySELECT(u_int16_t key, char** bloques, t_list* lista);
 
 char* obtenerPrimeraLinea(char* bloque);
 
+char* lineasEntera(t_list* lista);
+char** dividirLinea(char* linea);
 void crearDirectiorioDeTabla(char* nombreTabla);
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
@@ -150,11 +153,12 @@ void crearMetaDataFS();
 void crearBitMapFS();
 void crearTables();
 void crearBloquesDatos();
+void crearBloques(char* path);
 char* encontreTabla(char* nombreTabla, DIR* path_buscado);
-FILE* crearArchivoTemporal(char* nombreTabla, char* particionTemp);
+void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques, int size, int cantidadBloques);
 void dumpear(t_list *datosParaDump, char* carpetaNombre);
 t_registro convertirAStruct(t_registro *registro);
-void escribirEnArchivo(FILE* f, t_registro* r);
+void escribirEnBloque(FILE* f, t_registro* r);
 bool renombrarArchivosTemporales(char* path);
 bool esArchivoTemporal(char* nombre);
 void analizarTmpc(char* path, char* nombreTabla);
@@ -185,7 +189,7 @@ char* obtenerBloquesDetabla(FILE* f);
 char* existeKey(u_int16_t key, char** bloques);
 bool entraEnBloque(char* line, int bloque);
 void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin);
-
+char* getNewBloque();
 //Calcula el tamañano del bloque: "puntoMontaje/Bloques/numeroBloque.bin"
 int calcularTamanoBloque(int numeroBloque);
 
