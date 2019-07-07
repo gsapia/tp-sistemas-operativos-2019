@@ -2,6 +2,7 @@
 #include "Kernel.h"
 #include "IPC.h"
 #include "Memorias.h"
+#include "Misc.h"
 #include "serializacion.h"
 
 t_resultado selects(char* nombreTabla, u_int16_t key){
@@ -102,11 +103,48 @@ t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int
 	return respuesta;
 }
 t_resultado describe(char* nombreTabla){
-	log_debug(logger, "DESCRIBE: Recibi Tabla:%s", nombreTabla);
-
 	t_resultado respuesta;
 	respuesta.falla = false;
-	respuesta.resultado = string_from_format("Elegiste DESCRIBE");
+
+	struct_describe paquete;
+	paquete.nombreTabla = nombreTabla;
+
+	t_memoria* memoria = obtener_memoria_random_del_pool();
+
+	struct_describe_respuesta resultado = describeAMemoria(paquete, memoria);
+
+	pthread_mutex_lock(&mutex_metadata);
+	addMetadata(nombreTabla, &resultado); // Lo agregamos a la metadata conocida.
+	pthread_mutex_unlock(&mutex_metadata);
+
+	switch(resultado.estado){
+	case ESTADO_DESCRIBE_OK:
+		respuesta.resultado = string_from_format("Consistencia: %s, Particiones: %d, Tiempo de Compactacion: %ld", consistenciaAString(resultado.consistencia), resultado.particiones, resultado.tiempo_compactacion);
+		break;
+	case ESTADO_DESCRIBE_ERROR_TABLA:
+		respuesta.resultado = strdup("ERROR: Esa tabla no existe.");
+		break;
+	default:
+		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
+	}
+
+	return respuesta;
+}
+
+t_resultado describe_global(){
+	t_resultado respuesta;
+	respuesta.falla = false;
+
+	pthread_mutex_lock(&mutex_metadata);
+	refreshMetadata();
+
+	respuesta.resultado = string_new();
+	void iterador_describes(char* nombre_tabla, t_metadata* metadata_tabla){
+		string_append_with_format(&respuesta.resultado, "Tabla: %s Consistencia: %s, Particiones: %d, Tiempo de Compactacion: %ld\n", nombre_tabla, consistenciaAString(metadata_tabla->consistencia), metadata_tabla->particiones, metadata_tabla->tiempo_compactacion);
+	}
+	dictionary_iterator(metadata, (void(*)(char*,void*))iterador_describes);
+
+	pthread_mutex_unlock(&mutex_metadata);
 
 	return respuesta;
 }

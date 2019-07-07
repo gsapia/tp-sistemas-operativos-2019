@@ -7,19 +7,22 @@ C_SRCS += \
 ../src/ApiKernel.c \
 ../src/IPC.c \
 ../src/Kernel.c \
-../src/Memorias.c 
+../src/Memorias.c \
+../src/Misc.c 
 
 OBJS += \
 ./src/ApiKernel.o \
 ./src/IPC.o \
 ./src/Kernel.o \
-./src/Memorias.o 
+./src/Memorias.o \
+./src/Misc.o 
 
 C_DEPS += \
 ./src/ApiKernel.d \
 ./src/IPC.d \
 ./src/Kernel.d \
-./src/Memorias.d 
+./src/Memorias.d \
+./src/Misc.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

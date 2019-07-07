@@ -8,6 +8,7 @@ t_resultado selects(char* nombreTabla, u_int16_t key);
 t_resultado insert(char* nombreTabla, u_int16_t key, char* valor);
 t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 t_resultado describe(char* nombreTabla);
+t_resultado describe_global();
 t_resultado drop(char* nombreTabla);
 t_resultado journal();
 t_resultado run(char* runPath);

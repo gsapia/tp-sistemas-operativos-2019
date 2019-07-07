@@ -223,6 +223,11 @@ t_resultado apiKernel(char* mensaje){
 				free(comando);
 				return resultado;
 			}
+			if(cantArgumentos == 0){
+				t_resultado resultado = describe_global();
+				free(comando);
+				return resultado;
+			}
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
 				cantArgumentos--;

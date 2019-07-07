@@ -21,6 +21,8 @@ typedef struct{
 
 t_dictionary* metadata; // Lista de metadata para cada nombre de tabla
 
+pthread_mutex_t mutex_metadata;
+
 // Funcion que cada cierto tiempo pide la tabla de gossip a memoria
 void gossip();
 

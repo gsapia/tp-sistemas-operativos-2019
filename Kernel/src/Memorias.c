@@ -26,7 +26,9 @@ t_memoria* getMemoria(int numero){
 }
 
 enum consistencias obtener_consistencia(char* nombre_tabla){
+	pthread_mutex_lock(&mutex_metadata);
 	t_metadata* metadata_tabla = dictionary_get(metadata, nombre_tabla);
+	pthread_mutex_unlock(&mutex_metadata);
 	if(metadata_tabla){
 		return metadata_tabla->consistencia;
 	}
@@ -34,7 +36,10 @@ enum consistencias obtener_consistencia(char* nombre_tabla){
 }
 
 bool existeTabla(char* nombre_tabla){
-	return dictionary_has_key(metadata, nombre_tabla);
+	pthread_mutex_lock(&mutex_metadata);
+	bool resultado = dictionary_has_key(metadata, nombre_tabla);
+	pthread_mutex_unlock(&mutex_metadata);
+	return resultado;
 }
 t_memoria* obtener_memoria_random(t_list* lista_memorias){
 	pthread_mutex_lock(&mutex_pool_memorias);
@@ -100,6 +105,7 @@ void gossip(){
 
 			pthread_mutex_lock(&mutex_pool_memorias);
 			pool_memorias = recibir_tabla_gossiping(socket);
+			close(socket);
 
 			// Ahora hay que eliminar las memorias que ya no existen de los criterios
 			for(int i = 0; i < 3; ++i){
