@@ -28,9 +28,11 @@ void gossip();
 
 t_memoria* getMemoria(int numero);
 
+enum consistencias obtener_consistencia(char* nombre_tabla);
+
 bool existeTabla(char* nombre_tabla);
 t_memoria* obtener_memoria_random_del_pool();
-t_memoria* obtener_memoria_segun_tabla(char* nombre_tabla, uint16_t key);
+t_memoria* obtener_memoria_segun_consistencia(enum consistencias consistencia, uint16_t key);
 t_memoria* obtener_memoria_SC();
 t_memoria* obtener_memoria_SHC(uint16_t key);
 t_memoria* obtener_memoria_EC();

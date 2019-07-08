@@ -6,13 +6,18 @@
 void informar_metricas(){ // Informa las metricas cada 30 seg
 	while(1){
 		sleep(30);
-		log_info(logger, metrics().resultado);
+		char* resultado = metrics().resultado;
+		log_info(logger, resultado);
+		free(resultado);
 	}
 }
 
 void initMetricas(void){
-	metricas_selects = queue_create();
-	metricas_inserts = queue_create();
+	for (int consistencia = 0; consistencia < 3; ++consistencia) {
+		metricas[consistencia].ultimos_selects = queue_create();
+		metricas[consistencia].ultimos_inserts = queue_create();
+		metricas[consistencia].operaciones_totales = 0;
+	}
 
 	pthread_t hiloMetricas;
 	pthread_create(&hiloMetricas, NULL,(void*)informar_metricas , NULL);
@@ -22,11 +27,15 @@ void initMetricas(void){
 // Limpia las metricas mayores a 30 segundos atras
 void limpiar_metricas(void){
 	unsigned long long timestamp_30seg = getTimestamp() - 30000; // El timestamp de hace 30 segundos atras
-	while(!queue_is_empty(metricas_selects) && ((t_metrica_operacion*)queue_peek(metricas_selects))->fin < timestamp_30seg){
-		free(queue_pop(metricas_selects));
-	}
-	while(!queue_is_empty(metricas_inserts) && ((t_metrica_operacion*)queue_peek(metricas_inserts))->fin < timestamp_30seg){
-		free(queue_pop(metricas_inserts));
+	for (int consistencia = 0; consistencia < 3; ++consistencia) {
+		t_queue * metricas_selects = metricas[consistencia].ultimos_selects;
+		while(!queue_is_empty(metricas_selects) && ((t_metrica_operacion*)queue_peek(metricas_selects))->fin < timestamp_30seg){
+			free(queue_pop(metricas_selects));
+		}
+		t_queue * metricas_inserts = metricas[consistencia].ultimos_inserts;
+		while(!queue_is_empty(metricas_inserts) && ((t_metrica_operacion*)queue_peek(metricas_inserts))->fin < timestamp_30seg){
+			free(queue_pop(metricas_inserts));
+		}
 	}
 }
 
@@ -39,18 +48,16 @@ void agregar_metrica(t_metrica_operacion metrica, t_queue* cola){
 	limpiar_metricas();
 }
 
-void informar_select(unsigned long long inicio){
+void informar_select(enum consistencias consistencia, unsigned long long inicio){
 	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp() };
 	pthread_mutex_lock(&mutex_metricas);
-	agregar_metrica(metrica, metricas_selects);
-	selects_totales++;
+	agregar_metrica(metrica, metricas[consistencia].ultimos_selects);
 	pthread_mutex_unlock(&mutex_metricas);
 }
-void informar_insert(unsigned long long inicio){
+void informar_insert(enum consistencias consistencia, unsigned long long inicio){
 	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp() };
 	pthread_mutex_lock(&mutex_metricas);
-	agregar_metrica(metrica, metricas_inserts);
-	inserts_totales++;
+	agregar_metrica(metrica, metricas[consistencia].ultimos_inserts);
 	pthread_mutex_unlock(&mutex_metricas);
 }
 
@@ -68,21 +75,26 @@ unsigned long long get_latencias(t_queue* metricas){
 	return latencia / queue_size(metricas);
 }
 
-t_metricas get_metricas(void){
-	t_metricas metricas;
+t_metricas * get_metricas(void){
+	t_metricas * metricas_respuesta = calloc(3, sizeof(t_metricas));
 	pthread_mutex_lock(&mutex_metricas);
 
 	limpiar_metricas();
 
-	metricas.read_latency = get_latencias(metricas_selects);
-	metricas.write_latency = get_latencias(metricas_inserts);
+	for (int consistencia = 0; consistencia < 3; ++consistencia) {
+		t_queue * ultimos_selects = metricas[consistencia].ultimos_selects;
+		t_queue * ultimos_inserts = metricas[consistencia].ultimos_inserts;
 
-	metricas.reads = selects_totales;
-	metricas.writes = inserts_totales;
+		metricas_respuesta[consistencia].read_latency = get_latencias(ultimos_selects);
+		metricas_respuesta[consistencia].write_latency = get_latencias(ultimos_inserts);
 
-	// TODO Memory load
+		metricas_respuesta[consistencia].reads = queue_size(ultimos_selects);
+		metricas_respuesta[consistencia].writes = queue_size(ultimos_inserts);
+
+		// TODO Memory load
+	}
 
 	pthread_mutex_unlock(&mutex_metricas);
 
-	return metricas;
+	return metricas_respuesta;
 }

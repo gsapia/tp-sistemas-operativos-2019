@@ -7,13 +7,16 @@
 #include "serializacion.h"
 
 t_resultado selects(char* nombreTabla, u_int16_t key){
+	unsigned long long inicio = getTimestamp(); // METRICAS
+
 	t_resultado respuesta;
 	if(!existeTabla(nombreTabla)){
 		respuesta.falla = true;
 		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
 		return respuesta;
 	}
-	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla, key);
+	enum consistencias consistencia = obtener_consistencia(nombreTabla);
+	t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, key);
 	if(!memoria){
 		respuesta.falla = true;
 		respuesta.resultado = strdup("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
@@ -41,17 +44,21 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 	default:
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
+	informar_select(consistencia, inicio); // METRICAS
 	return respuesta;
 }
 
 t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
+	unsigned long long inicio = getTimestamp(); // METRICAS
+
 	t_resultado respuesta;
 	if(!existeTabla(nombreTabla)){
 		respuesta.falla = true;
 		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
 		return respuesta;
 	}
-	t_memoria * memoria = obtener_memoria_segun_tabla(nombreTabla, key);
+	enum consistencias consistencia = obtener_consistencia(nombreTabla);
+	t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, key);
 	if(!memoria){
 		respuesta.falla = true;
 		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
@@ -77,6 +84,7 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 	default:
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
+	informar_insert(consistencia, inicio); // METRICAS
 	return respuesta;
 }
 t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
@@ -202,10 +210,19 @@ t_resultado metrics(){
 	t_resultado respuesta;
 	respuesta.falla = false;
 
-	t_metricas metricas = get_metricas();
+	t_metricas * metricas = get_metricas();
 
-	respuesta.resultado = string_from_format("METRICAS:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld\n\t",
-			metricas.read_latency, metricas.write_latency, metricas.reads, metricas.writes);
+	respuesta.resultado = strdup("METRICAS:");
+
+	for (int consistencia = 0; consistencia < 3; ++consistencia) {
+		string_append_with_format(&respuesta.resultado, "\n%s:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld\n\t",
+				consistenciaAString(consistencia), metricas[consistencia].read_latency, metricas[consistencia].write_latency, metricas[consistencia].reads, metricas[consistencia].writes);
+	}
+
+	free(metricas);
+
+	//respuesta.resultado = string_from_format("METRICAS:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld\n\t",
+	//		metricas.read_latency, metricas.write_latency, metricas.reads, metricas.writes);
 	return respuesta;
 }
 t_resultado add(uint16_t numeroMemoria, enum consistencias criterio){

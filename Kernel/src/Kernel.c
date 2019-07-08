@@ -98,9 +98,7 @@ t_resultado apiKernel(char* mensaje){
 				if(*endptr == '\0'&& key < 65536){        // Atoi era otra opcion pero no maneja errores como strtoul o strtol
 														  // Como deben ser Keys de 16 bits debe ser < 65536
 
-					unsigned long long inicio = getTimestamp(); // METRICAS
 					respuesta = selects(nombreTabla, key);
-					informar_select(inicio); // METRICAS
 
 					free(nombreTabla);
 					free(keystr);
@@ -138,9 +136,7 @@ t_resultado apiKernel(char* mensaje){
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
 					if (*endptr == '\0' && key < 65536) {
-						unsigned long long inicio = getTimestamp(); // METRICAS
 						t_resultado resultado = insert(nombreTabla, key, valor);
-						informar_insert(inicio); // METRICAS
 						while(cantArgumentos){
 							free(comando[cantArgumentos]);
 							cantArgumentos--;

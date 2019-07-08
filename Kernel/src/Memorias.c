@@ -78,8 +78,7 @@ t_memoria* obtener_memoria_SHC(uint16_t key){
 t_memoria* obtener_memoria_EC(){
 	return obtener_memoria_random(listasMemorias[EC]);
 }
-t_memoria* obtener_memoria_segun_tabla(char* nombre_tabla, uint16_t key){
-	enum consistencias consistencia = obtener_consistencia(nombre_tabla);
+t_memoria* obtener_memoria_segun_consistencia(enum consistencias consistencia, uint16_t key){
 	switch(consistencia){
 	case SC:
 		return obtener_memoria_SC();
