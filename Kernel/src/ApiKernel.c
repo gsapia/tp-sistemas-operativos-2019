@@ -29,7 +29,6 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 	paquete.nombreTabla = nombreTabla;
 
 	struct_select_respuesta resultado = selectAMemoria(paquete, memoria);
-	free(memoria);
 
 	switch(resultado.estado) {
 	case ESTADO_SELECT_OK:
@@ -44,7 +43,8 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 	default:
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
-	informar_select(consistencia, inicio); // METRICAS
+	informar_select(consistencia, memoria->numero, inicio); // METRICAS
+	free(memoria);
 	return respuesta;
 }
 
@@ -72,7 +72,6 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 	paquete.valor = valor;
 
 	enum estados_insert resultado = insertAMemoria(paquete, memoria);
-	free(memoria);
 
 	switch (resultado) {
 	case ESTADO_INSERT_OK:
@@ -84,7 +83,8 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 	default:
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
-	informar_insert(consistencia, inicio); // METRICAS
+	informar_insert(consistencia, memoria->numero, inicio); // METRICAS
+	free(memoria);
 	return respuesta;
 }
 t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
@@ -215,8 +215,13 @@ t_resultado metrics(){
 	respuesta.resultado = strdup("METRICAS:");
 
 	for (int consistencia = 0; consistencia < 3; ++consistencia) {
-		string_append_with_format(&respuesta.resultado, "\n%s:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld\n\t",
+		string_append_with_format(&respuesta.resultado, "\n%s:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld",
 				consistenciaAString(consistencia), metricas[consistencia].read_latency, metricas[consistencia].write_latency, metricas[consistencia].reads, metricas[consistencia].writes);
+
+		void iterador(char* memoria, float* memory_load){
+			string_append_with_format(&respuesta.resultado, "\n\tMemory %s Load: %.2f%%", memoria, (*memory_load) * 100);
+		}
+		dictionary_iterator(metricas[consistencia].memory_load, (void(*)(char*,void*)) iterador);
 	}
 
 	free(metricas);

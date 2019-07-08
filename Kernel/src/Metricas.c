@@ -6,9 +6,10 @@
 void informar_metricas(){ // Informa las metricas cada 30 seg
 	while(1){
 		sleep(30);
-		char* resultado = metrics().resultado;
-		log_info(logger, resultado);
-		free(resultado);
+		// TODO Arreglar
+		t_resultado resultado = metrics();
+		log_info(logger, resultado.resultado);
+		free(resultado.resultado);
 	}
 }
 
@@ -17,6 +18,7 @@ void initMetricas(void){
 		metricas[consistencia].ultimos_selects = queue_create();
 		metricas[consistencia].ultimos_inserts = queue_create();
 		metricas[consistencia].operaciones_totales = 0;
+		metricas[consistencia].operaciones_por_memoria = dictionary_create();
 	}
 
 	pthread_t hiloMetricas;
@@ -48,16 +50,44 @@ void agregar_metrica(t_metrica_operacion metrica, t_queue* cola){
 	limpiar_metricas();
 }
 
-void informar_select(enum consistencias consistencia, unsigned long long inicio){
+void informar_select(enum consistencias consistencia, unsigned int nro_memoria, unsigned long long inicio){
 	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp() };
 	pthread_mutex_lock(&mutex_metricas);
 	agregar_metrica(metrica, metricas[consistencia].ultimos_selects);
+	metricas[consistencia].operaciones_totales++;
+
+	unsigned int * operaciones_memoria;
+	char* memoria = string_from_format("%d", nro_memoria); // Uso char* nomas porque el diccionario de la commons es asi.
+	if(dictionary_has_key(metricas[consistencia].operaciones_por_memoria, memoria)){ // Si hay un valor para esa memoria, simplemente lo actualizamos. Sino, lo agregamos.
+		operaciones_memoria = dictionary_get(metricas[consistencia].operaciones_por_memoria, memoria);
+		(*operaciones_memoria)++;
+	}
+	else{
+		operaciones_memoria = malloc(sizeof(operaciones_memoria));
+		*operaciones_memoria = 1;
+		dictionary_put(metricas[consistencia].operaciones_por_memoria, memoria, operaciones_memoria);
+	}
+
 	pthread_mutex_unlock(&mutex_metricas);
 }
-void informar_insert(enum consistencias consistencia, unsigned long long inicio){
+void informar_insert(enum consistencias consistencia, unsigned int nro_memoria, unsigned long long inicio){
 	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp() };
 	pthread_mutex_lock(&mutex_metricas);
 	agregar_metrica(metrica, metricas[consistencia].ultimos_inserts);
+	metricas[consistencia].operaciones_totales++;
+
+	unsigned int * operaciones_memoria;
+	char* memoria = string_from_format("%d", nro_memoria); // Uso char* nomas porque el diccionario de la commons es asi.
+	if(dictionary_has_key(metricas[consistencia].operaciones_por_memoria, memoria)){ // Si hay un valor para esa memoria, simplemente lo actualizamos. Sino, lo agregamos.
+		operaciones_memoria = dictionary_get(metricas[consistencia].operaciones_por_memoria, memoria);
+		(*operaciones_memoria)++;
+	}
+	else{
+		operaciones_memoria = malloc(sizeof(operaciones_memoria));
+		*operaciones_memoria = 1;
+		dictionary_put(metricas[consistencia].operaciones_por_memoria, memoria, operaciones_memoria);
+	}
+
 	pthread_mutex_unlock(&mutex_metricas);
 }
 
@@ -76,6 +106,7 @@ unsigned long long get_latencias(t_queue* metricas){
 }
 
 t_metricas * get_metricas(void){
+	//TODO Mejorar uso de ram
 	t_metricas * metricas_respuesta = calloc(3, sizeof(t_metricas));
 	pthread_mutex_lock(&mutex_metricas);
 
@@ -91,7 +122,14 @@ t_metricas * get_metricas(void){
 		metricas_respuesta[consistencia].reads = queue_size(ultimos_selects);
 		metricas_respuesta[consistencia].writes = queue_size(ultimos_inserts);
 
-		// TODO Memory load
+		metricas_respuesta[consistencia].memory_load = dictionary_create();
+
+		void iterador(char* memoria, unsigned int * operaciones){
+			float * memory_load = malloc(sizeof(memory_load));
+			*memory_load = ((float)(*operaciones)) / metricas[consistencia].operaciones_totales;
+			dictionary_put(metricas_respuesta[consistencia].memory_load, memoria, memory_load);
+		}
+		dictionary_iterator(metricas[consistencia].operaciones_por_memoria, (void(*)(char*,void*)) iterador);
 	}
 
 	pthread_mutex_unlock(&mutex_metricas);
