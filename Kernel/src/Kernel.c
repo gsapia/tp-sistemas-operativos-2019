@@ -2,6 +2,8 @@
 #include "ApiKernel.h"
 #include "IPC.h"
 #include "Memorias.h"
+#include "Metricas.h"
+#include "Misc.h"
 
 sem_t new;
 sem_t ready;
@@ -93,8 +95,13 @@ t_resultado apiKernel(char* mensaje){
 				char* keystr = comando[2];
 				char* endptr;
 				ulong key = strtoul(keystr, &endptr, 10); //String To Unsigned Long, le paso un String y me retorna un ulong con ese numero.
-				if(*endptr == '\0'&& key < 65536){       // Atoi era otra opcion pero no maneja errores como strtoul o strtol
-					respuesta = selects(nombreTabla, key); // Como deben ser Keys de 16 bits debe ser < 65536
+				if(*endptr == '\0'&& key < 65536){        // Atoi era otra opcion pero no maneja errores como strtoul o strtol
+														  // Como deben ser Keys de 16 bits debe ser < 65536
+
+					unsigned long long inicio = getTimestamp(); // METRICAS
+					respuesta = selects(nombreTabla, key);
+					informar_select(inicio); // METRICAS
+
 					free(nombreTabla);
 					free(keystr);
 					free(comando);
@@ -131,7 +138,9 @@ t_resultado apiKernel(char* mensaje){
 					ulong key = strtoul(keystr, &endptr, 10);
 					char* valor = ultimoArgumento[0];
 					if (*endptr == '\0' && key < 65536) {
+						unsigned long long inicio = getTimestamp(); // METRICAS
 						t_resultado resultado = insert(nombreTabla, key, valor);
+						informar_insert(inicio); // METRICAS
 						while(cantArgumentos){
 							free(comando[cantArgumentos]);
 							cantArgumentos--;
@@ -493,6 +502,8 @@ int main(void) {
 	leerConfig();
 	log_info (logger, "Pude leer config ! \n");
 
+	initMetricas();
+
 	//Inicializo semaforos
 
 	sem_init(&new,0,0);
@@ -505,9 +516,6 @@ int main(void) {
 
 	inicializarColas();
 	inicializarListasDeMemorias();
-
-	printf ("Prueba de hilo \n");
-
 
 	pthread_t hiloCliente;
 	if(pthread_create(&hiloCliente, NULL,(void*)initCliente , NULL))

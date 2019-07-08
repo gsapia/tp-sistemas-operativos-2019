@@ -2,6 +2,7 @@
 #include "Kernel.h"
 #include "IPC.h"
 #include "Memorias.h"
+#include "Metricas.h"
 #include "Misc.h"
 #include "serializacion.h"
 
@@ -200,7 +201,11 @@ t_resultado run(char* runPath){
 t_resultado metrics(){
 	t_resultado respuesta;
 	respuesta.falla = false;
-	respuesta.resultado = string_from_format("Elegiste METRICS");
+
+	t_metricas metricas = get_metricas();
+
+	respuesta.resultado = string_from_format("METRICAS:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld\n\t",
+			metricas.read_latency, metricas.write_latency, metricas.reads, metricas.writes);
 	return respuesta;
 }
 t_resultado add(uint16_t numeroMemoria, enum consistencias criterio){

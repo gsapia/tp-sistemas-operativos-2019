@@ -8,6 +8,7 @@ C_SRCS += \
 ../src/IPC.c \
 ../src/Kernel.c \
 ../src/Memorias.c \
+../src/Metricas.c \
 ../src/Misc.c 
 
 OBJS += \
@@ -15,6 +16,7 @@ OBJS += \
 ./src/IPC.o \
 ./src/Kernel.o \
 ./src/Memorias.o \
+./src/Metricas.o \
 ./src/Misc.o 
 
 C_DEPS += \
@@ -22,6 +24,7 @@ C_DEPS += \
 ./src/IPC.d \
 ./src/Kernel.d \
 ./src/Memorias.d \
+./src/Metricas.d \
 ./src/Misc.d 
 
 
