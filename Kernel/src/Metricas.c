@@ -8,7 +8,7 @@ t_metricas * metricas_respuesta;
 void informar_metricas(){ // Informa las metricas cada 30 seg
 	char* resultado;
 	while(1){
-		sleep(5);
+		sleep(30);
 		resultado = metrics().resultado;
 		log_info(logger, "%s", resultado);
 		free(resultado);
