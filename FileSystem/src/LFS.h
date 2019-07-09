@@ -73,6 +73,9 @@ t_bitarray* bitarray;
 
 /*############ FUNCIONES ##############*/
 
+// Hilo del FILESYSTEM (Crea las carpetas necesarias)
+void* fileSystem();
+
 //Lee una linea ingresada por teclado, y la envia por parametro a apiLissandra()
 void* consola();
 
@@ -127,13 +130,14 @@ FILE* obtenerBIN(int particion, char* nombreTabla);
 //Agrega el registro con la key y el timestamp mas alto a la lista
 void agregarRegistrosTempYTempc(char* nombreTabla, t_list* lista, u_int16_t key);
 
+
 bool existeKeySELECT(u_int16_t key, char** bloques, t_list* lista);
 
 char* obtenerPrimeraLinea(char* bloque);
 
-char* lineasEntera(t_list* lista);
-char** dividirLinea(char* linea);
 void crearDirectiorioDeTabla(char* nombreTabla);
+
+//Crea la carpeta y el archivo Metadata del FileSystem
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
@@ -145,42 +149,29 @@ void obtenerRegistrosDeTable(t_list *listaFiltro, u_int16_t key, int particion_b
 t_registro* convertirARegistroPuntero(t_registro r);
 struct_select_respuesta convertirARespuestaSelect(t_registro* mayor);
 struct_describe_respuesta convertirARespuestaDescribe(char* consistencia, char* particiones, char* compactationTime);
-void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key);
 t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value);
 char* intToString(long a);
-void crearFicheroPadre();
-void crearMetaDataFS();
-void crearBitMapFS();
-void crearTables();
-void crearBloquesDatos();
-void crearBloques(char* path);
+
 char* encontreTabla(char* nombreTabla, DIR* path_buscado);
 void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques, int size, int cantidadBloques);
 void dumpear(t_list *datosParaDump, char* carpetaNombre);
 t_registro convertirAStruct(t_registro *registro);
 void escribirEnBloque(FILE* f, t_registro* r);
-bool renombrarArchivosTemporales(char* path);
 bool esArchivoTemporal(char* nombre);
-void analizarTmpc(char* path, char* nombreTabla);
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion);
 void casoParticular(char* path, int particion, FILE* bin, char* line, int renglon);
 t_config *leer_config();
 t_log* iniciar_logger();
 void* servidor(argumentos_servidor* args);
 void memoria_handler(int *socket_cliente);
-void* fileSystem();
 void* dump(int tiempo_dump);
-bool esArchivoTemporalC(char* nombre);
-int obtenerUltimoBloqueBin(FILE* bin);
 int ultimoBloques(char* bloques);
-void crearBitmap(char* path);
 void iniciarArchivoConCeros(FILE* f);
 char* agregarNuevoBloqueBin();
 void insertarLinea(int bloqueNumero, char* linea);
 int entraEnUltimoBloque(int size, char* line);
 int sizeArchivo(FILE* archivo);
 char* existeKeyEnBloques(uint16_t key_tmpc, FILE* binTabla);
-int obtenerSizeBin(FILE* bin);
 uint64_t stringToLong(char* strToInt);
 struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe);
 char** obtenerBloques(char* bloques);
@@ -190,8 +181,7 @@ char* existeKey(u_int16_t key, char** bloques);
 bool entraEnBloque(char* line, int bloque);
 void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin);
 char* getNewBloque();
-//Calcula el tamañano del bloque: "puntoMontaje/Bloques/numeroBloque.bin"
-int calcularTamanoBloque(int numeroBloque);
+
 
 //Obtiene la ultima linea de un bloque y la retorna
 char* obtenerUltimaLinea(char* bloque);
