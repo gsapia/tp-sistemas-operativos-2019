@@ -174,3 +174,10 @@ struct_describe_global_respuesta describeGlobalAMemoria(t_memoria* memoria){
 	close(socket_cliente);
 	return respuesta;
 }
+enum estados_journal journalMemoria(t_memoria* memoria){
+	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	enviar_journal(socket_cliente);
+	enum estados_journal respuesta = recibir_respuesta_journal(socket_cliente);
+	close(socket_cliente);
+	return respuesta;
+}

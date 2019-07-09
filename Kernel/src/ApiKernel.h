@@ -17,4 +17,6 @@ t_resultado add(uint16_t numeroMemoria, enum consistencias criterio);
 
 t_list* listasMemorias[3]; //Array de listas de memorias para el ADD
 
+void journaling (t_memoria* memoria);
+
 #endif /* APIKERNEL_H_ */

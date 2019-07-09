@@ -169,9 +169,24 @@ t_resultado drop(char* nombreTabla){
 t_resultado journal(){
 	t_resultado respuesta;
 	respuesta.falla = false;
-	respuesta.resultado = string_from_format("Elegiste JOURNAL");
+	for (int consistencia = 0; consistencia < 3; ++consistencia) {
+		list_iterate(listasMemorias[consistencia], (void (*)(void *))journaling);
+	}
+	respuesta.resultado = string_from_format("Journal realizado correctamente.");
 	return respuesta;
 
+}
+
+void journaling (t_memoria* memoria){
+	enum estados_journal respuesta = journalMemoria(memoria);
+	for (int i = 0; respuesta != ESTADO_JOURNAL_OK && i < 3; i++){
+		log_trace(logger, "No pudimos hacer journal con la memoria %d, reintentando", memoria->numero);
+		sleep(1);
+		respuesta = journalMemoria(memoria);
+	}
+	if(respuesta != ESTADO_JOURNAL_OK){
+		log_warning(logger, "No pudimos hacer journaling con la memoria %d.", memoria->numero);
+	}
 }
 
 t_resultado run(char* runPath){
