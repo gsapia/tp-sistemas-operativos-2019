@@ -7,20 +7,17 @@
 
 sem_t new;
 sem_t ready;
-sem_t exec;
 sem_t finish;
 sem_t multiProc;
 
 t_queue* colaNew;
 t_queue* colaReady;
-t_queue* colaExec;
 t_queue* colaFinish;
 
 
 void inicializarColas(){
 	colaNew = queue_create();
 	colaReady = queue_create();
-	colaExec = queue_create();
 	colaFinish = queue_create();
 }
 
@@ -486,8 +483,6 @@ void cortoPlazo(){
 
 		//queue_push(colaExec,script);
 		//moverAColaExec(script);
-
-		sem_post(&exec);
 	}
 } //End Corto Plazo
 
@@ -504,7 +499,6 @@ int main(void) {
 
 	sem_init(&new,0,0);
 	sem_init(&ready,0,0);
-	sem_init(&exec,0,0);
 	sem_init(&finish,0,0);
 	sem_init(&multiProc,0,config.multiprocesamiento);
 

@@ -239,14 +239,9 @@ t_resultado metrics(){
 		dictionary_iterator(metricas[consistencia].memory_load, (void(*)(char*,void*)) iterador);
 	}
 
-	free(metricas);
-
-	//respuesta.resultado = string_from_format("METRICAS:\n\tRead latency: %lldms\n\tWrite latency: %lldms\n\tReads: %ld\n\tWrites: %ld\n\t",
-	//		metricas.read_latency, metricas.write_latency, metricas.reads, metricas.writes);
 	return respuesta;
 }
 t_resultado add(uint16_t numeroMemoria, enum consistencias criterio){
-	log_debug(logger, "Criterio %d", criterio);
 	t_resultado respuesta;
 	t_memoria* memoria = getMemoria(numeroMemoria);
 
