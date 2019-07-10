@@ -16,8 +16,8 @@ Se encontrara en [Punto_Montaje]/Metadata/Bitmap.bin
 */
 
 #include "LFS.h"
+#include "FileSystem.h"
 
-// Hilo del FILESYSTEM (Crea las carpetas necesarias)
 void *fileSystem() {
 	crearFicheroPadre();
 	crearMetaDataFS();
@@ -28,12 +28,10 @@ void *fileSystem() {
 	return 0;
 }
 
-// Crea la carpeta principal "LISSANDRA_FS", que nos la dan en el .config
 void crearFicheroPadre(){
 	if(mkdir(puntoMontaje, 0777) != 0){}
 }
 
-// Crea el archivo Metadata del FileSystem
 void crearMetaDataFS(){
 	char* path = string_from_format("%sMetadata/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
@@ -57,7 +55,6 @@ void crearMetaDataFS(){
 	free(path2);
 }
 
-// Crea el archivo "Bitmap.bin" del archivo de FileSystem
 void crearBitMapFS(){
 	char* path_Metadata = string_from_format("%sMetadata/Metadata.bin",puntoMontaje);
 	FILE* metadataFS = fopen(path_Metadata,"r");
@@ -99,14 +96,12 @@ void crearBitmap(char* path){
 	close(fd);
 }
 
-// Crea la carpeta "Table/" dentro de la carpeta del punto de montaje
 void crearTables(){
 	char* path = string_from_format("%sTable/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
 	free(path);
 }
 
-// Crea la carpeta "Bloques/" dentro de la carpeta del punto de montaje
 void crearBloquesDatos(){
 	char* path = string_from_format("%sBloques/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
@@ -175,7 +170,6 @@ void dumpDeTablas(t_list *memTableAux){
 
 			if(!list_is_empty(datosParaDump)){
 				dumpear(datosParaDump, carpeta->d_name);
-				log_trace(logger, "Salgo de dumplear");
 				list_destroy(datosParaDump);
 				datosParaDump = NULL;
 				flag = 1;
@@ -211,11 +205,13 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 		fputs(lineas[i], temp);
 		fclose(temp);
 	}
-	liberarArrayString(lineas);
+	for(int i=0; i<(cant+1);i++){
+		free(lineas[i]);
+	}
+	free(lineas);
 	crearArchivoTemporal(carpetaNombre, particionTemp, bloques, strlen(linea), cant+1);	//Creo el .tmp con el bloque que pedí y el size
 	free(linea);
 	free(particionTemp);
-
 }
 
 char** dividirLinea(char* linea){
@@ -261,7 +257,6 @@ char* lineasEntera(t_list* lista){
 	return linea_return;
 }
 
-
 void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques, int size, int cantidadBloques){
 	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
 	FILE* f = fopen(path, "w");
@@ -273,13 +268,9 @@ void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques
 	char* auxBloques;
 	char* bloque = string_new();
 	string_append(&bloque, bloques[0]);
-	log_trace(logger, "Bloque: %s", bloque);
-	free(bloques[0]);
-	log_trace(logger, "%Cantidad de bloques usados: d");
 	for(int i=1;i<cantidadBloques;i++){
 		string_append(&bloque,",");
 		string_append(&bloque, bloques[i]);
-		log_trace(logger, "Bloque: %s", bloque);
 	}
 	auxBloques = string_from_format("BLOCKS=[%s]", bloque);
 	free(bloque);
@@ -290,7 +281,6 @@ void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques
 		free(bloques[i]);
 	}
 	free(bloques);
-
 	free(auxBloques);
 	free(path);
 	fclose(f);

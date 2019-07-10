@@ -94,6 +94,7 @@ char *apiLissandra(char* mensaje){
 							cantArgumentos--;
 						}
 						free(valor);
+						free(ultimoArgumento[1]);
 						free(ultimoArgumento);
 						free(comando);
 						switch(resultado){
@@ -740,14 +741,13 @@ void agregarRegistrosTempYTempc(char* nombreTabla, t_list* lista, u_int16_t key)
 	FILE* f = fopen(path, "r");
 
 //	log_trace(logger,"Antes del .tmp");
-		for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
-			path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
-			if(access(path, F_OK) != -1){
-				f = fopen(path, "r");
-				agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
-			}
-			free(path);
+	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
+		path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
+		if(access(path, F_OK) != -1){
+			f = fopen(path, "r");
 		}
+		free(path);
+	}
 
 //	log_trace(logger,"Antes del .tmpc");
 	int i = 0;
@@ -755,52 +755,14 @@ void agregarRegistrosTempYTempc(char* nombreTabla, t_list* lista, u_int16_t key)
 	while(access(path, F_OK) != -1){// agrego de los .tmpc, el registro con el mayor timestamp de cada uno a la lista
 		free(path);
 		f = fopen(path, "r");
-		agregarRegistroMayorTimeStamDeArchivo(f, lista, key);
+
 		i++;
 		path = string_from_format("%s/A%d.tmpc", path, i);
 	}
 	free(path);
 }
 
-void agregarRegistroMayorTimeStamDeArchivo(FILE* f, t_list *lista, u_int16_t key){
-	t_registro* aux = malloc(sizeof(t_registro));
-	size_t buffer_size = 0;
-	char* buffer = NULL;
-	aux->timeStamp = 0;
 
-	while(getline(&buffer, &buffer_size, f) != -1){ // [TIMESTAMP;KEY;VALUE]
-		char** linea= string_split(buffer, ";");
-		char* keystr = linea[1];
-		char* endptrKey;
-		ulong key_buffer = strtoul(keystr, &endptrKey, 10);
-
-		char* timestampstr = linea[0];
-		char* endptrTimestamp;
-		uint64_t timestamp_buffer = strtoul(timestampstr, &endptrTimestamp, 10);
-
-		if(timestamp_buffer > aux->timeStamp && key_buffer == key){
-			aux->timeStamp = timestamp_buffer;
-			aux->key = key_buffer;
-			aux->value = malloc(strlen(linea[2]));
-			strcpy(aux->value,linea[2]);
-		}
-		free(linea[0]);
-		free(linea[1]);
-		free(linea[2]);
-		free(linea);
-		free(buffer);
-		buffer = NULL;
-	}
-
-	if(aux->timeStamp!=0){
-		list_add(lista,aux);
-	}
-	if(aux->timeStamp==0){
-		free(aux);
-	}
-	free(buffer);
-	fclose(f);
-}
 
 t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value){
 	log_trace(logger, "Entro a creadorRegistroPuntero()");
