@@ -21,7 +21,7 @@ void *compactacion(argumentos_compactacion *args){
 
 			uint64_t tiempo_posta = getTimestamp();
 			tiempo_posta = tiempo_posta - tiempo_aux;
-			log_info(logger, "El tiempo transcurrido en la compactacion es: %llu", tiempo_posta);
+			log_info(logger, "El tiempo transcurrido en la compactacion es %llu milisegundos", tiempo_posta);
 		}else{
 			log_info(logger, "No hay .tmp para compactar");
 		}
@@ -42,38 +42,136 @@ void analizarTmpc(char* path_tabla, char* nombreTabla){
 //			log_trace(logger, "%s", archivo->d_name);
 			char* path_bin = string_from_format("%s/%s" ,path_tabla, archivo->d_name);
 			agregarDatosACompactar(listaCompactar, path_bin);
+//			log_trace(logger, "Se agregaron los datos a compactar");
 			liberarBloques(path_bin);
+//			log_trace(logger, "Se liberaron los bloques");
 			if(esArchivoTemporalC(archivo->d_name)){remove(path_bin);}
 			free(path_bin);
 		}
 		archivo = readdir(path_buscado);
 	}
 	closedir(path_buscado);
-	escribirDatosLista(listaCompactar);
+//	log_trace(logger, "Se comienzan a escribir los datos");
+	escribirDatosLista(listaCompactar, nombreTabla);
+//	log_trace(logger, "Se escriben los datos");
 }
 
-void escribirDatosLista(t_list* lista){
-	datos_a_compactar* reg_aux;
-
-	log_trace(logger, "## Lista antes de filtrar ##");
-	int i = 0;
-	while(i < list_size(lista)){
-		reg_aux = list_get(lista, i);
-		log_trace(logger, "Value: %s, Key: %s, Timestamp: %s", reg_aux->value, reg_aux->key, reg_aux->timestamp);
-		i++;
-	}
-
+void escribirDatosLista(t_list* lista, char* nombreTabla){
+	t_list* listaFiltradaParticion = NULL;
 	filtrarRegistrosConMayorTimestamp(lista);
+	FILE* metadata = obtenerMetaDataLectura(nombreTabla);
+	int particiones = obtenerParticiones(metadata);
+	fclose(metadata);
 
-	log_trace(logger, "## Lista despues de filtrar ##");
-	while(!list_is_empty(lista)){
-		reg_aux = list_remove(lista, 0);
-		log_trace(logger, "Value: %s, Key: %s, Timestamp: %s", reg_aux->value, reg_aux->key, reg_aux->timestamp);
-		free(reg_aux->key);
-		free(reg_aux->timestamp);
-		free(reg_aux->value);
-		free(reg_aux);
+	for(int j=0;j<particiones;j++){
+
+		bool registroIgualResto(datos_a_compactar* registro){
+			int key = stringToLong(registro->key);
+			if(j == funcionModulo(key,particiones)){
+				return true;
+			}else{
+				return false;
+			}
+		}
+		listaFiltradaParticion = list_filter(lista, (_Bool (*)(void*))registroIgualResto);
+//		log_trace(logger, "## Lista %d ##", j);
+
+		char* linea = lineasEnteraCompactacion(listaFiltradaParticion);
+		list_destroy(listaFiltradaParticion);
+
+		if(strcmp(linea,"")){		//Si no existen valores para generar la linea, se devuelve un string vacio
+//			log_trace(logger, "Linea completa: %s", linea);
+
+			int cant = strlen(linea)/blockSize;
+			int* bloques = malloc(sizeof(int)*cant+1);
+			char** lineas = dividirLinea(linea);
+
+			for(int i=0; i<(cant+1);i++){
+					bloques[i] = getNewBloque();
+//					log_trace(logger, "Obtengo el bloque %d",bloques[i]);
+					char* block_path = string_from_format("%sBloques/%d.bin", puntoMontaje, bloques[i]);
+					FILE* temp = fopen(block_path, "w");
+					truncate(block_path, blockSize);
+					free(block_path);
+
+					fputs(lineas[i], temp);
+					fclose(temp);
+				}
+
+			for(int i=0; i<(cant+1);i++){
+				free(lineas[i]);
+			}
+			free(lineas);
+
+			crearArchivoBin(nombreTabla, j, strlen(linea), bloques, cant+1);
+			free(linea);
+		}else{
+			int* bloques = malloc(sizeof(int));
+			bloques[0] = getNewBloque();
+//			log_trace(logger, "Obtengo el bloque %d",bloques[0]);
+			char* block_path = string_from_format("%sBloques/%d.bin", puntoMontaje, bloques[0]);
+			FILE* temp = fopen(block_path, "w");
+			truncate(block_path, blockSize);
+			free(block_path);
+			fclose(temp);
+			crearArchivoBin(nombreTabla, j, strlen(linea), bloques, 1);
+		}
 	}
+
+	datos_a_compactar* aux;
+	while(!list_is_empty(lista)){
+		aux = list_remove(lista,0);
+		free(aux->key);
+		free(aux->timestamp);
+		free(aux->value);
+		free(aux);
+	}
+	list_destroy(lista);
+}
+
+char* lineasEnteraCompactacion(t_list* lista){
+	char* linea_return = string_new();
+	datos_a_compactar *registro;
+
+	for(int i=0; i<list_size(lista);i++){
+		registro = list_get(lista,i);
+		char* linea_list = string_from_format("%s;%s;%s\n", registro->timestamp, registro->key, registro->value); // [TIMESTAMP];[KEY];[VALUE]
+
+		string_append(&linea_return, linea_list);
+		free(linea_list);
+
+	}
+	return linea_return;
+}
+
+void crearArchivoBin(char* nombreTabla, int bin, int size, int* bloques, int cantidadBloques){
+	char* path_bin = string_from_format("%sTable/%s/%d.bin", puntoMontaje, nombreTabla, bin);
+	FILE* bin_file = fopen(path_bin, "w");
+	char* auxSize = string_from_format("SIZE=%d", size);
+	fputs(auxSize, bin_file);
+	free(auxSize);
+	fputs("\n",bin_file);
+
+	char* auxBloques;
+	char* bloque = string_new();
+	char* bloque_selec = string_from_format("%d", bloques[0]);
+	string_append(&bloque, bloque_selec);
+	free(bloque_selec);
+	for(int i=1;i<cantidadBloques;i++){
+		string_append(&bloque,",");
+		char* bloque_selec = string_from_format("%d", bloques[i]);
+		string_append(&bloque, bloque_selec);
+		free(bloque_selec);
+	}
+	auxBloques = string_from_format("BLOCKS=[%s]", bloque);
+	free(bloque);
+
+	fputs(auxBloques,bin_file);
+
+	free(bloques);
+	free(auxBloques);
+	free(path_bin);
+	fclose(bin_file);
 }
 
 void filtrarRegistrosConMayorTimestamp(t_list* lista){
@@ -85,33 +183,33 @@ void filtrarRegistrosConMayorTimestamp(t_list* lista){
 		registro_destroy = false;
 		registro = list_get(lista, i);
 		int key_registro = stringToLong(registro->key);
-		log_trace(logger, "Chequeo registro %s", registro->value);
+//		log_trace(logger, "Chequeo registro %s", registro->value);
 		j = 0;
 		while(j < list_size(lista)){
 			reg_aux = list_get(lista, j);
 			int key_reg_aux = stringToLong(reg_aux->key);
-			log_trace(logger, "Keys: %d es igual a %d ? ", key_registro, key_reg_aux);
+//			log_trace(logger, "Keys: %d es igual a %d ? ", key_registro, key_reg_aux);
 			if(key_reg_aux == key_registro && reg_aux != registro){
-				log_trace(logger, "Encuentro al registro: %s, con la misma key", reg_aux->value);
+//				log_trace(logger, "Encuentro al registro: %s, con la misma key", reg_aux->value);
 				uint64_t ts_registro = stringToLongLong(registro->timestamp);
 				uint64_t ts_reg_aux = stringToLongLong(reg_aux->timestamp);
-				log_trace(logger, "TS: %llu > %llu ?", ts_registro, ts_reg_aux);
+//				log_trace(logger, "TS: %llu > %llu ?", ts_registro, ts_reg_aux);
 				if(ts_registro > ts_reg_aux){		//Si el timestamp del registro actual es mayor que el timestamp del registro al que lo estoy comparando, borro este ultimo registro
-					log_trace(logger, "registro es mayor a reg_aux");
+//					log_trace(logger, "registro es mayor a reg_aux");
 					free(reg_aux->key);
 					free(reg_aux->timestamp);
 					free(reg_aux->value);
 					reg_destroy = list_remove(lista, j);
 					free(reg_destroy);
-					log_trace(logger, "Hago free a todo del reg_aux");
+//					log_trace(logger, "Hago free a todo del reg_aux");
 				}else{
-					log_trace(logger, "reg_aux es mayor a registro");
+//					log_trace(logger, "reg_aux es mayor a registro");
 					free(registro->key);
 					free(registro->timestamp);
 					free(registro->value);
 					reg_destroy = list_remove(lista, i);
 					free(reg_destroy);
-					log_trace(logger, "Hago free a todo del registro");
+//					log_trace(logger, "Hago free a todo del registro");
 					registro_destroy = true;
 					break;
 				}
@@ -187,11 +285,12 @@ void cargarUltimoBloque(char* bloque, t_list* lista, int size_lectura, char* app
 			char** linea = string_split(linea_append, ";");
 			free(linea_append);
 			cargarLinea(linea, lista);
-
+			liberarArrayString(linea);
 			free(buffer);
 			buffer = NULL;
 		}
 	}
+
 	if(size_actual!=size_lectura){	//Si se llego al final de las lineas para leer con solo leer la primera linea, tengo que salir.
 		while(getline(&buffer, &buffer_size, block_file) != -1){
 //			log_trace(logger, "Linea: %s", buffer);
@@ -201,17 +300,20 @@ void cargarUltimoBloque(char* bloque, t_list* lista, int size_lectura, char* app
 //				log_trace(logger, "%d es menor a %d", size_actual, size_lectura);
 				char** linea = string_split(buffer, ";");
 				cargarLinea(linea, lista);
+				liberarArrayString(linea);
 				free(buffer);
 				buffer = NULL;
 			}else if(size_actual == size_lectura){
 //				log_trace(logger, "%d es igual a %d, salgo del while", size_actual, size_lectura);
 				char** linea = string_split(buffer, ";");
 				cargarLinea(linea, lista);
+				liberarArrayString(linea);
 				free(buffer);
 				buffer = NULL;
 				break;
 			}
 		}
+		if(buffer){free(buffer);}
 	}else{
 //		log_trace(logger, "%d es igual a %d", size_actual, size_lectura);
 	}
@@ -231,7 +333,7 @@ void cargarBloqueALista(char* bloque, t_list* lista, char* append){
 			char** linea = string_split(linea_append, ";");
 			free(linea_append);
 			cargarLinea(linea, lista);
-
+			liberarArrayString(linea);
 			free(buffer);
 			buffer = NULL;
 		}
@@ -251,7 +353,7 @@ void cargarBloqueALista(char* bloque, t_list* lista, char* append){
 		free(buffer);
 		buffer = NULL;
 	}
-	free(buffer);
+	if(buffer){free(buffer);}
 	buffer = NULL;
 
 	fclose(block_file);
@@ -276,7 +378,6 @@ void cargarLinea(char** linea, t_list* lista){
 	registro->value = string_substring(value_aux, 0, strlen(value_aux)-1);
 	free(value_aux);
 	list_add(lista, registro);
-	liberarArrayString(linea);
 //	log_trace(logger, "Agrego [%s;%s;%s]", registro->timestamp,registro->key,registro->value);
 }
 
@@ -326,9 +427,9 @@ bool esArchivoValido(char* nombre_archivo){
 }
 
 bool crearNuevoBloque(){
-	char* nuevoBloque = getNewBloque();
+	int nuevoBloque = getNewBloque();
 	if(nuevoBloque){
-		char* path_bloque = string_from_format("%sBloques/%s.bin", puntoMontaje, nuevoBloque);
+		char* path_bloque = string_from_format("%sBloques/%d.bin", puntoMontaje, nuevoBloque);
 		FILE* bloque = fopen(path_bloque, "w");
 		fclose(bloque);
 		return true;
@@ -561,18 +662,18 @@ void insertarLinea(int bloqueNumero, char* linea){
 	fclose(bloqueBin);
 }
 
-char* getNewBloque(){
+int getNewBloque(){
 	for(int i=0;i<blocks;i++){
 		if(!bitarray_test_bit(bitarray, i)){ //Si existe un bloque libre
 			bitarray_set_bit(bitarray, i);
-			return string_itoa(i);
+			return i;
 		}
 	}
 	return NULL;
 }
 
 void freeBloque(char* bloque){
-	uint64_t bit = stringToLong(bloque);
+	int bit = stringToLong(bloque);
 //	log_trace(logger, "Libero el bloque %d", bit);
 	bitarray_clean_bit(bitarray,bit);
 }

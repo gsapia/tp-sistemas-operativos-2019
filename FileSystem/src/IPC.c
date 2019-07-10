@@ -174,7 +174,9 @@ void memoria_handler(int *socket_cliente){
 				puts("Recibi un DROP");
 				struct_drop paquete = recibir_drop(cliente);
 
-				//Hacer algo con el paquete
+				enum estados_drop estado = drop(paquete.nombreTabla);
+
+				responder_drop(cliente,estado);
 
 				printf("Comando recibido: DROP %s\n\n", paquete.nombreTabla);
 

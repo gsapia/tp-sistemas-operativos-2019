@@ -25,8 +25,6 @@ void crearBloques(char* path);
 //Toma todos los registros de la lista, y concatena todos los [Timestamp;Key;Valor] en un solo string
 char* lineasEntera(t_list* lista);
 
-//Divide una linea, en N cantidad de "blockSize"(64 por ejemplo) length
-char** dividirLinea(char* linea);
 
 
 #endif /* FILESYSTEM_H_ */

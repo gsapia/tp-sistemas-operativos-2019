@@ -54,7 +54,7 @@ void liberarBloques(char* path_bin);
 void freeBloque(char* bloque);
 
 //Escribe los datos de la lista en sus correspondientes .bin
-void escribirDatosLista(t_list* lista);
+void escribirDatosLista(t_list* lista, char* nombreTabla);
 
 //Corrobora si existe alguna linea mas en el archive
 bool esUltimaLinea(FILE* f);
@@ -64,5 +64,11 @@ uint64_t stringToLongLong(char* strToInt);
 
 //Filtra los registros que tengan mayor timestamp en la lista.
 void filtrarRegistrosConMayorTimestamp(t_list* lista);
+
+//Crea un archivo .bin en Table/NombreTabla
+void crearArchivoBin(char* nombreTabla, int bin, int size, int* bloques, int cantidadBloques);
+
+//Convierte los datos de la lista en un solo string con el formato "Timestamp;Key;Valor\nTimestamp;Key;Valor\nTimestamp;Key;Valor\n..."
+char* lineasEnteraCompactacion(t_list* lista);
 
 #endif /* COMPACTADOR_H_ */

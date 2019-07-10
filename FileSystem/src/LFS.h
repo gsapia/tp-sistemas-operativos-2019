@@ -101,7 +101,7 @@ struct_describe_respuesta describe(char* nombreTabla);
 struct_describe_global_respuesta describe_global();
 
 //Realiza la operacion DROP
-char* drop(char* nombreTabla);
+enum estados_drop drop(char* nombreTabla);
 
 //Indica si una tabla (una carpeta) existe en "puntoMontaje/Table/"
 bool existeTabla(char* nombreTabla);
@@ -137,6 +137,9 @@ char* obtenerPrimeraLinea(char* bloque);
 
 void crearDirectiorioDeTabla(char* nombreTabla);
 
+//Divide una linea, en N cantidad de "blockSize"(64 por ejemplo) length
+char** dividirLinea(char* linea);
+
 //Crea la carpeta y el archivo Metadata del FileSystem
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime);
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
@@ -153,7 +156,7 @@ t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t ti
 char* intToString(long a);
 
 char* encontreTabla(char* nombreTabla, DIR* path_buscado);
-void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques, int size, int cantidadBloques);
+void crearArchivoTemporal(char* nombreTabla, char* particionTemp, int* bloques, int size, int cantidadBloques);
 void dumpear(t_list *datosParaDump, char* carpetaNombre);
 t_registro convertirAStruct(t_registro *registro);
 void escribirEnBloque(FILE* f, t_registro* r);
@@ -180,7 +183,7 @@ char* obtenerBloquesDetabla(FILE* f);
 char* existeKey(u_int16_t key, char** bloques);
 bool entraEnBloque(char* line, int bloque);
 void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin);
-char* getNewBloque();
+int getNewBloque();
 
 
 //Obtiene la ultima linea de un bloque y la retorna

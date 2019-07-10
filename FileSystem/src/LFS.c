@@ -214,7 +214,7 @@ char *apiLissandra(char* mensaje){
 
 				struct_describe_global_respuesta resultado = describe_global();
 
-				switch (resultado.estado){
+				switch(resultado.estado){
 					case ESTADO_DESCRIBE_OK:
 						return strdup("Se hizo el DESCRIBE");
 					case ESTADO_DESCRIBE_ERROR_TABLA:
@@ -237,10 +237,17 @@ char *apiLissandra(char* mensaje){
 			free(comando[0]);
 			if(cantArgumentos == 1){
 				char* nombreTabla = comando[1];
-				char* resultado = drop(nombreTabla);
+				enum estados_drop resultado = drop(nombreTabla);
 				free(nombreTabla);
 				free(comando);
-				return resultado;
+				switch(resultado){
+				case ESTADO_DROP_OK:
+					return strdup("Se realizo el DROP");
+				case ESTADO_DROP_ERROR_TABLA: // No existe la tabla
+					return strdup("ERROR: La tabla solicitada no existe.");
+				case ESTADO_DROP_ERROR_OTRO:
+					return strdup("ERROR: Ocurrio un error desconocido.");
+				}
 			}
 			while(cantArgumentos){
 				free(comando[cantArgumentos]);
@@ -408,7 +415,7 @@ struct_describe_global_respuesta describe_global(){
 	return respuesta;
 }
 
-char* drop(char* nombreTabla){
+enum estados_drop drop(char* nombreTabla){
 	t_hiloCompactacion *hiloCompactacion;
 	if(existeTabla(nombreTabla)){	//Tengo certeza que existe la tabla, entonces va a estar en la lista
 		char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
@@ -429,12 +436,12 @@ char* drop(char* nombreTabla){
 		log_trace(logger, "Elimino el hilo");
 
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
+		return ESTADO_DROP_OK;
 	}else{
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
 		log_error(logger, "No existe la tabla: %s", nombreTabla);
+		return ESTADO_DROP_ERROR_TABLA;
 	}
-
-	return string_from_format("Elegiste DROP");
 }
 
 void borrarTabla(char* path){
@@ -476,7 +483,7 @@ void quitarEnlaceBloques(char* bin_string){
 	free(bloques);
 }
 */
-//Descarga toda la informacion de la memtable, de todas las tablas, y copia dichos datos en los ditintos archivos temporales (uno por tabla). Luego se limpia la memtable.
+
 void* dump(int tiempo_dump){
 	int tiempo = tiempo_dump/1000;
 	t_list* memTableAux = NULL;
@@ -496,7 +503,6 @@ void* dump(int tiempo_dump){
 	return 0;
 }
 
-//Distribuye las disitntas Key dentro de dicha tabla. Se dividirá la key por la cantidad de particiones y el resto de la operación será la partición a utilizar
 int funcionModulo(int key, int particiones){
 	return key % particiones;
 }
@@ -528,8 +534,6 @@ uint64_t getTimestamp() {
 	return (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 }
 
-// Dado un archivo bin, busca en el archivo los registros que tengan la key igual a la pasada
-//  por parametro y los agrega a lista.
 void obtenerRegistrosDeTable(t_list *lista, u_int16_t key, int particion_buscada, char* nombreTabla){
 	FILE* bin = obtenerBIN(particion_buscada, nombreTabla);
 	size_t buffer_size = 80;
@@ -556,7 +560,7 @@ void obtenerRegistrosDeTable(t_list *lista, u_int16_t key, int particion_buscada
 	fclose(bin);
 }
 
-//Convierte un t_registro a un t_registro*
+
 t_registro* convertirARegistroPuntero(t_registro r){
 	t_registro* registro = malloc(sizeof(t_registro));
 	*registro = r;
@@ -569,7 +573,7 @@ struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe)
 	return rta;
 }
 
-//Convierte a un t_registro* a un struct_select_respuesta
+
 struct_select_respuesta convertirARespuestaSelect(t_registro* registro){
 	struct_select_respuesta select_respuesta;
 	select_respuesta.estado = ESTADO_SELECT_OK;
@@ -603,7 +607,6 @@ struct_describe_respuesta convertirARespuestaDescribe(char* consistencia, char* 
 	return describe_respuesta;
 }
 
-//Obtiene la particion sobre la cual debe actuar
 int obtenerParticion(char* nombreTabla, u_int16_t key){
 	FILE* metadata = obtenerMetaDataLectura(nombreTabla);
 	int particiones = obtenerParticiones(metadata);

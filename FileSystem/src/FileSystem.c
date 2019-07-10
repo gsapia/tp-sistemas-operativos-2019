@@ -188,28 +188,31 @@ void dumpDeTablas(t_list *memTableAux){
 
 //Dumpeo los datos dentro de un archivo ".tmp" que se encuentra dentro de "/Table/carpetaNombre"
 void dumpear(t_list *datosParaDump, char* carpetaNombre){
-	char** bloques = malloc(sizeof(char)*10);
 	char* particionTemp = intToString(cantDumps);
 
 	//Lo escribo
 	char* linea = lineasEntera(datosParaDump);
 	int cant = strlen(linea)/blockSize;
+	int* bloques = malloc(sizeof(int)*cant+1);
 	char** lineas = dividirLinea(linea);
 
 	for(int i=0; i<(cant+1);i++){
 		bloques[i] = getNewBloque();
-		char* temp_path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloques[i]);
+		char* temp_path = string_from_format("%sBloques/%d.bin", puntoMontaje, bloques[i]);
 		FILE* temp = fopen(temp_path, "r+");
 		free(temp_path);
 
 		fputs(lineas[i], temp);
 		fclose(temp);
 	}
+//	log_trace(logger, "Escribi archivo");
 	for(int i=0; i<(cant+1);i++){
 		free(lineas[i]);
 	}
 	free(lineas);
+//	log_trace(logger, "libere las lineas");
 	crearArchivoTemporal(carpetaNombre, particionTemp, bloques, strlen(linea), cant+1);	//Creo el .tmp con el bloque que pedí y el size
+//	log_trace(logger, "Cree el .tmp");
 	free(linea);
 	free(particionTemp);
 }
@@ -257,7 +260,7 @@ char* lineasEntera(t_list* lista){
 	return linea_return;
 }
 
-void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques, int size, int cantidadBloques){
+void crearArchivoTemporal(char* nombreTabla, char* particionTemp, int* bloques, int size, int cantidadBloques){
 	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
 	FILE* f = fopen(path, "w");
 	char* auxSize = string_from_format("SIZE=%d", size);
@@ -267,25 +270,25 @@ void crearArchivoTemporal(char* nombreTabla, char* particionTemp, char** bloques
 
 	char* auxBloques;
 	char* bloque = string_new();
-	string_append(&bloque, bloques[0]);
+	char* bloque_selec = string_from_format("%d", bloques[0]);
+	string_append(&bloque, bloque_selec);
+	free(bloque_selec);
 	for(int i=1;i<cantidadBloques;i++){
 		string_append(&bloque,",");
-		string_append(&bloque, bloques[i]);
+		char* bloque_selec = string_from_format("%d", bloques[i]);
+		string_append(&bloque, bloque_selec);
+		free(bloque_selec);
 	}
 	auxBloques = string_from_format("BLOCKS=[%s]", bloque);
 	free(bloque);
 
 	fputs(auxBloques,f);
 
-	for(int i=0;i<cantidadBloques;i++){
-		free(bloques[i]);
-	}
 	free(bloques);
 	free(auxBloques);
 	free(path);
 	fclose(f);
 }
-
 
 FILE* obtenerMetaDataLectura(char* nombreTabla){
 	char* path = string_from_format("%sTable/%s/Metadata", puntoMontaje, nombreTabla);
@@ -293,7 +296,6 @@ FILE* obtenerMetaDataLectura(char* nombreTabla){
 	free(path);
 	return metadata;
 }
-
 
 int obtenerParticiones(FILE* metadata){
 	char aux[20];int particiones;
@@ -351,12 +353,11 @@ void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 	for(int i=0;i<cantParticiones;i++){
 		particion = intToString(i);
 		char* path_aux = string_from_format("%s%s.bin", path, particion);
-		char* numeroBloque = getNewBloque();
+		int numeroBloque = getNewBloque();
 		f = fopen(path_aux, "w");
 		fputs("SIZE=0  ", f);
 		fputs("\n",f);
-		char* auxBloques = string_from_format("BLOCKS=[%s]", numeroBloque);
-		free(numeroBloque);
+		char* auxBloques = string_from_format("BLOCKS=[%d]", numeroBloque);
 		fputs(auxBloques,f);
 		fclose(f);
 		free(auxBloques);
