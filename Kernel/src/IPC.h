@@ -23,7 +23,7 @@ void refreshMetadata();
 
 struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria);
 enum estados_insert insertAMemoria(struct_insert paquete, t_memoria* memoria);
-enum estados_create createAMemoria(struct_create paquete);
+enum estados_create createAMemoria(struct_create paquete, t_memoria* memoria);
 struct_describe_respuesta describeAMemoria(struct_describe paquete, t_memoria * memoria);
 struct_describe_global_respuesta describeGlobalAMemoria(t_memoria* memoria);
 enum estados_journal journalMemoria(t_memoria* memoria);

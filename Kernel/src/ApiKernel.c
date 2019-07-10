@@ -97,7 +97,9 @@ t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int
 	paquete.particiones = cantidadParticiones;
 	paquete.tiempoCompactacion = compactionTime;
 
-	enum estados_create resultado = createAMemoria(paquete);
+	t_memoria* memoria = obtener_memoria_random_del_pool();
+
+	enum estados_create resultado = createAMemoria(paquete, memoria);
 
 	switch (resultado) {
 	case ESTADO_CREATE_OK:

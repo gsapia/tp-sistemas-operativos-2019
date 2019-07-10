@@ -46,19 +46,22 @@ int conectar(char* ip, uint16_t puerto){
 }
 
 void addMetadata(char* nombre_tabla, struct_describe_respuesta* describe){
+	t_metadata *metadata_tabla;
 	if(!dictionary_has_key(metadata, nombre_tabla)){
-		t_metadata *metadata_tabla = malloc(sizeof(t_metadata));
-		metadata_tabla->consistencia = describe->consistencia;
-		metadata_tabla->particiones = describe->particiones;
-		metadata_tabla->tiempo_compactacion = describe->tiempo_compactacion;
-
+		metadata_tabla = malloc(sizeof(t_metadata));
 		dictionary_put(metadata, nombre_tabla, metadata_tabla);
 	}
+	else{
+		metadata_tabla = dictionary_get(metadata, nombre_tabla);
+	}
+	metadata_tabla->consistencia = describe->consistencia;
+	metadata_tabla->particiones = describe->particiones;
+	metadata_tabla->tiempo_compactacion = describe->tiempo_compactacion;
 }
 
 void refreshMetadata(){
 	t_memoria* memoria = obtener_memoria_random_del_pool();
-	log_trace(logger, "Actualizando metadata de tablas a travez de la memoria %d", memoria->numero);
+	log_trace(logger, "Actualizando metadata de tablas a traves de la memoria %d", memoria->numero);
 
 	struct_describe_global_respuesta respuesta = describeGlobalAMemoria(memoria);
 
@@ -75,10 +78,6 @@ void refreshMetadata(){
 		log_warning(logger, "Hubo un error al pedir la metadata de las tablas.");
 	}
 	dictionary_destroy_and_destroy_elements(respuesta.describes, free);
-	/*int socket = conectar(memoria->IP, memoria->puerto);
-			if(!socket){
-				log_trace(logger, "No nos pudimos conectar con la memoria para pedir su metadata.");
-			}*/
 }
 
 void updateMetadata(){
@@ -126,11 +125,6 @@ void initCliente(){
 } //End Cliente
 
 
-
-void closeCliente(){
-	//close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
-}
-
 // TODO: En las siguientes funciones evaluar que pasa si no esta online esa memoria:
 struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria){
 	log_debug(logger, "Enviando request a la memoria %d (%s:%d)", memoria->numero, memoria->IP, memoria->puerto);
@@ -148,8 +142,8 @@ enum estados_insert insertAMemoria(struct_insert paquete, t_memoria* memoria){
 	close(socket_cliente);
 	return respuesta;
 }
-enum estados_create createAMemoria(struct_create paquete){
-	int socket_cliente = conectar(config.ip_memoria, config.puerto_memoria); // TODO : Teoricamente puede ir a cualquier memoria
+enum estados_create createAMemoria(struct_create paquete, t_memoria* memoria){
+	int socket_cliente = conectar(memoria->IP, memoria->puerto);
 	enviar_create(socket_cliente, paquete);
 	enum estados_create respuesta = recibir_respuesta_create(socket_cliente);
 	close(socket_cliente);
