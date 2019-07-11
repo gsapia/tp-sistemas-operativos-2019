@@ -35,7 +35,7 @@ struct_select_respuesta selectAFS(struct_select paquete){
 
 enum estados_insert insertAFS(struct_insert paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
-	return ESTADO_INSERT_OK;
+	// return ESTADO_INSERT_OK;
 	// ----- Fin parte provisoria -----
 	enum estados_insert respuesta;
 	void operacion(int socket){
