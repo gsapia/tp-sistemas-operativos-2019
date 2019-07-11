@@ -104,7 +104,6 @@ void escribirDatosLista(t_list* lista, char* nombreTabla){
 			free(lineas);
 
 			crearArchivoBin(nombreTabla, j, strlen(linea), bloques, cant+1);
-			free(linea);
 		}else{
 			int* bloques = malloc(sizeof(int));
 			bloques[0] = getNewBloque();
@@ -116,6 +115,7 @@ void escribirDatosLista(t_list* lista, char* nombreTabla){
 			fclose(temp);
 			crearArchivoBin(nombreTabla, j, strlen(linea), bloques, 1);
 		}
+		free(linea);
 	}
 
 	datos_a_compactar* aux;
@@ -422,155 +422,6 @@ int obtenerSizeBin(FILE* f){
 	return size;
 }
 
-bool esArchivoValido(char* nombre_archivo){
-	return strcmp(nombre_archivo,".") && strcmp(nombre_archivo,"..") && strcmp(nombre_archivo, "Metadata");
-}
-
-bool crearNuevoBloque(){
-	int nuevoBloque = getNewBloque();
-	if(nuevoBloque){
-		char* path_bloque = string_from_format("%sBloques/%d.bin", puntoMontaje, nuevoBloque);
-		FILE* bloque = fopen(path_bloque, "w");
-		fclose(bloque);
-		return true;
-	}else{
-		log_error(logger, "No existen bloques libres.");
-		return false;
-	}
-}
-
-int calcularTamanoBloque(int numeroBloque){
-	char* path = string_from_format("%s/Bloques/%d.bin", puntoMontaje, numeroBloque);
-	FILE* f = fopen(path, "r");
-	int size = sizeArchivo(f)-1;
-	fclose(f);
-	free(path);
-	return size;
-}
-
-void modificarBinTabla(char* linea, char* nuevoBloque, FILE* bin, char* path_bin){
-	int length = strlen(linea)-1;
-	int size = obtenerSizeBin(bin);
-	int size_f = size+length;
-	char* size_escritura = string_from_format("SIZE=%d\n", size_f);
-	char* lineaBin = NULL; size_t lineaBin_size = 0;
-
-	if(getline(&lineaBin, &lineaBin_size, bin) != -1){		//SIZE=250
-		free(lineaBin);
-		lineaBin = NULL;
-		if(getline(&lineaBin, &lineaBin_size, bin) != -1){}	//char* BLOCKS=[40,21,82,3]
-	}
-	fclose(bin);
-	bin = fopen(path_bin, "w+");
-	fputs(size_escritura, bin);		//Escribo "SIZE=250"
-	free(size_escritura);
-
-	if(nuevoBloque != NULL){		//Si me pasaron un bloque para asignar
-		char* bloques_escritura = string_substring_until(lineaBin, strlen(lineaBin)-1);
-		char* input = string_from_format("%s,%s]", bloques_escritura, nuevoBloque);
-		free(bloques_escritura);
-		fputs(input, bin);
-		log_trace(logger, "Bloques: %s", input);
-		free(input);
-		log_trace(logger, "free(input)");
-	}else{
-		fputs(lineaBin, bin);
-	}
-	free(lineaBin); lineaBin = NULL;
-	log_trace(logger, "free(lineaBin); lineaBin = NULL;");
-	fclose(bin);
-}
-
-bool entraEnBloque(char* line, int bloque){
-	int lengthLinea = strlen(line)-1;					//Me fijo la longitud de la linea
-	char* path = string_from_format("%sBloques/%d.bin", puntoMontaje, bloque);
-	FILE* f = fopen(path, "r");
-	free(path);
-	int size = sizeArchivo(f)-1;
-	log_trace(logger, "(%d + %d) < %d", size, lengthLinea, blockSize);
-	return (size + lengthLinea <= blockSize);	//Si la longitud de linea + tamaño de archivo, es menor al tamaño del bloque, es porque entra
-}
-
-char* existeKey(u_int16_t key, char** bloques){
-	int i = 0;
-	while(bloques[i]){
-		char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloques[i]);
-		FILE* bloque_bin = fopen(path, "r");
-		free(path);
-
-		char* buffer_bloque_bin = NULL; size_t size_buffer_bloque_bin = 0; 	// Preparo datos para el buffer
-
-		while(getline(&buffer_bloque_bin, &size_buffer_bloque_bin, bloque_bin) != -1){	//Dame la linea del archivo
-
-			if(feof(bloque_bin) && bloques[i+1]){	//Si quedo el puntero del archivo en el final, y existe otro bloque siguiente, es porque el resto de la linea esta en ese otro bloque
-				char* fstLine = obtenerPrimeraLinea(bloques[i+1]);
-				char* linea = string_from_format("%s%s", buffer_bloque_bin, fstLine);		//[TIMESTAMP;KEY;VALUE]
-				log_trace(logger, "Leo linea append: %s", linea);
-				free(fstLine); free(buffer_bloque_bin); buffer_bloque_bin = NULL;		//Libero los char*
-				char** line = string_split(linea, ";");
-				free(linea);
-				ulong key_bloque = stringToLong(line[1]);
-				if(key==key_bloque){
-					return string_from_format("%s", bloques[i]);
-				}
-				free(line[0]);free(line[1]);free(line[2]);free(line);
-
-			}else{												//Si no es fin de archivo, o no existe un proximo bloque, es porque esa linea es valida
-				log_trace(logger, "Leo %s", buffer_bloque_bin);
-				char** line = string_split(buffer_bloque_bin, ";");	//[TIMESTAMP,KEY,VALUE]
-				free(buffer_bloque_bin); buffer_bloque_bin = NULL;
-				if(line[1] && line[2]){		//Es el caso en que la primera linea de un bloque esta cortada, y no me sirve que solo tenga uno o dos valores
-					log_trace(logger, "Linea[1] y linea[2] existen");
-					ulong key_bloque = stringToLong(line[1]);
-					if(key==key_bloque){
-						log_trace(logger, "%d es igual a %d", key_bloque, key);
-						free(line[0]);free(line[1]);free(line[2]);free(line);
-						fclose(bloque_bin);
-						return string_from_format("%s", bloques[i]);
-					}
-					log_trace(logger, "La key %d NO es igual a la key %d", key, key_bloque);
-				}else{
-					log_trace(logger, "Linea[1] o linea[2] NO existen, leo la siguiente");
-				}
-				int j=0;
-				while(line[j]){
-					free(line[j]);
-					j++;
-				}
-				free(line);
-			}
-		}
-		free(buffer_bloque_bin);
-		fclose(bloque_bin);
-		i++;
-	}
-	return NULL;
-}
-
-char* existeKeyEnBloques(uint16_t key_tmpc, FILE* binTabla){
-	char* lineaBin = NULL; size_t lineaBin_size = 0;
-	char* bloque_keyExistente;
-	if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){		//SIZE=250
-		free(lineaBin);
-		lineaBin = NULL;
-		if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){	//char BLOCKS=[40,21,82,3]
-			char** bloques = string_split(lineaBin, "=");	//char [BLOCKS,[40,21,82,3]]
-			char** blocks = obtenerBloques(bloques[1]);		//char [40,21,82,3]
-			bloque_keyExistente = existeKey(key_tmpc, blocks);
-			liberarArrayString(blocks);
-			liberarArrayString(bloques);
-			free(lineaBin); lineaBin=NULL;
-		}
-	}
-	fseek(binTabla, 0, SEEK_SET);
-
-	if(bloque_keyExistente){
-		return bloque_keyExistente;
-	}else{
-		return "false";
-	}
-}
-
 void liberarArrayString(char** array){
 	int i = 0;
 	while(array[i]){
@@ -684,30 +535,6 @@ bool esArchivoTemporal(char* nombre){
 
 bool esArchivoTemporalC(char* nombre){
 	return (string_starts_with(nombre,"A") && string_ends_with(nombre,".tmpc")); 	//Empieza con A y termina con .tmpc (A0.tmpc, A1.tmpc, ...)
-}
-
-int obtenerUltimoBloqueBin(FILE* bin){	//BLOCKS=[20, 10, 5, 674]
-	int ultimoBloque;
-	char* buffer = NULL;
-	size_t buffer_size = 0;
-
-	if(getline(&buffer, &buffer_size, bin) != -1){
-		free(buffer);
-		buffer = NULL;
-		if(getline(&buffer, &buffer_size, bin) != -1){
-			char** linea = string_split(buffer, "="); // [[BLOCKS], [20, 10, 5, 674]]
-			log_trace(logger, "Bloques: %s", linea[1]);
-			ultimoBloque = ultimoBloques(linea[1]);	//[20, 10, 5, 674]
-			free(linea[0]);
-			free(linea[1]);
-			free(linea);
-			free(buffer);
-			buffer = NULL;
-		}
-	}
-
-	fseek(bin,0,SEEK_SET);
-	return ultimoBloque;
 }
 
 int ultimoBloques(char* bloques){ //[0, 23, 251, 539, 2]

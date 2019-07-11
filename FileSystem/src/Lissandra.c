@@ -1,7 +1,7 @@
 #include "LFS.h"
 
 int main(void){
-	memTable = list_create(); cont = 0; cantDumps = 0;
+	memTable = list_create(); cantDumps = 0;
 	hilosCompactacion = list_create();
 	config = leer_config();
 	puntoMontaje = config_get_string_value(config,"PUNTOMONTAJE");

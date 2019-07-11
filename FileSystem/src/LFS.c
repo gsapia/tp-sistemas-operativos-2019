@@ -40,13 +40,17 @@ char *apiLissandra(char* mensaje){
 					free(nombreTabla);
 					free(keystr);
 					free(comando);
-					char** valorS = string_split(resultado.valor, "\n");
+					char* valorS;
+					if(string_ends_with(resultado.valor, "\n")){
+						valorS = string_substring(resultado.valor,0, strlen(resultado.valor)-1);
+					}else{
+						valorS = string_from_format("%s", resultado.valor);
+					}
 					free(resultado.valor);
-					char* valor = valorS[0];
-					free(valorS);
 					switch (resultado.estado){
 						case ESTADO_SELECT_OK:
-							return valor;
+							log_trace(logger, "Timestamp: %llu",resultado.timestamp);
+							return valorS;
 						case ESTADO_SELECT_ERROR_TABLA:
 							return strdup("ERROR: La tabla solicitada no existe.");
 						case ESTADO_SELECT_ERROR_KEY:
@@ -269,24 +273,51 @@ char *apiLissandra(char* mensaje){
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	struct_select_respuesta select_respuesta;
-	t_registro *aux;
-	t_list *listaFiltro = NULL;
+	t_registro *aux_memtable;
+	t_list *listaFiltro = list_create();
+	t_list *listaFiltroMemtable = NULL;
+	datos_a_compactar *aux;
 
 	if(existeTabla(nombreTabla)){
 		bool registro_IgualKey(t_registro *registro){return registro->key == key && !strcmp(registro->nombre_tabla,nombreTabla);}
 
-		listaFiltro = list_filter(memTable, (_Bool (*)(void*))registro_IgualKey);
 		agregarRegDeBloquesYTemps(listaFiltro, nombreTabla, key);
-
+//		log_trace(logger, "Agrego reg a bloques, sizeof listaFiltro es: %d", list_size(listaFiltro));
+		if(!list_is_empty(memTable)){
+//			log_trace(logger, "Memtable tiene registros");
+			listaFiltroMemtable = list_filter(memTable, (_Bool (*)(void*))registro_IgualKey);
+			if(!list_is_empty(listaFiltroMemtable)){
+//				log_trace(logger, "Filtre la memtable, tiene %d registros", list_size(listaFiltroMemtable));
+				list_sort(listaFiltroMemtable, (_Bool (*)(void*,void*))ordenarDeMayorAMenorTimestamp);
+//				log_trace(logger, "Sort la memtable");
+				aux_memtable = list_get(listaFiltroMemtable, 0);
+//				log_trace(logger, "Obtuve el primer registro");
+				aux = convertirAStructDAC(aux_memtable);
+//				log_trace(logger, "Lo Converti en DAC");
+				list_add(listaFiltro, aux);
+//				log_trace(logger, "Agrego el registro con value: %s", aux->value);
+				list_destroy(listaFiltroMemtable);
+			}
+		}else{
+//			log_trace(logger, "Memtable vacia");
+		}
 		if(!list_is_empty(listaFiltro)){
-			list_sort(listaFiltro, (_Bool (*)(void*,void*))ordenarDeMayorAMenorTimestamp);
+//			log_trace(logger, "sizeof listaFiltro es: %d");
+			list_sort(listaFiltro, (_Bool (*)(void*,void*))ordenarDeMayorAMenorTimestampFinal);
 			aux = list_get(listaFiltro, 0);
 			select_respuesta = convertirARespuestaSelect(aux);
+			datos_a_compactar* aux1;
+			while(!list_is_empty(listaFiltro)){
+				aux1 = list_remove(listaFiltro, 0);
+				free(aux1->key);
+				free(aux1->timestamp);
+				free(aux1->value);
+				free(aux1);
+			}
+			list_destroy(listaFiltro);
 		}else{
 			select_respuesta.estado = ESTADO_SELECT_ERROR_KEY;
 		}
-
-		list_destroy(listaFiltro);
 		log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
 		return select_respuesta;
 	}else{
@@ -423,17 +454,17 @@ enum estados_drop drop(char* nombreTabla){
 		bool registro_IgualNombreTabla(t_hiloCompactacion *registro){return !strcmp(registro->nombreTabla,nombreTabla);}
 
 		borrarTabla(path);
-		log_trace(logger, "Antes de borrar el path");
+//		log_trace(logger, "Antes de borrar el path");
 		rmdir(path);
 		free(path);
-		log_trace(logger, "Borro path");
+//		log_trace(logger, "Borro path");
 
-		log_trace(logger, "Empiezo a borrar el hilo");
+//		log_trace(logger, "Empiezo a borrar el hilo");
 		hiloCompactacion = list_remove_by_condition(hilosCompactacion, (_Bool (*)(void*))registro_IgualNombreTabla);	//Dame al registro que tenga el mismo nombre de tabla
 		pthread_attr_destroy(hiloCompactacion->attrHilo);
 		free(hiloCompactacion->nombreTabla);
 		free(hiloCompactacion);
-		log_trace(logger, "Elimino el hilo");
+//		log_trace(logger, "Elimino el hilo");
 
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
 		return ESTADO_DROP_OK;
@@ -441,6 +472,28 @@ enum estados_drop drop(char* nombreTabla){
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
 		log_error(logger, "No existe la tabla: %s", nombreTabla);
 		return ESTADO_DROP_ERROR_TABLA;
+	}
+}
+
+datos_a_compactar* convertirAStructDAC(t_registro *aux_memtable){
+	datos_a_compactar* registro = malloc(sizeof(datos_a_compactar));
+	registro->key = string_from_format("%d",aux_memtable->key);
+	registro->timestamp = string_from_format("%llu", aux_memtable->timeStamp);
+	registro->value = string_from_format("%s", aux_memtable->value);
+	return registro;
+}
+
+bool existeTabla(char* nombreTabla){
+	char* path = string_from_format("%sTable/", puntoMontaje);
+	DIR* path_buscado = opendir(path);
+	free(path);
+
+	if(encontreTabla(nombreTabla, path_buscado)){
+		closedir(path_buscado);
+		return true;
+	}else{
+		closedir(path_buscado);
+		return false;
 	}
 }
 
@@ -461,28 +514,6 @@ void borrarTabla(char* path){
 	}
 	closedir(path_buscado);
 }
-/*
-void quitarEnlaceBloques(char* bin_string){
-	FILE* bin = fopen(bin_string, "r");
-	char* bloques = obtenerBloquesDetabla(bin);		// 0 // 4,2,6,1
-	if(strlen(bloques)==1){		//Si hay un solo bloque, no me molesto en separarlo y tener que usar un array de strings
-		int bloque = stringToLong(bloques);
-		bitarray_clean_bit(bitarray, bloque);
-	}else{
-		char** bloquesS = string_split(bloques, ",");	// 0 4 6 1
-		int i = 0;
-		while(bloquesS[i]){
-			int bloque = stringToLong(bloquesS[i]);
-			bitarray_clean_bit(bitarray, bloque);
-			free(bloquesS[i]);
-			i++;
-		}
-		free(bloquesS);
-	}
-	log_trace(logger, "Termino de quitar enlace de bloques");
-	free(bloques);
-}
-*/
 
 void* dump(int tiempo_dump){
 	int tiempo = tiempo_dump/1000;
@@ -534,33 +565,6 @@ uint64_t getTimestamp() {
 	return (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 }
 
-void obtenerRegistrosDeTable(t_list *lista, u_int16_t key, int particion_buscada, char* nombreTabla){
-	FILE* bin = obtenerBIN(particion_buscada, nombreTabla);
-	size_t buffer_size = 80;
-	char* buffer = malloc(buffer_size * sizeof(char));
-	t_registro* aux = malloc(sizeof(t_registro));
-	while(getline(&buffer, &buffer_size, bin) != -1){ // [TIMESTAMP;KEY;VALUE]
-		char** linea= string_split(buffer, ";");
-		char* keystr = malloc(sizeof(linea[1]));
-		strcpy(keystr, linea[1]);
-		char* endptr;
-		ulong key_buffer = strtoul(keystr, &endptr, 10);
-
-		if(key_buffer==key){
-			char* timestampstr = malloc(sizeof(linea[0]));
-			strcpy(timestampstr, linea[0]);
-			aux = creadorRegistroPuntero(key, nombreTabla, timestampstr, linea[2]);
-			list_add(lista,aux);
-			free(timestampstr);
-		}
-		free(keystr);
-		free(linea);
-	}
-	free(buffer);
-	fclose(bin);
-}
-
-
 t_registro* convertirARegistroPuntero(t_registro r){
 	t_registro* registro = malloc(sizeof(t_registro));
 	*registro = r;
@@ -573,13 +577,12 @@ struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe)
 	return rta;
 }
 
-
-struct_select_respuesta convertirARespuestaSelect(t_registro* registro){
+struct_select_respuesta convertirARespuestaSelect(datos_a_compactar* registro){
 	struct_select_respuesta select_respuesta;
 	select_respuesta.estado = ESTADO_SELECT_OK;
-	select_respuesta.timestamp = registro->timeStamp;
-	select_respuesta.valor = malloc(strlen(registro->value)+1);
-	strcpy(select_respuesta.valor,registro->value);
+	uint64_t timestamp = stringToLongLong(registro->timestamp);
+	select_respuesta.timestamp = timestamp;
+	select_respuesta.valor = string_from_format("%s", registro->value);
 	return select_respuesta;
 }
 
@@ -607,119 +610,167 @@ struct_describe_respuesta convertirARespuestaDescribe(char* consistencia, char* 
 	return describe_respuesta;
 }
 
-int obtenerParticion(char* nombreTabla, u_int16_t key){
-	FILE* metadata = obtenerMetaDataLectura(nombreTabla);
-	int particiones = obtenerParticiones(metadata);
-	int particion_busqueda = funcionModulo(key, particiones);
-	fclose(metadata);
-	return particion_busqueda;
-}
-
 bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2){
 	return r1->timeStamp>r2->timeStamp;
 }
 
+bool ordenarDeMayorAMenorTimestampFinal(datos_a_compactar* r1, datos_a_compactar* r2){
+	uint64_t ts_1 = stringToLongLong(r1->timestamp);
+	uint64_t ts_2 = stringToLongLong(r2->timestamp);
+	log_trace(logger, "%llu > llu ?", ts_1, ts_2);
+	return ts_1 > ts_2;
+}
+
 void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key){
-	agregarRegistrosTempYTempc(nombreTabla, lista, key);	//Agrego de los tmp y tmpc de "/Table/An.tmp" y "/Table/An.tmpc", el registro con el mayor timestamp a la lista.
-	agregarRegistroBloques(nombreTabla, lista, key); 	//Agrego del /Bloques/n.bin, el registro con el mayor timestamp a la lista
-}
+	char *path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
+	DIR* path_buscado = opendir(path);
+	free(path);
+	struct dirent* carpeta = readdir(path_buscado);
 
-void agregarRegistroBloques(char* nombreTabla, t_list *lista, u_int16_t key){
-	int particion = obtenerParticion(nombreTabla, key);
-	char* path_bin = string_from_format("%sTable/%s/%d.bin", puntoMontaje, nombreTabla, particion);
-	FILE* binTabla = fopen(path_bin, "r+");
-	char* lineaBin = NULL; size_t lineaBin_size = 0;
-
-	if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){		//SIZE=250
-		free(lineaBin);
-		lineaBin = NULL;
-		if(getline(&lineaBin, &lineaBin_size, binTabla) != -1){	//char BLOCKS=[40,21,82,3]
-			char** bloques = string_split(lineaBin, "=");	//char [BLOCKS,[40,21,82,3]]
-			char** blocks = obtenerBloques(bloques[1]);		//char [40,21,82,3]
-
-			if(existeKeySELECT(key, blocks, lista)){	//Como en los bloques solo va a existir una sola entrada de la key y va a ser la mas actualizada por Compactacion, solo tengo que econtrar que exista
-				//log_trace(logger, "Existe key %d", key);
-			}else{
-				//log_trace(logger, "No existe key %d", key);
-			}
-
-			int j=0;
-			while(bloques[j]){
-				free(bloques[j]);
-				j++;
-			}
-			free(bloques);
-		}
-	}
-	fclose(binTabla);
-}
-
-bool existeKeySELECT(u_int16_t key, char** bloques, t_list* lista){
-	int i = 0;
-	while(bloques[i]){
-		char* path = string_from_format("%sBloques/%s.bin",puntoMontaje, bloques[i]);
-		FILE* bloque_bin = fopen(path, "r");
-		free(path);
-
-		char* buffer_bloque_bin = NULL; size_t size_buffer_bloque_bin = 0; 	// Preparo datos para el buffer
-
-		while(getline(&buffer_bloque_bin, &size_buffer_bloque_bin, bloque_bin) != -1){	//Dame la linea del archivo
-
-			if(feof(bloque_bin) && bloques[i+1]){	//Si quedo el puntero del archivo en el final, y existe otro bloque siguiente, es porque el resto de la linea esta en ese otro bloque
-				char* fstLine = obtenerPrimeraLinea(bloques[i+1]);
-				char* linea = string_from_format("%s%s", buffer_bloque_bin, fstLine);		//[TIMESTAMP;KEY;VALUE]
-				log_trace(logger, "Leo linea append: %s", linea);
-				free(fstLine); free(buffer_bloque_bin); buffer_bloque_bin = NULL;		//Libero los char*
-				char** line = string_split(linea, ";");
-				free(linea);
-				ulong key_bloque = stringToLong(line[1]);
-				if(key==key_bloque){
-					fclose(bloque_bin);
-					uint64_t timestamp = stringToLong(line[0]);
-					t_registro* registro = creadorRegistroPuntero(key, NULL, timestamp, line[2]);
-					list_add(lista,registro);
-					free(line[0]);free(line[1]);free(line[2]);free(line);
-					return true;
-				}
-				free(line[0]);free(line[1]);free(line[2]);free(line);
-
-			}else{												//Si no es fin de archivo, o no existe un proximo bloque, es porque esa linea es valida
-				log_trace(logger, "Leo %s", buffer_bloque_bin);
-				char** line = string_split(buffer_bloque_bin, ";");	//[TIMESTAMP,KEY,VALUE]
-				free(buffer_bloque_bin); buffer_bloque_bin = NULL;
-				if(line[1] && line[2]){		//Es el caso en que la primera linea de un bloque esta cortada, y no me sirve que solo tenga uno o dos valores
-					log_trace(logger, "Linea[1] y linea[2] existen");
-					ulong key_bloque = stringToLong(line[1]);
-					if(key==key_bloque){
-						log_trace(logger, "%d es igual a %d", key_bloque, key);
-						uint64_t timestamp = stringToLong(line[0]);
-						log_trace(logger, "Asigno TimeStamp");
-						t_registro* registro = creadorRegistroPuntero(key, NULL, timestamp, line[2]);
-						log_trace(logger, "Creo el registro");
-						list_add(lista,registro);
-						log_trace(logger,  "Lo añado");
-						free(line[0]);free(line[1]);free(line[2]);free(line);
-						log_trace(logger,"Free line");
-						fclose(bloque_bin);
-						log_trace(logger,"Cierro el archivo bloque");
-						return true;
+	while(carpeta){
+		if(esArchivoValido(carpeta->d_name)){
+//			log_trace(logger, "## %s ##", carpeta->d_name);
+			char* path_bin = string_from_format("%sTable/%s/%s", puntoMontaje, nombreTabla, carpeta->d_name);
+			FILE* f = fopen(path_bin, "r");
+			free(path_bin);
+			int size_bin = obtenerSizeBin(f);
+			char* append = NULL;
+			if(size_bin != 0){
+//				log_trace(logger, "%s tiene %d datos", carpeta->d_name, size_bin);
+				int size_ultimo_bloque = size_bin % blockSize;
+				char** bloques = obtenerBloquesBin(f);
+				int i = 0;
+				while(bloques[i]){
+					if(esUltimoBloque(bloques,i)){
+						cargarUltimoBloqueSELECT(bloques[i], lista, size_ultimo_bloque, append, key);
+					}else{
+						cargarBloqueAListaSELECT(bloques[i], lista, append, key);
+						append = obtenerUltimaLinea(bloques[i]);
 					}
-					log_trace(logger, "La key %d NO es igual a la key %d", key, key_bloque);
-				}else{
-					log_trace(logger, "Linea[1] o linea[2] NO existen, leo la siguiente");
+					i++;
 				}
-				int j=0;
-				while(line[j]){
-					free(line[j]);
-					j++;
-				}
-				free(line);
+				liberarArrayString(bloques);
+			}else{
+//				log_trace(logger, "%s esta vacio", carpeta->d_name);
+			}
+			fclose(f);
+
+		}
+		carpeta = readdir(path_buscado);
+	}
+//	log_trace(logger,"Antes del closedir");
+	closedir(path_buscado);
+//	log_trace(logger,"Despues del closedir");
+}
+
+void cargarUltimoBloqueSELECT(char* bloque, t_list* lista, int size_lectura, char* append, u_int16_t key){
+	char* path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloque);
+	FILE* block_file = fopen(path, "r+");
+	free(path);
+	char* buffer = NULL; size_t buffer_size = 0;
+	int size_actual=0;
+	if(append != NULL){
+		if(getline(&buffer, &buffer_size, block_file) != -1){		//Para la primera linea si es que habia algo en el bloque anterior
+			size_actual = size_actual + strlen(buffer);
+//			log_trace(logger, "size_actual de la primera linea: %d", size_actual);
+			char* linea_append = string_from_format("%s%s", append, buffer);
+			free(append);
+//			log_trace(logger, "Linea APPEND: %s", linea_append);
+			char** linea = string_split(linea_append, ";");
+			free(linea_append);
+			cargarLineaSELECT(linea, lista, key);
+			liberarArrayString(linea);
+			free(buffer);
+			buffer = NULL;
+		}
+	}
+
+	if(size_actual!=size_lectura){	//Si se llego al final de las lineas para leer con solo leer la primera linea, tengo que salir.
+		while(getline(&buffer, &buffer_size, block_file) != -1){
+//			log_trace(logger, "Linea: %s", buffer);
+			size_actual = size_actual + strlen(buffer);
+
+			if(size_actual < size_lectura){
+//				log_trace(logger, "%d es menor a %d", size_actual, size_lectura);
+				char** linea = string_split(buffer, ";");
+				cargarLineaSELECT(linea, lista, key);
+				liberarArrayString(linea);
+				free(buffer);
+				buffer = NULL;
+			}else if(size_actual == size_lectura){
+//				log_trace(logger, "%d es igual a %d, salgo del while", size_actual, size_lectura);
+				char** linea = string_split(buffer, ";");
+				cargarLineaSELECT(linea, lista, key);
+				liberarArrayString(linea);
+				free(buffer);
+				buffer = NULL;
+				break;
 			}
 		}
-		fclose(bloque_bin);
-		i++;
+		if(buffer){free(buffer);}
+	}else{
+//		log_trace(logger, "%d es igual a %d", size_actual, size_lectura);
 	}
-	return false;
+	fclose(block_file);
+}
+
+void cargarLineaSELECT(char** linea, t_list* lista, u_int16_t key){
+	u_int16_t key_linea = stringToLong(linea[1]);
+	if(key_linea == key){
+//		log_trace(logger, "El registro con value %s, tiene igual key", linea[2]);
+		datos_a_compactar* registro = malloc(sizeof(datos_a_compactar));
+		registro->timestamp = string_from_format("%s", linea[0]);
+		registro->key = string_from_format("%s", linea[1]);
+		char* value_aux = string_from_format("%s", linea[2]);
+		registro->value = string_substring(value_aux, 0, strlen(value_aux)-1);
+		free(value_aux);
+		list_add(lista, registro);
+	}
+}
+
+void cargarBloqueAListaSELECT(char* bloque, t_list* lista, char* append, u_int16_t key){
+	char* path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloque);
+	FILE* block_file = fopen(path, "r+");
+	free(path);
+	char* buffer = NULL; size_t buffer_size = 0;
+	if(append != NULL){
+		if(getline(&buffer, &buffer_size, block_file) != -1){		//Para la primera linea si es que habia algo en el bloque anterior
+			char* linea_append = string_from_format("%s%s", append, buffer);
+			free(append);
+//			log_trace(logger, "Linea APPEND: %s", linea_append);
+			char** linea = string_split(linea_append, ";");
+			free(linea_append);
+			cargarLineaSELECT(linea, lista, key);
+			liberarArrayString(linea);
+			free(buffer);
+			buffer = NULL;
+		}
+	}
+	int i = 1;
+	while(getline(&buffer, &buffer_size, block_file) != -1){	// [TIMESTAMP;KEY;VALUE]
+//		log_trace(logger, "Linea %d: %s", i, buffer);
+		i++;
+		char** linea = string_split(buffer, ";");
+		int len = ftell(block_file);
+		if(!esUltimaLinea(block_file)){
+			fseek(block_file, len, SEEK_SET);
+//			log_trace(logger, "Cargo %s", buffer);
+			cargarLineaSELECT(linea, lista, key);
+		}
+		liberarArrayString(linea);
+		free(buffer);
+		buffer = NULL;
+	}
+	if(buffer){free(buffer);}
+	buffer = NULL;
+
+	fclose(block_file);
+}
+
+void crearDirectiorioDeTabla(char* nombreTabla){
+	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
+	if(mkdir(path, 0777) != 0){}
+	free(path);
 }
 
 char* obtenerPrimeraLinea(char* bloque){
@@ -734,38 +785,6 @@ char* obtenerPrimeraLinea(char* bloque){
 	fclose(bloque_bin);
 	return NULL;
 }
-
-void agregarRegistrosTempYTempc(char* nombreTabla, t_list* lista, u_int16_t key){
-	int particion_busqueda = obtenerParticion(nombreTabla, key);
-	char* particion = intToString(particion_busqueda);
-	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, particion);
-	free(particion);
-	free(path);
-	FILE* f = fopen(path, "r");
-
-//	log_trace(logger,"Antes del .tmp");
-	for(int i=0;i<cantDumps;i++){	// agrego de los .tmp, el registro con el mayor timestamp de cada uno a la lista
-		path = string_from_format("%sTable/%s/A%d.tmp", puntoMontaje, nombreTabla, i);
-		if(access(path, F_OK) != -1){
-			f = fopen(path, "r");
-		}
-		free(path);
-	}
-
-//	log_trace(logger,"Antes del .tmpc");
-	int i = 0;
-	path = string_from_format("%sTable/%s/A%s.tmpc", puntoMontaje, nombreTabla, i);
-	while(access(path, F_OK) != -1){// agrego de los .tmpc, el registro con el mayor timestamp de cada uno a la lista
-		free(path);
-		f = fopen(path, "r");
-
-		i++;
-		path = string_from_format("%s/A%d.tmpc", path, i);
-	}
-	free(path);
-}
-
-
 
 t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t timeStamp, char* value){
 	log_trace(logger, "Entro a creadorRegistroPuntero()");

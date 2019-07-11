@@ -120,21 +120,6 @@ void crearBloques(char* path){
 	}
 }
 
-// Corrobora la existencia de una carpeta dentro de la carpeta "Table/"
-bool existeTabla(char* nombreTabla){
-	char* path = string_from_format("%sTable/", puntoMontaje);
-	DIR* path_buscado = opendir(path);
-	free(path);
-
-	if(encontreTabla(nombreTabla, path_buscado)){
-		closedir(path_buscado);
-		return true;
-	}else{
-		closedir(path_buscado);
-		return false;
-	}
-}
-
 // Se fija si dentro del path_buscado, se encuentra la tabla (nombreTabla). Si se encuentra
 // se devuelve el nombre encontrado.
 char* encontreTabla(char* nombreTabla, DIR* path_buscado){
@@ -316,12 +301,6 @@ FILE* obtenerBIN(int particion, char* nombreTabla){
 	free(path);
 	free(nombre_bin);
 	return bin;
-}
-
-void crearDirectiorioDeTabla(char* nombreTabla){
-	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
-	if(mkdir(path, 0777) != 0){}
-	free(path);
 }
 
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){

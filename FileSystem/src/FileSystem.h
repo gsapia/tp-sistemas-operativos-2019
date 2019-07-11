@@ -1,5 +1,6 @@
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
+#include"Shared.h"
 
 // Crea la carpeta principal "LISSANDRA_FS", que nos la dan en el .config
 void crearFicheroPadre();
