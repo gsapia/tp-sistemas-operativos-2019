@@ -101,13 +101,13 @@ void memoria_handler(int *socket_cliente){
 			case INSERT:
 			{
 				log_trace(logger, "Recibi un INSERT");
-				struct_insert paquete = recibir_insert(cliente);
+				struct_insert paquete = recibir_insert_ts(cliente);
 
 				enum estados_insert estado= insert(paquete.nombreTabla, paquete.key, paquete.valor, paquete.timestamp);
 
 				responder_insert(cliente, estado);
 
-				printf("Comando recibido: INSERT %s %d \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
+//				printf("Comando recibido: INSERT %s %d \"%s\"\n\n", paquete.nombreTabla, paquete.key, paquete.valor);
 
 				free(paquete.nombreTabla);
 				free(paquete.valor);
