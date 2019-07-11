@@ -6,6 +6,21 @@
 #include "Misc.h"
 #include "serializacion.h"
 
+bool journaling (t_memoria* memoria){
+	enum estados_journal respuesta = journalMemoria(memoria);
+	for (int i = 0; respuesta != ESTADO_JOURNAL_OK && i < 3; i++){
+		log_trace(logger, "No pudimos hacer journal con la memoria %d, reintentando", memoria->numero);
+		sleep(1);
+		respuesta = journalMemoria(memoria);
+	}
+	if(respuesta != ESTADO_JOURNAL_OK){
+		log_warning(logger, "No pudimos hacer journaling con la memoria %d.", memoria->numero);
+		return false;
+	}
+	return true;
+}
+
+
 t_resultado selects(char* nombreTabla, u_int16_t key){
 	unsigned long long inicio = getTimestamp(); // METRICAS
 
@@ -79,6 +94,17 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 		break;
 	case ESTADO_INSERT_ERROR_TABLA:
 		respuesta.resultado = strdup("ERROR: Esa tabla no existe.");
+		break;
+	case ESTADO_INSERT_MEMORIA_FULL:
+		log_info(logger, "INSERT: La memoria esta FULL. Realizando JOURNAL");
+		if(journaling(memoria)){
+			log_info(logger, "INSERT: JOURNAL exitoso, repitiendo la request");
+			respuesta = insert(nombreTabla, key, valor);
+		}
+		else{
+			respuesta.falla = true;
+			respuesta.resultado = strdup("ERROR: Ocurrio un error durante el JOURNAL.");
+		}
 		break;
 	default:
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
@@ -183,18 +209,6 @@ t_resultado journal(){
 	respuesta.resultado = string_from_format("Journal realizado correctamente.");
 	return respuesta;
 
-}
-
-void journaling (t_memoria* memoria){
-	enum estados_journal respuesta = journalMemoria(memoria);
-	for (int i = 0; respuesta != ESTADO_JOURNAL_OK && i < 3; i++){
-		log_trace(logger, "No pudimos hacer journal con la memoria %d, reintentando", memoria->numero);
-		sleep(1);
-		respuesta = journalMemoria(memoria);
-	}
-	if(respuesta != ESTADO_JOURNAL_OK){
-		log_warning(logger, "No pudimos hacer journaling con la memoria %d.", memoria->numero);
-	}
 }
 
 t_resultado run(char* runPath){
