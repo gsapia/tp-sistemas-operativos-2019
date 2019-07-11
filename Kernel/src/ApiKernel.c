@@ -101,8 +101,14 @@ t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int
 
 	enum estados_create resultado = createAMemoria(paquete, memoria);
 
+	struct_describe_respuesta metadatos = { .consistencia = tipoConsistencia, .particiones = cantidadParticiones, .tiempo_compactacion = compactionTime };
+
 	switch (resultado) {
 	case ESTADO_CREATE_OK:
+		 // Lo agregamos a la metadata conocida.
+		pthread_mutex_lock(&mutex_metadata);
+		addMetadata(nombreTabla, &metadatos);
+		pthread_mutex_unlock(&mutex_metadata);
 		respuesta.resultado = strdup("Tabla creada");
 		break;
 	case ESTADO_CREATE_ERROR_TABLAEXISTENTE:
@@ -248,7 +254,10 @@ t_resultado add(uint16_t numeroMemoria, enum consistencias criterio){
 	t_memoria* memoria = getMemoria(numeroMemoria);
 
 	if(memoria){
-		list_add(listasMemorias[criterio], memoria);
+		if(criterio == SC && list_size(listasMemorias[criterio])) // En el criterio SC solo tenemos una memoria asignada al mismo tiempo.
+			list_replace_and_destroy_element(listasMemorias[criterio], 0, memoria, free);
+		else
+			list_add(listasMemorias[criterio], memoria);
 
 		respuesta.falla = false;
 		respuesta.resultado = strdup("Memoria Agregada!");

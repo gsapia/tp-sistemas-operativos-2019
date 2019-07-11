@@ -72,8 +72,15 @@ t_memoria* obtener_memoria_SC(){
 	return resultado; // Devolvemos una copia, para no joder la lista actual
 }
 t_memoria* obtener_memoria_SHC(uint16_t key){
-	// TODO:
-	return NULL;
+	t_memoria * resultado = NULL;
+	pthread_mutex_lock(&mutex_pool_memorias);
+	int cantidad = list_size(listasMemorias[SHC]);
+	if(cantidad > 0){
+		resultado = malloc(sizeof(t_memoria));
+		memcpy(resultado, list_get(listasMemorias[SHC], key % cantidad), sizeof(t_memoria));  // Devolvemos una copia, para no joder la lista actual
+	}
+	pthread_mutex_unlock(&mutex_pool_memorias);
+	return resultado;
 }
 t_memoria* obtener_memoria_EC(){
 	return obtener_memoria_random(listasMemorias[EC]);
