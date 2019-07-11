@@ -55,6 +55,17 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 	case ESTADO_SELECT_ERROR_KEY:
 		respuesta.resultado = strdup("ERROR: Esa tabla no contiene ningun registro con la clave solicitada.");
 		break;
+	case ESTADO_SELECT_MEMORIA_FULL:
+		log_info(logger, "SELECT: La memoria esta FULL. Realizando JOURNAL");
+		if(journaling(memoria)){
+			log_info(logger, "SELECT: JOURNAL exitoso, repitiendo la request");
+			respuesta = selects(nombreTabla, key);
+		}
+		else{
+			respuesta.falla = true;
+			respuesta.resultado = strdup("ERROR: Ocurrio un error durante el JOURNAL.");
+		}
+		break;
 	default:
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
