@@ -329,12 +329,13 @@ t_resultado apiKernel(char* mensaje){
 
 		}
 
-		else if( (! strcmp(comando[0],"ADD") ) && (cantArgumentos > 0 && (! strcmp(comando[1],"MEMORY") ))  ){
+		else if(!strcmp(comando[0],"ADD") && cantArgumentos > 0 && !strcmp(comando[1],"MEMORY")){
 			// ADD MEMORY [NUMERO] TO [CRITERIO]
 			// ADD MEMORY 3 TO SC
 			free(comando[0]);
 			free(comando[1]);
-			if( cantArgumentos == 4 && (!strcmp(comando[3],"TO")) ){
+			if(cantArgumentos == 4 && !strcmp(comando[3],"TO")){
+				free(comando[3]);
 
 				char* numerostr = comando[2];
 				char* criterioStr = comando[4]; //Agarro el criterio como un string

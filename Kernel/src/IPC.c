@@ -8,7 +8,6 @@ int conectar(char* ip, uint16_t puerto){
 	direccionServidor.sin_family = AF_INET;
 	direccionServidor.sin_addr.s_addr = inet_addr(ip); //Direccion IP
 	direccionServidor.sin_port = htons(puerto); // Puerto al que me conecto (Memoria)
-	// TODO: Puerto e IP deberian salir del archivo de configuracion
 
 	//log_trace(logger, "Conectando con Memoria en %s:%d",config.ip_memoria,config.puerto_memoria);
 
@@ -78,6 +77,7 @@ void refreshMetadata(){
 		log_warning(logger, "Hubo un error al pedir la metadata de las tablas.");
 	}
 	dictionary_destroy_and_destroy_elements(respuesta.describes, free);
+	free(memoria);
 }
 
 void updateMetadata(){

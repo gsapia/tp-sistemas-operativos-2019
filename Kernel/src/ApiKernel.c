@@ -137,6 +137,7 @@ t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int
 	t_memoria* memoria = obtener_memoria_random_del_pool();
 
 	enum estados_create resultado = createAMemoria(paquete, memoria);
+	free(memoria);
 
 	struct_describe_respuesta metadatos = { .consistencia = tipoConsistencia, .particiones = cantidadParticiones, .tiempo_compactacion = compactionTime };
 
@@ -182,6 +183,7 @@ t_resultado describe(char* nombreTabla){
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
 
+	free(memoria);
 	return respuesta;
 }
 
@@ -279,13 +281,23 @@ t_resultado add(uint16_t numeroMemoria, enum consistencias criterio){
 	t_memoria* memoria = getMemoria(numeroMemoria);
 
 	if(memoria){
-		if(criterio == SC && list_size(listasMemorias[criterio])) // En el criterio SC solo tenemos una memoria asignada al mismo tiempo.
-			list_replace_and_destroy_element(listasMemorias[criterio], 0, memoria, free);
-		else
-			list_add(listasMemorias[criterio], memoria);
-
 		respuesta.falla = false;
-		respuesta.resultado = strdup("Memoria Agregada!");
+		bool buscador(t_memoria* otraMemoria){
+			return memoria->numero == otraMemoria->numero;
+		}
+		pthread_mutex_lock(&mutex_pool_memorias);
+		if(list_find(listasMemorias[criterio], (_Bool(*)(void*)) buscador)){
+			respuesta.resultado = string_from_format("La memoria %d ya estaba asociada al criterio %s", memoria->numero, consistenciaAString(criterio));
+			free(memoria);
+		}
+		else{
+			if(criterio == SC && !list_is_empty(listasMemorias[criterio])){ // En el criterio SC solo tenemos una memoria asignada al mismo tiempo.
+				list_clean_and_destroy_elements(listasMemorias[criterio], free);
+			}
+			list_add(listasMemorias[criterio], memoria);
+			respuesta.resultado = string_from_format("Memoria %d asociada al criterio %s", memoria->numero, consistenciaAString(criterio));
+		}
+		pthread_mutex_unlock(&mutex_pool_memorias);
 	}
 	else{
 		respuesta.falla = true;

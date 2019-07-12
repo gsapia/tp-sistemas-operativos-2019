@@ -9,7 +9,7 @@ t_memoria* getMemoria(int numero){
 		pthread_mutex_unlock(&mutex_pool_memorias);
 		return NULL;
 	}
-	bool buscador_memoria(t_memoria* memoria){
+	bool buscador_memoria(t_memoria* memoria){						  	   //si la encuentra retorna un puntero ,si no retorna NULL.
 		return memoria->numero == numero;
 	}
 	t_memoria* memoria = list_find(pool_memorias, (_Bool(*)(void*)) buscador_memoria); //Agarra el pool de memorias, levanta la primera y la busca con la funcion
@@ -115,14 +115,18 @@ void gossip(){
 
 			// Ahora hay que eliminar las memorias que ya no existen de los criterios
 			for(int i = 0; i < 3; ++i){
-				bool filtrador(t_memoria* memoria){
+				t_list * nueva = list_create();
+				void eliminador(t_memoria* memoria){
 					bool son_iguales(t_memoria* otra_memoria){
 						return otra_memoria->numero == memoria->numero;
 					}
-					return list_find(listasMemorias[i], (_Bool(*)(void*)) son_iguales);
+					if(!list_find(pool_memorias, (_Bool(*)(void*)) son_iguales))
+						free(memoria);
+					else
+						list_add(nueva, memoria);
 				}
-				t_list* nueva = list_filter(pool_memorias, (_Bool(*)(void*)) filtrador);
-				list_destroy_and_destroy_elements(listasMemorias[i], free);
+				list_iterate(listasMemorias[i], (void(*)(void*))eliminador);
+
 				listasMemorias[i] = nueva;
 			}
 
