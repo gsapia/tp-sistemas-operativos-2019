@@ -55,9 +55,9 @@ int algoritmo_reemplazo(){
 
 			if (pagina) {
 				// Encontramos una pagina que podemos reemplazar
+				log_trace(logger, "Reemplazamos la pagina %d que contenia la key %d.", pagina->numero, *((uint16_t*)(pagina->marco + DESPL_KEY)));
 				marco = pagina->numero;
 				free(pagina);
-				log_trace(logger, "Reemplazamos una pagina.");
 			}
 		}
 	}
