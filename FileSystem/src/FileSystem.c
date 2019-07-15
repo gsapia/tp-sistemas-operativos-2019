@@ -35,24 +35,50 @@ void crearFicheroPadre(){
 void crearMetaDataFS(){
 	char* path = string_from_format("%sMetadata/", puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
+
 	char* path2 = string_from_format("%sMetadata.bin", path);
-	FILE *f = fopen(path2, "w");
-	
-	fputs("BLOCK_SIZE=", f);
-	fputs("64", f);
-	fputs("\n", f);
-	
-	fputs("BLOCKS=", f);
-	fputs("5192", f);
-	fputs("\n", f);
-	
-	fputs("MAGIC_NUMBER=", f);
-	fputs("LISSANDRA", f);
-	fputs("\n", f);
-	
-	fclose (f);
-	free(path);
-	free(path2);
+	if(access(path2,F_OK) == 0){
+		FILE *f = fopen(path2, "r");
+		char* buffer = NULL; size_t buffer_size = 0;
+		if(getline(&buffer, &buffer_size, f) != -1){
+			char** linea = string_split(buffer, "=");
+			int blockSize = stringToLong(linea[1]);
+			liberarArrayString(linea);
+			free(buffer); buffer = NULL;
+//			log_trace(logger, "El bloque tiene %d bytes", blockSize);
+		}else{
+			log_error(logger, "Metadata.bin no tiene el tamaño de bloques");
+		}
+		if(getline(&buffer, &buffer_size, f) != -1){
+			char** linea = string_split(buffer, "=");
+			int blocks = stringToLong(linea[1]);
+			liberarArrayString(linea);
+			free(buffer); buffer = NULL;
+//			log_trace(logger, "El FS tiene %d bloques", blocks);
+		}else{
+			log_error(logger, "Metadata.bin no tiene la cantidad de bloques");
+		}
+		free(path);
+		free(path2);
+	}else{
+		FILE *f = fopen(path2, "w");
+
+		fputs("BLOCK_SIZE=", f);
+		fputs("64", f);
+		fputs("\n", f);
+
+		fputs("BLOCKS=", f);
+		fputs("5192", f);
+		fputs("\n", f);
+
+		fputs("MAGIC_NUMBER=", f);
+		fputs("LISSANDRA", f);
+		fputs("\n", f);
+
+		fclose (f);
+		free(path);
+		free(path2);
+	}
 }
 
 void crearBitMapFS(){
@@ -113,10 +139,12 @@ void crearBloques(char* path){
 	FILE* f;
 	for(int i=0; i<blocks;i++){
 		char* path_aux = string_from_format("%s%d.bin", path,i);
-		f = fopen(path_aux, "w");
-		truncate(path_aux, blockSize);
-		fclose(f);
-		free(path_aux);
+		if(access(path_aux, F_OK) == -1){	//0 si existe, -1 si no existeralo
+			f = fopen(path_aux, "w");
+			truncate(path_aux, blockSize);
+			fclose(f);
+			free(path_aux);
+		}
 	}
 }
 

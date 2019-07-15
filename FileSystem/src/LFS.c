@@ -279,6 +279,9 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	datos_a_compactar *aux;
 
 	if(existeTabla(nombreTabla)){
+		pthread_mutex_t *mutexAux = dictionary_get(diccionario, nombreTabla);
+		pthread_mutex_lock(mutexAux);
+
 		bool registro_IgualKey(t_registro *registro){return registro->key == key && !strcmp(registro->nombre_tabla,nombreTabla);}
 
 		agregarRegDeBloquesYTemps(listaFiltro, nombreTabla, key);
@@ -319,6 +322,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 			select_respuesta.estado = ESTADO_SELECT_ERROR_KEY;
 		}
 		log_debug(logger, "SELECT: Recibi Tabla: %s Key: %d", nombreTabla, key);
+		pthread_mutex_unlock(mutexAux);
 		return select_respuesta;
 	}else{
 		select_respuesta.estado = ESTADO_SELECT_ERROR_TABLA;
@@ -360,18 +364,27 @@ uint16_t create(char* nombreTabla, char* tipoConsistencia, u_int cantidadPartici
 		args->nombreTabla = malloc(strlen(nombreTabla)+1);
 		strcpy(args->nombreTabla, nombreTabla);
 
+		//Creo el mutex
+
+		pthread_mutex_t * mutex = malloc(sizeof(pthread_mutex_t));
+		if(pthread_mutex_init(mutex, NULL) != 0){
+			log_error(logger, "Mutex de tabla %s: Error - pthread_mutex_init()", nombreTabla);
+		}
+
+		dictionary_put(diccionario, nombreTabla, mutex);
+
 		//Creo el hilo
 		pthread_attr_t attr;
 		pthread_t hiloCompactacion;
 
 		pthread_attr_init(&attr);
 		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-		hiloC->attrHilo = &attr;
-		list_add(hilosCompactacion, hiloC);
 		if(pthread_create(&hiloCompactacion, &attr, compactacion, args)){
 			log_error(logger, "Hilo compactacion: Error - pthread_create()");
 			exit(EXIT_FAILURE);
 		}
+
+		pthread_attr_destroy(&attr);
 
 		log_debug(logger, "CREATE: Recibi Tabla: %s TipoDeConsistencia: %s CantidadDeParticines: %d TiempoDeCompactacion: %d", nombreTabla, tipoConsistencia, cantidadParticiones, compactionTime);
 		estado = ESTADO_CREATE_OK;
@@ -447,8 +460,9 @@ struct_describe_global_respuesta describe_global(){
 }
 
 enum estados_drop drop(char* nombreTabla){
-	t_hiloCompactacion *hiloCompactacion;
 	if(existeTabla(nombreTabla)){	//Tengo certeza que existe la tabla, entonces va a estar en la lista
+		pthread_mutex_t *mutexAux = dictionary_remove(diccionario, nombreTabla);
+		pthread_mutex_lock(mutexAux);
 		char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
 
 		bool registro_IgualNombreTabla(t_hiloCompactacion *registro){return !strcmp(registro->nombreTabla,nombreTabla);}
@@ -457,16 +471,13 @@ enum estados_drop drop(char* nombreTabla){
 //		log_trace(logger, "Antes de borrar el path");
 		rmdir(path);
 		free(path);
-//		log_trace(logger, "Borro path");
-
-//		log_trace(logger, "Empiezo a borrar el hilo");
-		hiloCompactacion = list_remove_by_condition(hilosCompactacion, (_Bool (*)(void*))registro_IgualNombreTabla);	//Dame al registro que tenga el mismo nombre de tabla
-		pthread_attr_destroy(hiloCompactacion->attrHilo);
-		free(hiloCompactacion->nombreTabla);
-		free(hiloCompactacion);
-//		log_trace(logger, "Elimino el hilo");
+		log_trace(logger, "Borro path");
 
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);
+		pthread_mutex_unlock(mutexAux);
+		log_trace(logger, "mutex_unloc");
+		free(mutexAux);
+		log_trace(logger, "free()");
 		return ESTADO_DROP_OK;
 	}else{
 		log_debug(logger, "DROP: Recibi Tabla: %s", nombreTabla);

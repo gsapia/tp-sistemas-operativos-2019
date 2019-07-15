@@ -28,18 +28,19 @@
 #include<sys/types.h>
 #include<fcntl.h>
 #include<sys/mman.h>
+#include<commons/collections/dictionary.h>
 
 t_log* logger;
 t_config* config;
 char* puntoMontaje;
 t_list *memTable;
-t_list *hilosCompactacion;
 int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
 int tamValue;
 char* bitmap;
 int blockSize;
 int blocks;
 t_bitarray* bitarray;
+t_dictionary* diccionario;
 
 typedef struct{
 	uint16_t puerto_escucha;

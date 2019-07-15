@@ -13,6 +13,9 @@ void *compactacion(argumentos_compactacion *args){
 	while(directorio){
 
 		closedir(directorio);
+		pthread_mutex_t *mutexAux = dictionary_get(diccionario, nombreTabla);
+		pthread_mutex_lock(mutexAux);
+
 		if(renombrarArchivosTemporales(path)){		//Si hay para renombrar, hay para compactar.
 			uint64_t tiempo_aux = getTimestamp();
 
@@ -23,8 +26,9 @@ void *compactacion(argumentos_compactacion *args){
 			tiempo_posta = tiempo_posta - tiempo_aux;
 			log_info(logger, "El tiempo transcurrido en la compactacion es %llu milisegundos", tiempo_posta);
 		}else{
-			log_info(logger, "No hay .tmp para compactar");
+			log_info(logger, "No hay .tmp para compactar en %s", nombreTabla);
 		}
+		pthread_mutex_unlock(mutexAux);
 
 		sleep(tiempo);
 		directorio = opendir(path);
