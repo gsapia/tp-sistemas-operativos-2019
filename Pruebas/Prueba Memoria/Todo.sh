@@ -1,0 +1,1 @@
+terminator -e ./LFS.sh -T LFS & terminator -e ./Kernel.sh -T Kernel & terminator -e ./Memoria1.sh -T Memoria1
