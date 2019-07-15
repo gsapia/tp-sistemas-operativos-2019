@@ -1,0 +1,47 @@
+Actividades:
+1. Iniciar todos los módulos (iniciando las memorias por la Memoria 1) y esperar a que el sistema sea consistente, es decir, que el Kernel conozca a todas las memorias.
+
+2. Asociar la Memoria 1 al criterio SC, las Memorias 2 y 4 al criterio SHC y las Memorias 3 y 4 al criterio EC:
+ADD MEMORY 1 TO SC
+ADD MEMORY 2 TO SHC
+ADD MEMORY 4 TO SHC
+ADD MEMORY 3 TO EC
+ADD MEMORY 4 TO EC
+
+3. Ejecutar los scripts animales.lql, comidas.lql y internet_browser_falla.lql:
+RUN ./scripts/animales.lql
+RUN ./scripts/comidas.lql
+RUN ./scripts/internet_browser_falla.lql
+
+4. Ejecutar el comando METRICS en la consola del Kernel
+
+5. Una vez que finalicen los scripts anteriores, modificar el valor de quantum a 2
+
+6. Ejecutar los scripts misc_1.lql, misc_2.lql y cosas_falla.lql:
+RUN ./scripts/misc_1.lql
+RUN ./scripts/misc_2.lql
+RUN ./scripts/cosas_falla.lql
+
+7. Desconectar la Memoria 3
+
+8. Ejecutar las siguientes request en la consola del Kernel: 
+INSERT POSTRES 63 "Flan"
+INSERT COLORES 326 "Gris"
+SELECT COSAS 332
+SELECT SERIES 89
+
+9. Desconectar la Memoria 2 y reconectar la Memoria 3 asociada al criterio SHC:
+ADD MEMORY 3 TO SHC
+
+10. Ejecutar el comando METRICS en la consola del Kernel
+
+11. Ejecutar el comando JOURNAL en el kernel y esperar al dump de la memtable.
+
+Resultados Esperados:
+1. Inicialmente el Kernel solo debe conocer a la Memoria 3 y luego mediante el proceso de gossiping debe conocer a las demás memorias
+2. Los scripts animales, comidas, misc_1 y misc_2 terminan correctamente, mientras que los internet_browser_falla y cosas_falla terminan debido a una falla.
+3. Todos los pedidos deben ser resueltos normalmente y los SELECT deben dar los valores insertados previamente.
+4. Los pedidos deben ser ejecutados respetando la consistencia de las tablas, siendo ejecutados en la Memoria correcta.
+5. Para las tablas cuya consistencia es SHC, los pedidos deben ser distribuidos por medio de la Key y todos los pedidos sobre la misma Key deben ir a la misma memoria.
+6. Los scripts se planifican correctamente siguiendo un diagrama de estados de forma secuencial respetando el algoritmo Round Robin y el Quantum indicado.
+7. Los scripts son ejecutados en paralelo, respetando el valor que indica el campo de multiprocesamiento

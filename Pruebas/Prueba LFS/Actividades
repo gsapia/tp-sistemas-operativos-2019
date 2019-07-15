@@ -1,0 +1,34 @@
+Actividades:
+1. Ejecutar todos los módulos (iniciando las memorias por la Memoria 1) y esperar a que el sistema sea consistente, es decir, que el Kernel conozca ambas memorias. 
+
+2. Asociar la Memoria 1, 2 y 3 al criterio EC y ejecutar el script compactacion_larga.lql y esperar a que finalice:
+ADD MEMORY 1 TO EC
+ADD MEMORY 2 TO EC
+ADD MEMORY 3 TO EC
+RUN ./scripts/compactacion_larga.lql
+
+3. Ejecutar el comando JOURNAL desde el Kernel.
+
+4. Desconectar el proceso LFS y relevantarlo
+
+5. Ejecutar dentro de la consola del LFS las siguientes request:
+SELECT METALS 198
+SELECT METALS 135 
+SELECT ANIMALS 110
+
+6. Ejecutar dentro de la consola del kernel:
+DESCRIBE
+SELECT METALS 198
+SELECT METALS 135 
+SELECT ANIMALS 110
+
+
+Resultados Esperados:
+La prueba forzará en todo momento JOURNAL de las distintas memorias y dado el bajo tiempo de dump se generarán múltiples archivos. Dadas las condiciones de tiempos se espera que esta prueba esté ejecutando por lo menos 1 minuto. 
+
+1. Inicialmente el Kernel solo debe conocer a la Memoria 1 y luego mediante el proceso de gossiping debe conocer a la Memoria 2.
+2. Se debe verificar en el transcurso de la prueba que se hagan múltiples JOURNAL de las distintas memorias y ver cómo se crean los distintos archivos temporales gracias al proceso dump.
+3. Los archivos temporales creados mediante el proceso de dump deben ser una réplica exacta de lo que se encontraba en la memtable de cada tabla
+4. Verificar que durante el proceso de la prueba se ejecute la compactación y los archivos temporales sean eliminados y compactados.
+5. Al finalizar la ejecución del script, esperar a que vuelva a ejecutarse la compactación. Se debe ejecutar el comando SELECT a disposición del ayudante sobre distintas keys y tablas dando el resultado que se encuentra en compactacion_larga.txt
+6. El LFS debe poder levantarse ante una caída, manteniendo las Keys y sus valores.

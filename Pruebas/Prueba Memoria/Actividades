@@ -1,0 +1,31 @@
+Actividades:
+1. Ejecutar todos los módulos 
+
+2. Asociar la Memoria 1 al criterio SC y ejecutar el script reemplazo1.lql y esperar a que finalice:
+ADD MEMORY 1 TO SC
+RUN ./scripts/reemplazo1.lql
+
+3. Ejecutar el comando JOURNAL desde Memoria.
+
+4. En la consola del LFS ejecutar los siguientes request:
+INSERT POSTRES 819 “Alfajor”
+INSERT POSTRES 178 “Mousse”
+
+5. Ejecutar el script reemplazo2.lql y esperar a que finalice:
+RUN ./scripts/reemplazo2.lql
+
+6. Ejecutar por consola de LFS las siguientes request:
+SELECT POSTRES 100
+SELECT POSTRES 101
+SELECT POSTRES 1888
+SELECT POSTRES 80
+SELECT POSTRES 120
+SELECT POSTRES 999
+
+Resultados Esperados:
+1. Se debe verificar que inicialmente todos los inserts solicitados en reemplazo1.lql se escriben en distintas páginas de la Memoria sin necesidad de ejecutar el algoritmo de reemplazo
+2. Se debe verificar que al correr el script reemplazo2.lql todas las páginas inicialmente tengan el flag de modificado en 0 y una vez que se realizan los inserts todas cambien a 1
+3. Al correr el script reemplazo2.lql las páginas que contienen las Keys 819 y 178 deben ser reemplazadas
+4. Al querer ejecutar el comando que inserta en la Key 999 se debe encontrar que la Memoria esta full, informandole al Kernel de este estado y realizando un JOURNAL forzoso a partir de que este se lo solicite
+5. Cuando se ejecuten los SELECT en la consola del LFS todos los valores devueltos deben estar actualizados
+6. Una vez realizado el JOURNAL la memoria debe estar completamente vacía 

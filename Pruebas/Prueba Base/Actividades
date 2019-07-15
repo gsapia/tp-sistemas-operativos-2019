@@ -1,0 +1,37 @@
+Actividades:
+1. Ejecutar todos los módulos (iniciando las memorias por la Memoria 1) y esperar a que el sistema sea consistente, es decir, que el Kernel conozca ambas memorias. 
+
+2. Asociar la Memoria 1 al criterio SC y ejecutar el script simple_sc.lql y esperar a que finalice: 
+ADD MEMORY 1 TO SC
+RUN ./scripts/simple_sc.lql
+
+3. Asociar la Memoria 1 y Memoria 2 al criterio EC y ejecutar el script simple_ec.lql y esperar a que finalice:
+ADD MEMORY 1 TO EC
+ADD MEMORY 2 TO EC
+RUN ./scripts/simple_ec.lql
+
+4. Asociar la Memoria 1 y Memoria 2 al criterio SHC y ejecutar el script simple_shc.lql y esperar a que finalice:
+ADD MEMORY 1 TO SHC
+ADD MEMORY 2 TO SHC
+RUN ./scripts/simple_shc.lql
+
+5. Ejecutar el comando JOURNAL en el kernel y esperar al dump de la memtable.
+
+Resultados Esperados:
+1.Inicialmente el Kernel solo debe conocer a la Memoria 1 y luego mediante el pr oceso de gossiping debe conocer a la Memoria 2.
+2. Todos los pedidos deben ser resueltos normalmente y los SELECT deben dar los valores insertados previamente.
+3. Los pedidos deben ser ejecutados de manera alternada entre las dos memorias. Uno de los primeros dos SELECT debe fallar ya que el dato no se encuentra en disco y de los subsiguientes dos deben dar valores diferentes (cumpliendo la lógica de Eventual Consistency).
+4. Para las tablas cuya consistencia es SHC, los pedidos deben ser distribuidos por medio de la Key y todos los pedidos sobre la misma Key deben ir a la misma memoria.
+5. Verificar que se creen los archivos temporales cumpliendo:
+	El archivo temporal de la tabla “COLORS” debe tener 2 registros.
+	El archivo temporal de la tabla “MARCAS” debe tener 1 registro.
+	El archivo temporal de la tabla “CELULARES” debe tener 2 registros.
+6. Las Keys deben tener los siguientes valores:
+
+Tabla                  Key       Valor
+COLORS            1           Black
+COLORS            2           Red
+MARCAS            1          Adidas
+CELULARES     1          iPhone
+CELULARES     2          Android
+

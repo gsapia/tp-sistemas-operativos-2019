@@ -1,0 +1,43 @@
+Actividades:
+1. Ejecutar todos los módulos (iniciando las memorias por la Memoria 1) y esperar a que el sistema sea consistente, es decir, que el Kernel conozca a todas las memorias.
+
+2. Asociar la Memoria 5 al criterio SC, las Memorias 1, 2, 3 y 4 al criterio SHC y las Memorias 2, 3 y 5 al criterio EC:
+ADD MEMORY 5 TO SC
+ADD MEMORY 1 TO SHC
+ADD MEMORY 2 TO SHC
+ADD MEMORY 3 TO SHC
+ADD MEMORY 4 TO SHC
+ADD MEMORY 2 TO EC
+ADD MEMORY 3 TO EC
+ADD MEMORY 5 TO EC
+
+3. Ejecutar los scripts cities_countries.lql, games_computer.lql y internet_browser_falla.lql:
+RUN ./scripts/cities_countries.lql
+RUN ./scripts/games_computer.lql
+RUN ./scripts/internet_browser_falla.lql
+
+4. Antes de que finalicen los scripts anteriores, modificar el valor del quantum a 3
+
+5. Ejecutar los scripts library_study.lql, nintendo_playstation.lql y cosas_falla.lql:
+RUN ./scripts/library_study.lql
+RUN ./scripts/nintendo_playstation.lql
+RUN ./scripts/cosas_falla.lql
+
+6. Desconectar la Memoria 4 y reconectarla al criterio EC:
+ADD MEMORY 4 TO EC
+
+7. Desconectar la Memoria 2 y reconectarla asociada al criterio SHC:
+ADD MEMORY 2 TO SHC
+
+8. Ejecutar el comando METRICS en la consola del Kernel
+
+9. Ejecutar el comando JOURNAL en el kernel y esperar al dump de la memtable.
+
+Resultados Esperados:
+1. Inicialmente el Kernel solo debe conocer a la Memoria 3 y luego mediante el proceso de gossiping debe conocer a las demás memorias
+2. Todos los scripts finalizan correctamente
+3. Todos los pedidos deben ser resueltos normalmente y los SELECT deben dar los valores insertados previamente.
+4. Los pedidos deben ser ejecutados respetando la consistencia de las tablas, siendo ejecutados en la Memoria correcta.
+5. Para las tablas cuya consistencia es SHC, los pedidos deben ser distribuidos por medio de la Key y todos los pedidos sobre la misma Key deben ir a la misma memoria.
+6. Los scripts se planifican correctamente siguiendo un diagrama de estados de forma secuencial respetando el algoritmo Round Robin y el Quantum indicado.
+7. Los scripts son ejecutados en paralelo, respetando el valor que indica el campo de multiprocesamiento
