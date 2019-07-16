@@ -149,13 +149,13 @@ void gossip(){
 
 			char* memorias_conocidas = string_new();
 			void iterador(t_memoria* memoria){
-				string_append_with_format(&memorias_conocidas, "%d (%s:%d) ", memoria->numero, memoria->IP, memoria->puerto);
+				string_append_with_format(&memorias_conocidas, "%d ", memoria->numero);
 			}
 			list_iterate(pool_memorias, (void (*)(void*)) iterador);
 			string_trim(&memorias_conocidas);
 			pthread_mutex_unlock(&mutex_pool_memorias);
 
-			log_trace(logger, "Tabla de memorias actualizada. Memorias conocidas: %s", memorias_conocidas);
+			log_info(logger, "Tabla de memorias actualizada. Memorias conocidas: %s", memorias_conocidas);
 		}
 		sem_post(&primer_gossip_hecho);
 		usleep(config.retardo_gossiping * 1000);

@@ -13,7 +13,7 @@ int conectar(char* ip, uint16_t puerto){
 
 	int socket_cliente = socket(AF_INET, SOCK_STREAM, 0);//Pedimos un socket enviandole parametros que especifica que utilizamos protocolo TCP/ IP
 	if(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
-		log_trace(logger, "No se pudo conectar con el servidor (Memoria).");
+		log_warning(logger, "No se pudo conectar con el servidor (Memoria).");
 		return 0;
 	}
 

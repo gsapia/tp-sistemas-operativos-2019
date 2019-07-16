@@ -52,6 +52,8 @@ t_resultado selects(char* nombreTabla, u_int16_t key){
 			return respuesta;
 		}
 
+		log_trace(logger, "Enviando SELECT %s %d a la memoria %d", nombreTabla, key, memoria->numero);
+
 		resultado = selectAMemoria(paquete, memoria, &error_memoria);
 
 		if(error_memoria){
@@ -119,6 +121,8 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 			respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
 			return respuesta;
 		}
+
+		log_trace(logger, "Enviando INSERT %s %d %s a la memoria %d", nombreTabla, key, valor, memoria->numero);
 
 		resultado = insertAMemoria(paquete, memoria, &error_memoria);
 		if(error_memoria){

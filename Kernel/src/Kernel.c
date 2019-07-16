@@ -517,10 +517,10 @@ void cortoPlazo(){
 
 int main(void) {
 	logger = log_create ("Kernel.log", "Kernel", 1 ,LOG_LEVEL_TRACE);
-	log_info (logger, "Hola soy Kernel \n");
+	log_info(logger, "Hola soy Kernel \n");
 
 	leerConfig();
-	log_info (logger, "Pude leer config ! \n");
+	log_info(logger, "Pude leer config ! \n");
 
 	initMetricas();
 
