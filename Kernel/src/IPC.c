@@ -175,3 +175,11 @@ enum estados_journal journalMemoria(t_memoria* memoria){
 	close(socket_cliente);
 	return respuesta;
 }
+
+enum estados_drop dropTabla (struct_drop paquete, t_memoria* memoria){
+	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	enviar_drop(socket_cliente, paquete);
+	enum estados_drop respuesta = recibir_respuesta_drop(socket_cliente);
+	close(socket_cliente);
+	return respuesta;
+}

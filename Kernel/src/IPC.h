@@ -27,5 +27,6 @@ enum estados_create createAMemoria(struct_create paquete, t_memoria* memoria);
 struct_describe_respuesta describeAMemoria(struct_describe paquete, t_memoria * memoria);
 struct_describe_global_respuesta describeGlobalAMemoria(t_memoria* memoria);
 enum estados_journal journalMemoria(t_memoria* memoria);
+enum estados_drop dropTabla (struct_drop paquete, t_memoria* memoria);
 
 #endif /* IPC_H_ */
