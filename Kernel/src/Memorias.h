@@ -30,6 +30,9 @@ t_memoria* getMemoria(int numero);
 
 enum consistencias obtener_consistencia(char* nombre_tabla);
 
+void eliminar_memoria(t_memoria * memoria);
+
+
 bool existeTabla(char* nombre_tabla);
 t_memoria* obtener_memoria_random_del_pool();
 t_memoria* obtener_memoria_segun_consistencia(enum consistencias consistencia, uint16_t key);

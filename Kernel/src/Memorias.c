@@ -1,6 +1,23 @@
 #include "Memorias.h"
 #include "IPC.h"
 
+void eliminar_memoria(t_memoria * memoria){
+	bool son_iguales(t_memoria* otra_memoria){
+		return otra_memoria->numero == memoria->numero;
+	}
+	void limpiador(t_memoria* mem){
+		//free(mem->IP);
+		free(mem);
+	}
+	pthread_mutex_lock(&mutex_pool_memorias);
+	for(int i = 0; i < 3; ++i)
+		list_remove_and_destroy_by_condition(listasMemorias[i], (_Bool(*)(void*))son_iguales, (void(*)(void*)) limpiador);
+	list_remove_and_destroy_by_condition(pool_memorias, (_Bool(*)(void*))son_iguales, (void(*)(void*)) limpiador);
+	pthread_mutex_unlock(&mutex_pool_memorias);
+	log_trace(logger, "Memoria %d eliminada.", memoria->numero);
+	free(memoria->IP);
+	free(memoria);
+}
 
 t_memoria* getMemoria(int numero){
 	pthread_mutex_lock(&mutex_pool_memorias);
@@ -143,5 +160,4 @@ void gossip(){
 		sem_post(&primer_gossip_hecho);
 		usleep(config.retardo_gossiping * 1000);
 	}
-
 }

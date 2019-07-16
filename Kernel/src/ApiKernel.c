@@ -7,11 +7,11 @@
 #include "serializacion.h"
 
 bool journaling (t_memoria* memoria){
-	enum estados_journal respuesta = journalMemoria(memoria);
-	for (int i = 0; respuesta != ESTADO_JOURNAL_OK && i < 3; i++){
-		log_trace(logger, "No pudimos hacer journal con la memoria %d, reintentando", memoria->numero);
-		sleep(1);
-		respuesta = journalMemoria(memoria);
+	bool error_memoria = false;
+	enum estados_journal respuesta = journalMemoria(memoria, &error_memoria);
+	if(error_memoria){
+		log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida.", memoria->numero);
+		return false;
 	}
 	if(respuesta != ESTADO_JOURNAL_OK){
 		log_warning(logger, "No pudimos hacer journaling con la memoria %d.", memoria->numero);
@@ -24,26 +24,41 @@ bool journaling (t_memoria* memoria){
 t_resultado selects(char* nombreTabla, u_int16_t key){
 	unsigned long long inicio = getTimestamp(); // METRICAS
 
-	t_resultado respuesta;
+	t_resultado respuesta = { .falla = false };
+
 	if(!existeTabla(nombreTabla)){
-		respuesta.falla = true;
-		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
-		return respuesta;
+			respuesta.falla = true;
+			respuesta.resultado = strdup("ERROR: Esa tabla no existe");
+			return respuesta;
 	}
+
 	enum consistencias consistencia = obtener_consistencia(nombreTabla);
-	t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, key);
-	if(!memoria){
-		respuesta.falla = true;
-		respuesta.resultado = strdup("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
-		return respuesta;
-	}
-	respuesta.falla = false;
 
 	struct_select paquete;
 	paquete.key = key;
 	paquete.nombreTabla = nombreTabla;
 
-	struct_select_respuesta resultado = selectAMemoria(paquete, memoria);
+	struct_select_respuesta resultado;
+
+	t_memoria * memoria;
+	bool error_memoria;
+
+	do {
+		error_memoria = false;
+		memoria = obtener_memoria_segun_consistencia(consistencia, key);
+		if(!memoria){
+			respuesta.falla = true;
+			respuesta.resultado = strdup("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+			return respuesta;
+		}
+
+		resultado = selectAMemoria(paquete, memoria, &error_memoria);
+
+		if(error_memoria){
+			log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida, reintentamos con otra.", memoria->numero);
+			eliminar_memoria(memoria);
+		}
+	} while (error_memoria);
 
 	switch(resultado.estado) {
 	case ESTADO_SELECT_OK:
@@ -83,13 +98,7 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
 		return respuesta;
 	}
-	enum consistencias consistencia = obtener_consistencia(nombreTabla);
-	t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, key);
-	if(!memoria){
-		respuesta.falla = true;
-		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
-		return respuesta;
-	}
+
 	respuesta.falla = false;
 
 	struct_insert paquete;
@@ -97,7 +106,27 @@ t_resultado insert(char* nombreTabla, u_int16_t key, char* valor){
 	paquete.key = key;
 	paquete.valor = valor;
 
-	enum estados_insert resultado = insertAMemoria(paquete, memoria);
+	enum consistencias consistencia = obtener_consistencia(nombreTabla);
+
+	t_memoria * memoria;
+	enum estados_insert resultado;
+	bool error_memoria;
+	do {
+		error_memoria = false;
+		memoria = obtener_memoria_segun_consistencia(consistencia, key);
+		if(!memoria){
+			respuesta.falla = true;
+			respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+			return respuesta;
+		}
+
+		resultado = insertAMemoria(paquete, memoria, &error_memoria);
+		if(error_memoria){
+			log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida, reintentamos con otra.", memoria->numero);
+			eliminar_memoria(memoria);
+		}
+	} while (error_memoria);
+
 
 	switch (resultado) {
 	case ESTADO_INSERT_OK:
@@ -134,10 +163,26 @@ t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int
 	paquete.particiones = cantidadParticiones;
 	paquete.tiempoCompactacion = compactionTime;
 
-	t_memoria* memoria = obtener_memoria_random_del_pool();
+	enum estados_create resultado;
+	bool error_memoria;
+	do {
+		error_memoria = false;
+		t_memoria* memoria = obtener_memoria_random_del_pool();
 
-	enum estados_create resultado = createAMemoria(paquete, memoria);
-	free(memoria);
+		if(!memoria){
+			respuesta.falla = true;
+			respuesta.resultado = strdup ("ERROR: No hay memorias conocidas.");
+			return respuesta;
+		}
+
+		resultado = createAMemoria(paquete, memoria, &error_memoria);
+		if(error_memoria){
+			log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida, reintentamos con otra.", memoria->numero);
+			eliminar_memoria(memoria);
+		}
+		else
+			free(memoria);
+	} while (error_memoria);
 
 	struct_describe_respuesta metadatos = { .consistencia = tipoConsistencia, .particiones = cantidadParticiones, .tiempo_compactacion = compactionTime };
 
@@ -164,9 +209,27 @@ t_resultado describe(char* nombreTabla){
 	struct_describe paquete;
 	paquete.nombreTabla = nombreTabla;
 
-	t_memoria* memoria = obtener_memoria_random_del_pool();
+	struct_describe_respuesta resultado;
+	bool error_memoria;
+	do {
+		error_memoria = false;
+		t_memoria* memoria = obtener_memoria_random_del_pool();
 
-	struct_describe_respuesta resultado = describeAMemoria(paquete, memoria);
+		if(!memoria){
+			respuesta.falla = true;
+			respuesta.resultado = strdup ("ERROR: No hay memorias conocidas.");
+			return respuesta;
+		}
+
+		resultado = describeAMemoria(paquete, memoria, &error_memoria);
+
+		if(error_memoria){
+			log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida, reintentamos con otra.", memoria->numero);
+			eliminar_memoria(memoria);
+		}
+		else
+			free(memoria);
+	} while (error_memoria);
 
 	pthread_mutex_lock(&mutex_metadata);
 	addMetadata(nombreTabla, &resultado); // Lo agregamos a la metadata conocida.
@@ -183,7 +246,6 @@ t_resultado describe(char* nombreTabla){
 		respuesta.resultado = strdup("ERROR: Ocurrio un error desconocido.");
 	}
 
-	free(memoria);
 	return respuesta;
 }
 
@@ -206,30 +268,39 @@ t_resultado describe_global(){
 }
 
 t_resultado drop(char* nombreTabla){
-	t_resultado respuesta;
+	t_resultado respuesta = { .falla = false };
 	struct_drop paquete;
 	paquete.nombreTabla = nombreTabla;
 
 	if(!existeTabla(nombreTabla)){
-			respuesta.falla = true;
-			respuesta.resultado = strdup("ERROR: Esa tabla no existe");
-			return respuesta;
-		}
-	enum consistencias consistencia = obtener_consistencia(nombreTabla);
-
-	t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, 0);
-
-	if(!memoria){
 		respuesta.falla = true;
-		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+		respuesta.resultado = strdup("ERROR: Esa tabla no existe");
 		return respuesta;
 	}
+	enum consistencias consistencia = obtener_consistencia(nombreTabla);
 
-	respuesta.falla = false;
+	enum estados_drop respuestaDrop;
+	bool error_memoria;
+	do {
+		error_memoria = false;
+		t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, 0);
 
-	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
+		if(!memoria){
+			respuesta.falla = true;
+			respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+			return respuesta;
+		}
 
-	enum estados_drop respuestaDrop = dropTabla(paquete, memoria);
+		respuestaDrop = dropTabla(paquete, memoria, &error_memoria);
+
+		if(error_memoria){
+			log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida, reintentamos con otra.", memoria->numero);
+			eliminar_memoria(memoria);
+		}
+		else
+			free(memoria);
+	} while (error_memoria);
+
 	if (respuestaDrop != ESTADO_DROP_OK){
 		log_warning(logger, "No pudimos hacer drop con la tabla %s.", nombreTabla);
 		respuesta.falla = true;

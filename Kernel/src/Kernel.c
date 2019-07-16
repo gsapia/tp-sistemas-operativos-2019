@@ -1,9 +1,13 @@
+#include <sys/inotify.h>
+
 #include "Kernel.h"
 #include "ApiKernel.h"
 #include "IPC.h"
 #include "Memorias.h"
 #include "Metricas.h"
 #include "Misc.h"
+
+#define CONFIG_PATH "Kernel.config"
 
 sem_t new;
 sem_t ready;
@@ -34,16 +38,40 @@ t_resultado apiKernel(char*);
 
 //Levanto la configuracion
 t_config* configk;
-void leerConfig(){
-	configk = config_create("Kernel.config");
+void actualizar_config(){
+	int fd = inotify_init();
+	inotify_add_watch(fd, CONFIG_PATH, IN_MODIFY);
+	size_t tam = sizeof(struct inotify_event) + strlen(CONFIG_PATH) + 1;
+	char buffer[tam];
 
-	config.ip_memoria = config_get_string_value(configk,"IP_MEMORIA");
+	while(read(fd, buffer, tam)){
+		configk = config_create(CONFIG_PATH);
+		config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
+		config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
+		config.quantum = config_get_int_value(configk,"QUANTUM");
+		config_destroy(configk);
+
+		log_trace(logger, "Archivo de configuracion modificado, nuevos valores: RETARDO_CICLICO = %d, REFRESH_METADATA = %d, QUANTUM = %d",
+				config.retardo_ciclico, config.refresh_metadata, config.quantum);
+	}
+}
+void leerConfig(){
+	configk = config_create(CONFIG_PATH);
+	config.ip_memoria = strdup(config_get_string_value(configk,"IP_MEMORIA"));
 	config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
 	config.quantum = config_get_int_value(configk,"QUANTUM");
 	config.multiprocesamiento = config_get_int_value(configk,"MULTIPROCESAMIENTO");
 	config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
 	config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
 	config.retardo_gossiping = config_get_int_value(configk,"RETARDO_GOSSIPING");
+	config_destroy(configk);
+
+	pthread_t hiloConfig;
+	if (pthread_create(&hiloConfig, NULL, (void*)actualizar_config, NULL)) {
+		log_error(logger, "Hilo config: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+	pthread_detach(hiloConfig);
 }
 
 void aniadirScript(t_script *script){
@@ -439,7 +467,7 @@ void ejecutarScript(t_script* script){
 		char* request = queue_pop(requests);
 		t_resultado resultado = apiKernel(request);
 		if(resultado.falla){
-			log_warning(logger, "La request %s fallo con resultado: %s. Abortando la ejecucion del script.", request, resultado.resultado);
+			log_warning(logger, "La request %s fallo con resultado: %s. Abortando la ejecucion del script %s.", request, resultado.resultado, script->nombre);
 			fallo = true;
 		}
 		else{

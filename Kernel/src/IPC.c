@@ -12,9 +12,9 @@ int conectar(char* ip, uint16_t puerto){
 	//log_trace(logger, "Conectando con Memoria en %s:%d",config.ip_memoria,config.puerto_memoria);
 
 	int socket_cliente = socket(AF_INET, SOCK_STREAM, 0);//Pedimos un socket enviandole parametros que especifica que utilizamos protocolo TCP/ IP
-	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
-		log_trace(logger, "No se pudo conectar con el servidor (Memoria). Reintentando en 5 segundos."); // TODO: Mejorar esto, limitar los reintentos
-		sleep(5);
+	if(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
+		log_trace(logger, "No se pudo conectar con el servidor (Memoria).");
+		return 0;
 	}
 
 
@@ -59,10 +59,25 @@ void addMetadata(char* nombre_tabla, struct_describe_respuesta* describe){
 }
 
 void refreshMetadata(){
-	t_memoria* memoria = obtener_memoria_random_del_pool();
-	log_trace(logger, "Actualizando metadata de tablas a traves de la memoria %d", memoria->numero);
+	struct_describe_global_respuesta respuesta;
+	bool error_memoria;
+	do {
+		error_memoria = false;
+		t_memoria* memoria = obtener_memoria_random_del_pool();
+		if(!memoria){
+			log_warning(logger, "ERROR: No hay memorias conocidas.");
+		}
+		log_trace(logger, "Actualizando metadata de tablas a traves de la memoria %d", memoria->numero);
 
-	struct_describe_global_respuesta respuesta = describeGlobalAMemoria(memoria);
+		respuesta = describeGlobalAMemoria(memoria, &error_memoria);
+
+		if(error_memoria){
+			log_warning(logger, "ERROR: No nos pudimos conectar con la memoria %d. Asumiendo entonces que esta caida, reintentamos con otra.", memoria->numero);
+			eliminar_memoria(memoria);
+		}
+		else
+			free(memoria);
+	} while (error_memoria);
 
 	if(respuesta.estado == ESTADO_DESCRIBE_OK){
 		if(!metadata)
@@ -77,7 +92,6 @@ void refreshMetadata(){
 		log_warning(logger, "Hubo un error al pedir la metadata de las tablas.");
 	}
 	dictionary_destroy_and_destroy_elements(respuesta.describes, free);
-	free(memoria);
 }
 
 void updateMetadata(){
@@ -125,61 +139,93 @@ void initCliente(){
 } //End Cliente
 
 
-// TODO: En las siguientes funciones evaluar que pasa si no esta online esa memoria:
-struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria){
-	log_debug(logger, "Enviando request a la memoria %d (%s:%d)", memoria->numero, memoria->IP, memoria->puerto);
+struct_select_respuesta selectAMemoria(struct_select paquete, t_memoria* memoria, bool* error_memoria){
+	struct_select_respuesta respuesta;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 	enviar_select(socket_cliente, paquete);
-	struct_select_respuesta respuesta = recibir_registro(socket_cliente);
+	respuesta = recibir_registro(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
-enum estados_insert insertAMemoria(struct_insert paquete, t_memoria* memoria){
-	log_debug(logger, "Enviando request a la memoria %d (%s:%d)", memoria->numero, memoria->IP, memoria->puerto);
+enum estados_insert insertAMemoria(struct_insert paquete, t_memoria* memoria, bool* error_memoria){
+	enum estados_insert respuesta = 0;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 	enviar_insert(socket_cliente, paquete);
-	enum estados_insert respuesta = recibir_respuesta_insert(socket_cliente);
+	respuesta = recibir_respuesta_insert(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
-enum estados_create createAMemoria(struct_create paquete, t_memoria* memoria){
+enum estados_create createAMemoria(struct_create paquete, t_memoria* memoria, bool* error_memoria){
+	enum estados_create respuesta = 0;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 	enviar_create(socket_cliente, paquete);
-	enum estados_create respuesta = recibir_respuesta_create(socket_cliente);
+	respuesta = recibir_respuesta_create(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
-struct_describe_respuesta describeAMemoria(struct_describe paquete, t_memoria * memoria){
+struct_describe_respuesta describeAMemoria(struct_describe paquete, t_memoria * memoria, bool* error_memoria){
+	struct_describe_respuesta respuesta;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 
 	enviar_describe(socket_cliente, paquete);
-	struct_describe_respuesta respuesta = recibir_respuesta_describe(socket_cliente);
+	respuesta = recibir_respuesta_describe(socket_cliente);
 
 	close(socket_cliente);
 	return respuesta;
 }
-struct_describe_global_respuesta describeGlobalAMemoria(t_memoria* memoria){
+struct_describe_global_respuesta describeGlobalAMemoria(t_memoria* memoria, bool* error_memoria){
+	struct_describe_global_respuesta respuesta;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 
 	const uint8_t cod_op = DESCRIBE_GLOBAL;
 	send(socket_cliente, &cod_op, sizeof(cod_op), 0);
 
-	struct_describe_global_respuesta respuesta = recibir_respuesta_describe_global(socket_cliente);
+	respuesta = recibir_respuesta_describe_global(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
-enum estados_journal journalMemoria(t_memoria* memoria){
+enum estados_journal journalMemoria(t_memoria* memoria, bool* error_memoria){
+	enum estados_journal respuesta = 0;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 	enviar_journal(socket_cliente);
-	enum estados_journal respuesta = recibir_respuesta_journal(socket_cliente);
+	respuesta = recibir_respuesta_journal(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
 
-enum estados_drop dropTabla (struct_drop paquete, t_memoria* memoria){
+enum estados_drop dropTabla (struct_drop paquete, t_memoria* memoria, bool* error_memoria){
+	enum estados_drop respuesta = 0;
 	int socket_cliente = conectar(memoria->IP, memoria->puerto);
+	if(!socket_cliente){
+		*error_memoria = true;
+		return respuesta;
+	}
 	enviar_drop(socket_cliente, paquete);
-	enum estados_drop respuesta = recibir_respuesta_drop(socket_cliente);
+	respuesta = recibir_respuesta_drop(socket_cliente);
 	close(socket_cliente);
 	return respuesta;
 }
