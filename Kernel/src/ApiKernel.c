@@ -206,10 +206,36 @@ t_resultado describe_global(){
 }
 
 t_resultado drop(char* nombreTabla){
-	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
 	t_resultado respuesta;
+	struct_drop paquete;
+	paquete.nombreTabla = nombreTabla;
+
+	if(!existeTabla(nombreTabla)){
+			respuesta.falla = true;
+			respuesta.resultado = strdup("ERROR: Esa tabla no existe");
+			return respuesta;
+		}
+	enum consistencias consistencia = obtener_consistencia(nombreTabla);
+
+	t_memoria * memoria = obtener_memoria_segun_consistencia(consistencia, 0);
+
+	if(!memoria){
+		respuesta.falla = true;
+		respuesta.resultado = strdup ("ERROR: No tenemos una memoria asignada para ese tipo de consistencia");
+		return respuesta;
+	}
+
 	respuesta.falla = false;
-	respuesta.resultado = string_from_format("Elegiste DROP");
+
+	log_debug(logger, "DROP: Recibi Tabla:%s", nombreTabla);
+
+	enum estados_drop respuestaDrop = dropTabla(paquete, memoria);
+	if (respuestaDrop != ESTADO_DROP_OK){
+		log_warning(logger, "No pudimos hacer drop con la tabla %s.", nombreTabla);
+		respuesta.falla = true;
+	}
+
+	respuesta.resultado = string_from_format("DROP realizado correctamente.");
 	return respuesta;
 }
 
