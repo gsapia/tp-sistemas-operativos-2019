@@ -88,4 +88,18 @@ void cargarUltimoBloqueSELECT(char* bloque, t_list* lista, int size_lectura, cha
 
 //Divide a linea y la ingresa a un struct datos_a_compactar, para agregarlo a lista.
 void cargarLineaSELECT(char** linea, t_list* lista, u_int16_t key);
+
+//Genera el hilo de compactacion para las tablas que ya existiecen.
+void crearCompactacionTablasExistentes();
+
+//Se devuelve el tiempo de compactacion de un archivo Metadata
+int obtenerTiempoCompactacion(FILE* metadata);
+
+//Crea los Mutex de las tablas ya existentes
+void crearMutexTablasExistentes();
+
+//Crea los mutex necesarios
+void crearMutex();
+
+
 #endif /* LFS_H_ */

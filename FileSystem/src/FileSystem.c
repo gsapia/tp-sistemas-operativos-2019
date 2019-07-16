@@ -24,8 +24,47 @@ void *fileSystem() {
 	crearBitMapFS();
 	crearTables();
 	crearBloquesDatos();
+	asignarBloques();
 	log_trace(logger, "FileSystem ha creado las carpetas necesarias.");
 	return 0;
+}
+
+void asignarBloques(){
+	char* path = string_from_format("%sTable/", puntoMontaje);
+	DIR* directorio = opendir(path);
+	struct dirent* carpeta = readdir(directorio);
+
+	while(carpeta){
+		if(esCarpetaValida(carpeta->d_name)){
+			char* path_tabla = string_from_format("%s%s", path, carpeta->d_name);
+			asignarBloqueABin(path_tabla);
+			free(path_tabla);
+		}
+		carpeta = readdir(directorio);
+	}
+	closedir(directorio);
+	free(path);
+}
+
+void asignarBloqueABin(char* path_tabla){
+	DIR* directorio = opendir(path_tabla);
+	struct dirent* bin = readdir(directorio);
+	while(bin){
+		if(esArchivoValido(bin->d_name)){
+			char* aux = string_from_format("%s/%s",path_tabla, bin->d_name);
+			FILE* bin_file = fopen(aux, "r");
+			char** bloques = obtenerBloquesBin(bin_file);
+			int i = 0;
+			while(bloques[i]){
+				int bloque = stringToLong(bloques[i]);
+//				log_trace(logger, "Asigno el bloque %d", bloque);
+				bitarray_set_bit(bitarray, bloque);
+				i++;
+			}
+		}
+		bin = readdir(directorio);
+	}
+	closedir(directorio);
 }
 
 void crearFicheroPadre(){

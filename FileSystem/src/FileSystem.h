@@ -20,6 +20,12 @@ void crearTables();
 // Crea la carpeta "Bloques/" dentro de la carpeta del punto de montaje
 void crearBloquesDatos();
 
+//Asigna los bloques a los .bin de las tablas que ya estaban creadas.
+void asignarBloques();
+
+//Asigna bloques a todos los .bin de "path_tabla"
+void asignarBloqueABin(char* path_tabla);
+
 //Crea los N cantidad de bloques, dados por el .config
 void crearBloques(char* path);
 

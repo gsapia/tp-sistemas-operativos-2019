@@ -7,7 +7,6 @@ void *compactacion(argumentos_compactacion *args){
 	int tiempo = args->compactation_time/1000;
 	free(args->nombreTabla); free(args);
 	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
-
 	sleep(tiempo);
 	DIR* directorio = opendir(path);
 	while(directorio){

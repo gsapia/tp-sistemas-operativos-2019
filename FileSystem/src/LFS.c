@@ -336,7 +336,9 @@ enum estados_insert insert(char* nombreTabla, u_int16_t key, char* valor, uint64
 
 	if(existeTabla(nombreTabla)){
 		if(sizeof(timeStamp) <= tamValue){
+			pthread_mutex_lock(mutex_memTable);
 			agregarAMemTable(nombreTabla, key, valor, timeStamp);
+			pthread_mutex_unlock(mutex_memTable);
 			log_debug(logger, "INSERT: Tabla: %s, Key: %d, Valor: %s, Timestamp: %llu", nombreTabla, key, valor, timeStamp);
 			return ESTADO_INSERT_OK;
 		}else{
@@ -816,3 +818,90 @@ t_registro* creadorRegistroPuntero(u_int16_t key, char* nombreTabla, uint64_t ti
 	return retornado;
 }
 
+bool esCarpetaValida(char* nombreCarpeta){
+	return strcmp(nombreCarpeta,".") && strcmp(nombreCarpeta,"..");
+}
+
+void crearCompactacionTablasExistentes(){
+	char* path = string_from_format("%sTable/", puntoMontaje);
+	DIR* directorio = opendir(path);
+	struct dirent* carpeta = readdir(directorio);
+
+	while(carpeta){
+		if(esCarpetaValida(carpeta->d_name)){
+			FILE* metadata = obtenerMetaDataLectura(carpeta->d_name);
+
+			int compactionTime = obtenerTiempoCompactacion(metadata);
+			fclose(metadata);
+			argumentos_compactacion *args = malloc(sizeof(argumentos_compactacion));
+			args->compactation_time = compactionTime;
+			args->nombreTabla = string_from_format("%s", carpeta->d_name);
+
+			pthread_attr_t attr;
+			pthread_t hiloCompactacion;
+
+			pthread_attr_init(&attr);
+			pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+			if(pthread_create(&hiloCompactacion, &attr, compactacion, args)){
+				log_error(logger, "Hilo compactacion: Error - pthread_create()");
+				exit(EXIT_FAILURE);
+			}
+
+			pthread_attr_destroy(&attr);
+
+		}
+		carpeta = readdir(directorio);
+	}
+	closedir(directorio);
+	free(path);
+}
+
+int obtenerTiempoCompactacion(FILE* metadata){
+	char* buffer = NULL; size_t buffer_size = 0;
+	int tiempo_compactacion;
+	if(getline(&buffer, &buffer_size, metadata) != -1){
+	free(buffer);
+	buffer=NULL;
+	}
+	if(getline(&buffer, &buffer_size, metadata) != -1){
+	free(buffer);
+	buffer=NULL;
+	}
+	if(getline(&buffer, &buffer_size, metadata) != -1){
+	char** linea = string_split(buffer, "=");
+	tiempo_compactacion = stringToLong(linea[1]);
+	free(buffer);
+	free(linea[0]);
+	free(linea[1]);
+	free(linea);
+	}
+	return tiempo_compactacion;
+}
+
+void crearMutexTablasExistentes(){
+	char* path = string_from_format("%sTable/", puntoMontaje);
+	DIR* directorio = opendir(path);
+	struct dirent* carpeta = readdir(directorio);
+
+	while(carpeta){
+		if(esCarpetaValida(carpeta->d_name)){
+			pthread_mutex_t * mutex = malloc(sizeof(pthread_mutex_t));
+			if(pthread_mutex_init(mutex, NULL) != 0){
+				log_error(logger, "Mutex de tabla %s: Error - pthread_mutex_init()", carpeta->d_name);
+			}
+
+			dictionary_put(diccionario, carpeta->d_name, mutex);
+
+		}
+		carpeta = readdir(directorio);
+	}
+	closedir(directorio);
+	free(path);
+}
+
+void crearMutex(){
+	mutex_memTable = malloc(sizeof(pthread_mutex_t));
+	if(pthread_mutex_init(mutex_memTable, NULL) != 0){
+		log_error(logger, "Mutex de MemTable: Error - pthread_mutex_init()");
+	}
+}

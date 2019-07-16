@@ -1,6 +1,7 @@
 #include "LFS.h"
 
 int main(void){
+	crearMutex();
 	memTable = list_create(); cantDumps = 0;
 	diccionario = dictionary_create();
 	config = leer_config();
@@ -30,6 +31,8 @@ int main(void){
 		exit(EXIT_FAILURE);
 	}
 	pthread_join(hiloFS,NULL);
+	crearMutexTablasExistentes();
+	crearCompactacionTablasExistentes();
 
 	//Api Lissandra
 	pthread_t hiloConsola;

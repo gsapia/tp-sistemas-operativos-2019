@@ -41,6 +41,7 @@ int blockSize;
 int blocks;
 t_bitarray* bitarray;
 t_dictionary* diccionario;
+pthread_mutex_t* mutex_memTable;
 
 typedef struct{
 	uint16_t puerto_escucha;
