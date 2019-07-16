@@ -137,7 +137,7 @@ struct_create recibir_create(int socket);
 
 struct_describe recibir_describe(int socket);
 
-struct_describe recibir_drop(int socket);
+struct_drop recibir_drop(int socket);
 
 void enviar_select(int socket, struct_select paquete);
 
@@ -156,7 +156,7 @@ void enviar_create(int socket, struct_create paquete);
 
 void enviar_describe(int socket, struct_describe paquete);
 
-void enviar_drop(int socket, struct_describe paquete);
+void enviar_drop(int socket, struct_drop paquete);
 
 void enviar_journal(int socket);
 

@@ -747,7 +747,7 @@ t_list* recibir_tabla_gossiping(int socket){
 		if(!strcmp(memoria->IP, "0.0.0.0")){
 			struct sockaddr_in addr;
 			socklen_t addr_size = sizeof(struct sockaddr_in);
-			int res = getpeername(socket, (struct sockaddr *)&addr, &addr_size);
+			getpeername(socket, (struct sockaddr *)&addr, &addr_size);
 			memoria->IP = strdup(inet_ntoa(addr.sin_addr));
 		}
 		//printf("IP del otro %s", memoria->IP);
