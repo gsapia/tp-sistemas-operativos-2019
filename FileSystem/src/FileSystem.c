@@ -166,6 +166,12 @@ char* encontreTabla(char* nombreTabla, DIR* path_buscado){
 	}else{return NULL;}
 }
 
+void liberador_registros(t_registro* registro){
+	free(registro->nombre_tabla);
+	free(registro->value);
+	free(registro);
+}
+
 // Va fijandose tabla por tabla, dentro de "Table/", si es necesario el dumpeo de datos
 void dumpDeTablas(t_list *memTableAux){
 	t_list* datosParaDump = NULL;
@@ -192,7 +198,7 @@ void dumpDeTablas(t_list *memTableAux){
 		}
 		carpeta = readdir(path_buscado);
 	}
-	list_destroy(memTableAux);
+	list_destroy_and_destroy_elements(memTableAux, liberador_registros);
 	if(flag==1){
 		cantDumps++;
 	}
@@ -266,9 +272,6 @@ char* lineasEntera(t_list* lista){
 		string_append(&linea_return, linea_list);
 
 		free(linea_list);
-		free(registro->nombre_tabla);
-		free(registro->value);
-		free(registro);
 	}
 	return linea_return;
 }
