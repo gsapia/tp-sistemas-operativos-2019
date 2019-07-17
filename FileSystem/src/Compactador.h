@@ -1,6 +1,5 @@
 #ifndef COMPACTADOR_H_
 #define COMPACTADOR_H_
-#include <stdbool.h>
 #include"Shared.h"
 
 //Renombra los .tmp a .tmpc y devuelve True si renombró a algun archivo

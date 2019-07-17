@@ -1,8 +1,9 @@
 #ifndef SHARED_H_
 #define SHARED_H_
 
-#include<commons/log.h>
+#include<stdbool.h>
 #include<commons/config.h>
+#include<commons/log.h>
 #include<inttypes.h>
 #include<stdint.h>
 #include<stdio.h>
@@ -24,18 +25,17 @@
 #include<dirent.h>
 #include<arpa/inet.h>
 #include<sys/time.h>
+#include"Config.h"
 #include"serializacion.h"
 #include<sys/types.h>
 #include<fcntl.h>
 #include<sys/mman.h>
 #include<commons/collections/dictionary.h>
 
+
 t_log* logger;
-t_config* config;
-char* puntoMontaje;
 t_list *memTable;
 int cantDumps;		//Contador de cantidad de dumps para hacer los archivos temporales
-int tamValue;
 char* bitmap;
 int blockSize;
 int blocks;
@@ -127,4 +127,20 @@ uint64_t stringToLongLong(char* strToInt);
 
 //Libera la memoria de cada posicion del array, y el puntero al array
 void liberarArrayString(char** array);
+
+//Devuelve el Timestamp actual.
+uint64_t getTimestamp();
+
+//Convierte un string en un tipo de dato Long
+uint64_t stringToLong(char* strToInt);
+
+//Obtiene la ultima linea de un bloque y la retorna
+char* obtenerUltimaLinea(char* bloque);
+
+//Divide una linea, en N cantidad de "blockSize"(64 por ejemplo) length
+char** dividirLinea(char* linea);
+
+//Retorna un nuevo bloque libre del bitmap
+int getNewBloque();
+
 #endif /* SHARED_H_ */

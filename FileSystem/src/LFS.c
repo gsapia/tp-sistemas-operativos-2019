@@ -335,7 +335,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 enum estados_insert insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
 
 	if(existeTabla(nombreTabla)){
-		if(sizeof(timeStamp) <= tamValue){
+		if(sizeof(timeStamp) <= config.tamaño_value){
 			pthread_mutex_lock(mutex_memTable);
 			agregarAMemTable(nombreTabla, key, valor, timeStamp);
 			pthread_mutex_unlock(mutex_memTable);
@@ -439,7 +439,7 @@ struct_describe_global_respuesta describe_global(){
 	respuesta.describes = dictionary_create();
 	struct_describe_respuesta* tabla;
 	struct_describe_respuesta aux;
-	char* path = string_from_format("%sTable/", puntoMontaje);
+	char* path = string_from_format("%sTable/", config.puntoMontaje);
 	DIR* path_buscado = opendir(path);
 	free(path);
 	struct dirent* carpeta = readdir(path_buscado);
@@ -465,7 +465,7 @@ enum estados_drop drop(char* nombreTabla){
 	if(existeTabla(nombreTabla)){	//Tengo certeza que existe la tabla, entonces va a estar en la lista
 		pthread_mutex_t *mutexAux = dictionary_remove(diccionario, nombreTabla);
 		pthread_mutex_lock(mutexAux);
-		char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
+		char* path = string_from_format("%sTable/%s/", config.puntoMontaje, nombreTabla);
 
 		bool registro_IgualNombreTabla(t_hiloCompactacion *registro){return !strcmp(registro->nombreTabla,nombreTabla);}
 
@@ -497,7 +497,7 @@ datos_a_compactar* convertirAStructDAC(t_registro *aux_memtable){
 }
 
 bool existeTabla(char* nombreTabla){
-	char* path = string_from_format("%sTable/", puntoMontaje);
+	char* path = string_from_format("%sTable/", config.puntoMontaje);
 	DIR* path_buscado = opendir(path);
 	free(path);
 
@@ -553,10 +553,6 @@ int funcionModulo(int key, int particiones){
 
 // ############### Extras ###############
 
-t_config* leer_config() {
-	return config_create("LFS.config");
-}
-
 t_log* iniciar_logger() {
 	return log_create("Lissandra.log", "Lissandra", 1, LOG_LEVEL_TRACE);
 }
@@ -570,12 +566,6 @@ void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t ti
 	strcpy(registro->value, valor);
 	registro->timeStamp = timeStamp;
 	list_add(memTable, registro);;
-}
-
-uint64_t getTimestamp() {
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 }
 
 t_registro* convertirARegistroPuntero(t_registro r){
@@ -635,7 +625,7 @@ bool ordenarDeMayorAMenorTimestampFinal(datos_a_compactar* r1, datos_a_compactar
 }
 
 void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key){
-	char *path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
+	char *path = string_from_format("%sTable/%s", config.puntoMontaje, nombreTabla);
 	DIR* path_buscado = opendir(path);
 	free(path);
 	struct dirent* carpeta = readdir(path_buscado);
@@ -643,7 +633,7 @@ void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key){
 	while(carpeta){
 		if(esArchivoValido(carpeta->d_name)){
 //			log_trace(logger, "## %s ##", carpeta->d_name);
-			char* path_bin = string_from_format("%sTable/%s/%s", puntoMontaje, nombreTabla, carpeta->d_name);
+			char* path_bin = string_from_format("%sTable/%s/%s", config.puntoMontaje, nombreTabla, carpeta->d_name);
 			FILE* f = fopen(path_bin, "r");
 			free(path_bin);
 			int size_bin = obtenerSizeBin(f);
@@ -677,7 +667,7 @@ void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key){
 }
 
 void cargarUltimoBloqueSELECT(char* bloque, t_list* lista, int size_lectura, char* append, u_int16_t key){
-	char* path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloque);
+	char* path = string_from_format("%sBloques/%s.bin", config.puntoMontaje, bloque);
 	FILE* block_file = fopen(path, "r+");
 	free(path);
 	char* buffer = NULL; size_t buffer_size = 0;
@@ -742,7 +732,7 @@ void cargarLineaSELECT(char** linea, t_list* lista, u_int16_t key){
 }
 
 void cargarBloqueAListaSELECT(char* bloque, t_list* lista, char* append, u_int16_t key){
-	char* path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloque);
+	char* path = string_from_format("%sBloques/%s.bin", config.puntoMontaje, bloque);
 	FILE* block_file = fopen(path, "r+");
 	free(path);
 	char* buffer = NULL; size_t buffer_size = 0;
@@ -781,13 +771,13 @@ void cargarBloqueAListaSELECT(char* bloque, t_list* lista, char* append, u_int16
 }
 
 void crearDirectiorioDeTabla(char* nombreTabla){
-	char* path = string_from_format("%sTable/%s", puntoMontaje, nombreTabla);
+	char* path = string_from_format("%sTable/%s", config.puntoMontaje, nombreTabla);
 	if(mkdir(path, 0777) != 0){}
 	free(path);
 }
 
 char* obtenerPrimeraLinea(char* bloque){
-	char* path = string_from_format("%sBloques/%s.bin", puntoMontaje, bloque);
+	char* path = string_from_format("%sBloques/%s.bin", config.puntoMontaje, bloque);
 	FILE* bloque_bin = fopen(path, "r");
 	char* buffer = NULL; size_t buffer_size = 0;
 
@@ -823,7 +813,7 @@ bool esCarpetaValida(char* nombreCarpeta){
 }
 
 void crearCompactacionTablasExistentes(){
-	char* path = string_from_format("%sTable/", puntoMontaje);
+	char* path = string_from_format("%sTable/", config.puntoMontaje);
 	DIR* directorio = opendir(path);
 	struct dirent* carpeta = readdir(directorio);
 
@@ -879,7 +869,7 @@ int obtenerTiempoCompactacion(FILE* metadata){
 }
 
 void crearMutexTablasExistentes(){
-	char* path = string_from_format("%sTable/", puntoMontaje);
+	char* path = string_from_format("%sTable/", config.puntoMontaje);
 	DIR* directorio = opendir(path);
 	struct dirent* carpeta = readdir(directorio);
 

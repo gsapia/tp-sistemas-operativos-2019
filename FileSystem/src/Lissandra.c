@@ -1,20 +1,17 @@
-#include "LFS.h"
+#include "Shared.h"
 
 int main(void){
+	initCofig();
 	crearMutex();
 	memTable = list_create(); cantDumps = 0;
 	diccionario = dictionary_create();
-	config = leer_config();
-	puntoMontaje = config_get_string_value(config,"PUNTOMONTAJE");
-	int tiempo_dump = config_get_int_value(config, "TIEMPODUMP");
-	uint16_t puerto_escucha = config_get_int_value(config, "PUERTOESCUCHA");
-	tamValue = config_get_int_value(config, "TAMAÑOVALUE");
+
 	logger = iniciar_logger();
 	log_info(logger, "Hola, soy Lissandra");
 
 	argumentos_servidor args;
-	args.puerto_escucha = puerto_escucha;
-	args.tamValue = tamValue;
+	args.puerto_escucha = config.puerto_escucha;
+	args.tamValue = config.tamaño_value;
 
 //	Servidor
 	pthread_t hiloServidor;
@@ -42,7 +39,7 @@ int main(void){
 	}
 
 	pthread_t hiloDump;
-	if(pthread_create(&hiloDump, NULL, dump, tiempo_dump)){
+	if(pthread_create(&hiloDump, NULL, dump, config.tiempo_dump)){
 		log_error(logger, "Hilo Dump: Error - pthread_create()");
 		exit(EXIT_FAILURE);
 	}
@@ -53,6 +50,7 @@ int main(void){
 
 //	Libero todas las variables que me quedan colgadas.
 
+	free(mutex_memTable);
 	config_destroy(config);
 	return EXIT_SUCCESS;
 }

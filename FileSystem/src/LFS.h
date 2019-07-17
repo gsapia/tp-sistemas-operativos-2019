@@ -20,9 +20,6 @@ void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key);
 
 void crearDirectiorioDeTabla(char* nombreTabla);
 
-//Divide una linea, en N cantidad de "blockSize"(64 por ejemplo) length
-char** dividirLinea(char* linea);
-
 //Ordena de mayor a menor los registros de una lista
 bool ordenarDeMayorAMenorTimestampFinal(datos_a_compactar* r1, datos_a_compactar* r2);
 
@@ -34,7 +31,6 @@ void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int canti
 void crearBinDeTabla(char* nombreTabla, int cantParticiones);
 void dumpDeTablas(t_list *memTableAux);
 void agregarAMemTable(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp);
-uint64_t getTimestamp();
 bool ordenarDeMayorAMenorTimestamp(t_registro* r1, t_registro* r2);
 bool registro_IgualNombreTabla(t_hiloCompactacion *registro);
 t_registro* convertirARegistroPuntero(t_registro r);
@@ -53,7 +49,6 @@ void escribirEnBloque(FILE* f, t_registro* r);
 bool esArchivoTemporal(char* nombre);
 void discriminadorDeCasos(char* path, uint16_t key, uint64_t timestamp, char* value, int particion);
 void casoParticular(char* path, int particion, FILE* bin, char* line, int renglon);
-t_config *leer_config();
 t_log* iniciar_logger();
 void* servidor(argumentos_servidor* args);
 void memoria_handler(int *socket_cliente);
@@ -64,15 +59,9 @@ char* agregarNuevoBloqueBin();
 void insertarLinea(int bloqueNumero, char* linea);
 int entraEnUltimoBloque(int size, char* line);
 int sizeArchivo(FILE* archivo);
-uint64_t stringToLong(char* strToInt);
 struct_describe_respuesta* convertirAPuntero(struct_describe_respuesta describe);
 char** obtenerBloques(char* bloques);
 char* obtenerBloquesDetabla(FILE* f);
-int getNewBloque();
-
-
-//Obtiene la ultima linea de un bloque y la retorna
-char* obtenerUltimaLinea(char* bloque);
 
 //Borra todos los archivos de una tabla, sus bloques, y luego la tabla en si.
 void borrarTabla(char* path);
@@ -101,5 +90,7 @@ void crearMutexTablasExistentes();
 //Crea los mutex necesarios
 void crearMutex();
 
+//Corrobora que no sea "." ni ".."
+bool esCarpetaValida(char* nombre);
 
 #endif /* LFS_H_ */

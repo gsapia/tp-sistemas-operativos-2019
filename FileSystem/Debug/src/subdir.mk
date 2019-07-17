@@ -5,6 +5,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../src/Compactador.c \
+../src/Config.c \
 ../src/FileSystem.c \
 ../src/IPC.c \
 ../src/LFS.c \
@@ -13,6 +14,7 @@ C_SRCS += \
 
 OBJS += \
 ./src/Compactador.o \
+./src/Config.o \
 ./src/FileSystem.o \
 ./src/IPC.o \
 ./src/LFS.o \
@@ -21,6 +23,7 @@ OBJS += \
 
 C_DEPS += \
 ./src/Compactador.d \
+./src/Config.d \
 ./src/FileSystem.d \
 ./src/IPC.d \
 ./src/LFS.d \

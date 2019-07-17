@@ -1,21 +1,3 @@
-/*
--Estrutura de Arbol de directorios. Su inicio nos lo da el Archivo de configuracion.
-
-##### METADATA #####
-Contiene:
-	-Block_size: tamaño en bytes de cada bloque
-	-Blocks: cant de bloques del FileSystem
-	-Magic_Number: string fijo con el valor "LFS".
-Se encontrara en [Punto_Montaje]/Metadata/Metadata.bin
-
-##### BITMAP #####
-Archivo binario donde solamente existira un bitmap, que representara el estado de los bloques dentro del FS.
-1 = bloque ocupado
-0 = bloque libre
-Se encontrara en [Punto_Montaje]/Metadata/Bitmap.bin
-*/
-
-#include "LFS.h"
 #include "FileSystem.h"
 
 void *fileSystem() {
@@ -30,7 +12,7 @@ void *fileSystem() {
 }
 
 void asignarBloques(){
-	char* path = string_from_format("%sTable/", puntoMontaje);
+	char* path = string_from_format("%sTable/", config.puntoMontaje);
 	DIR* directorio = opendir(path);
 	struct dirent* carpeta = readdir(directorio);
 
@@ -68,11 +50,11 @@ void asignarBloqueABin(char* path_tabla){
 }
 
 void crearFicheroPadre(){
-	if(mkdir(puntoMontaje, 0777) != 0){}
+	if(mkdir(config.puntoMontaje, 0777) != 0){}
 }
 
 void crearMetaDataFS(){
-	char* path = string_from_format("%sMetadata/", puntoMontaje);
+	char* path = string_from_format("%sMetadata/", config.puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
 
 	char* path2 = string_from_format("%sMetadata.bin", path);
@@ -121,7 +103,7 @@ void crearMetaDataFS(){
 }
 
 void crearBitMapFS(){
-	char* path_Metadata = string_from_format("%sMetadata/Metadata.bin",puntoMontaje);
+	char* path_Metadata = string_from_format("%sMetadata/Metadata.bin", config.puntoMontaje);
 	FILE* metadataFS = fopen(path_Metadata,"r");
 	free(path_Metadata);
 	char* buffer=NULL;
@@ -143,7 +125,7 @@ void crearBitMapFS(){
 		}
 	}
 
-	char* path = string_from_format("%sMetadata/Bitmap.bin", puntoMontaje);
+	char* path = string_from_format("%sMetadata/Bitmap.bin", config.puntoMontaje);
 	FILE* bitmapFile = fopen(path, "wb");
 	truncate(path, blocks/8);
 	crearBitmap(path);
@@ -162,13 +144,13 @@ void crearBitmap(char* path){
 }
 
 void crearTables(){
-	char* path = string_from_format("%sTable/", puntoMontaje);
+	char* path = string_from_format("%sTable/", config.puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
 	free(path);
 }
 
 void crearBloquesDatos(){
-	char* path = string_from_format("%sBloques/", puntoMontaje);
+	char* path = string_from_format("%sBloques/", config.puntoMontaje);
 	if(mkdir(path, 0777) != 0){}
 	crearBloques(path);
 	free(path);
@@ -215,7 +197,7 @@ void liberador_registros(t_registro* registro){
 void dumpDeTablas(t_list *memTableAux){
 	t_list* datosParaDump = NULL;
 	int flag = 0; // Sirve para indicar que se hizo un dump y sumarle a la variable cantDumps (Sirve mas para testeos).
-	char *path = string_from_format("%sTable/", puntoMontaje);
+	char *path = string_from_format("%sTable/", config.puntoMontaje);
 	DIR* path_buscado = opendir(path);
 	free(path);
 	struct dirent* carpeta = readdir(path_buscado);
@@ -256,7 +238,7 @@ void dumpear(t_list *datosParaDump, char* carpetaNombre){
 
 	for(int i=0; i<(cant+1);i++){
 		bloques[i] = getNewBloque();
-		char* temp_path = string_from_format("%sBloques/%d.bin", puntoMontaje, bloques[i]);
+		char* temp_path = string_from_format("%sBloques/%d.bin", config.puntoMontaje, bloques[i]);
 		FILE* temp = fopen(temp_path, "r+");
 		free(temp_path);
 
@@ -316,7 +298,7 @@ char* lineasEntera(t_list* lista){
 }
 
 void crearArchivoTemporal(char* nombreTabla, char* particionTemp, int* bloques, int size, int cantidadBloques){
-	char* path = string_from_format("%sTable/%s/A%s.tmp", puntoMontaje, nombreTabla, particionTemp);
+	char* path = string_from_format("%sTable/%s/A%s.tmp", config.puntoMontaje, nombreTabla, particionTemp);
 	FILE* f = fopen(path, "w");
 	char* auxSize = string_from_format("SIZE=%d", size);
 	fputs(auxSize, f);
@@ -346,7 +328,7 @@ void crearArchivoTemporal(char* nombreTabla, char* particionTemp, int* bloques, 
 }
 
 FILE* obtenerMetaDataLectura(char* nombreTabla){
-	char* path = string_from_format("%sTable/%s/Metadata", puntoMontaje, nombreTabla);
+	char* path = string_from_format("%sTable/%s/Metadata", config.puntoMontaje, nombreTabla);
 	FILE* metadata = fopen(path, "r");
 	free(path);
 	return metadata;
@@ -366,7 +348,7 @@ int obtenerParticiones(FILE* metadata){
 
 FILE* obtenerBIN(int particion, char* nombreTabla){
 	char* nombre_bin = intToString(particion);
-	char* path = string_from_format("%sTable/%s/%s.bin", puntoMontaje, nombreTabla, nombre_bin);
+	char* path = string_from_format("%sTable/%s/%s.bin", config.puntoMontaje, nombreTabla, nombre_bin);
 	FILE *bin = fopen(path, "r+");
 	free(path);
 	free(nombre_bin);
@@ -374,7 +356,7 @@ FILE* obtenerBIN(int particion, char* nombreTabla){
 }
 
 void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int cantidadParticiones, u_int compactionTime){
-	char* path = string_from_format("%sTable/%s/Metadata", puntoMontaje, nombreTabla);
+	char* path = string_from_format("%sTable/%s/Metadata", config.puntoMontaje, nombreTabla);
 	FILE* metadata = fopen(path, "w");
 
 	fputs("CONSISTENCY=", metadata);
@@ -397,7 +379,7 @@ void crearMetadataDeTabla(char* nombreTabla, char* tipoConsistencia, u_int canti
 
 void crearBinDeTabla(char* nombreTabla, int cantParticiones){
 	FILE* f;
-	char* path = string_from_format("%sTable/%s/", puntoMontaje, nombreTabla);
+	char* path = string_from_format("%sTable/%s/", config.puntoMontaje, nombreTabla);
 	char* particion;
 	for(int i=0;i<cantParticiones;i++){
 		particion = intToString(i);
