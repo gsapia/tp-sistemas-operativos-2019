@@ -335,7 +335,7 @@ struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 enum estados_insert insert(char* nombreTabla, u_int16_t key, char* valor, uint64_t timeStamp){
 
 	if(existeTabla(nombreTabla)){
-		if(sizeof(timeStamp) <= config.tamaño_value){
+		if(sizeof(timeStamp) <= config.tamanio_value){
 			pthread_mutex_lock(mutex_memTable);
 			agregarAMemTable(nombreTabla, key, valor, timeStamp);
 			pthread_mutex_unlock(mutex_memTable);
@@ -649,6 +649,9 @@ void agregarRegDeBloquesYTemps(t_list *lista, char* nombreTabla, u_int16_t key){
 					}else{
 						cargarBloqueAListaSELECT(bloques[i], lista, append, key);
 						append = obtenerUltimaLinea(bloques[i]);
+						if(string_ends_with(append, "\n")){
+							append = NULL;
+						}
 					}
 					i++;
 				}
@@ -755,7 +758,7 @@ void cargarBloqueAListaSELECT(char* bloque, t_list* lista, char* append, u_int16
 		i++;
 		char** linea = string_split(buffer, ";");
 		int len = ftell(block_file);
-		if(!esUltimaLinea(block_file)){
+		if(!esUltimaLinea(block_file) || string_ends_with(buffer, "\n")){
 			fseek(block_file, len, SEEK_SET);
 //			log_trace(logger, "Cargo %s", buffer);
 			cargarLineaSELECT(linea, lista, key);

@@ -1,4 +1,6 @@
 #include "FileSystem.h"
+#include "LFS.h"
+
 
 void *fileSystem() {
 	crearFicheroPadre();

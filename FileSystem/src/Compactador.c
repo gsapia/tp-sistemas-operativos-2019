@@ -1,6 +1,5 @@
 #include "Compactador.h"
 
-
 void *compactacion(argumentos_compactacion *args){
 	//Tomo los datos del struct por parametro
 	char* nombreTabla = string_from_format("%s", args->nombreTabla);
@@ -87,6 +86,7 @@ void escribirDatosLista(t_list* lista, char* nombreTabla){
 
 			int cant = strlen(linea)/blockSize;
 			int* bloques = malloc(sizeof(int)*cant+1);
+//			log_debug(logger,"Vamos a escribir %d bytes: %s", strlen(linea), linea);
 			char** lineas = dividirLinea(linea);
 
 			for(int i=0; i<(cant+1);i++){
@@ -98,6 +98,7 @@ void escribirDatosLista(t_list* lista, char* nombreTabla){
 					free(block_path);
 
 					fputs(lineas[i], temp);
+//					log_debug(logger,"Escribiendo %d bytes: %s", strlen(lineas[i]), lineas[i]);
 					fclose(temp);
 				}
 
@@ -139,7 +140,7 @@ char* lineasEnteraCompactacion(t_list* lista){
 	for(int i=0; i<list_size(lista);i++){
 		registro = list_get(lista,i);
 		char* linea_list = string_from_format("%s;%s;%s\n", registro->timestamp, registro->key, registro->value); // [TIMESTAMP];[KEY];[VALUE]
-
+//		log_debug(logger, "lineasEnteraCompactacion(): %s", linea_list);
 		string_append(&linea_return, linea_list);
 		free(linea_list);
 
@@ -259,6 +260,9 @@ void agregarDatosACompactar(t_list* lista, char* path){
 //				log_trace(logger, "%s no es el ultimo bloque", bloques[i]);
 				cargarBloqueALista(bloques[i], lista, append);
 				append = obtenerUltimaLinea(bloques[i]);
+				if(string_ends_with(append, "\n")){
+					append = NULL;
+				}
 			}
 			i++;
 		}
@@ -330,6 +334,7 @@ void cargarBloqueALista(char* bloque, t_list* lista, char* append){
 	char* buffer = NULL; size_t buffer_size = 0;
 	if(append != NULL){
 		if(getline(&buffer, &buffer_size, block_file) != -1){		//Para la primera linea si es que habia algo en el bloque anterior
+//			log_debug(logger, "Leimos %s", buffer);
 			char* linea_append = string_from_format("%s%s", append, buffer);
 			free(append);
 //			log_trace(logger, "Linea APPEND: %s", linea_append);
@@ -347,7 +352,7 @@ void cargarBloqueALista(char* bloque, t_list* lista, char* append){
 		i++;
 		char** linea = string_split(buffer, ";");
 		int len = ftell(block_file);
-		if(!esUltimaLinea(block_file)){
+		if(!esUltimaLinea(block_file) || string_ends_with(buffer, "\n")){
 			fseek(block_file, len, SEEK_SET);
 //			log_trace(logger, "Cargo %s", buffer);
 			cargarLinea(linea, lista);

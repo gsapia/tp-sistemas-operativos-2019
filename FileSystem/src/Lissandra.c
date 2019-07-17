@@ -1,4 +1,5 @@
 #include "Shared.h"
+#include "LFS.h"
 
 int main(void){
 	initCofig();
@@ -11,7 +12,7 @@ int main(void){
 
 	argumentos_servidor args;
 	args.puerto_escucha = config.puerto_escucha;
-	args.tamValue = config.tamaño_value;
+	args.tamValue = config.tamanio_value;
 
 //	Servidor
 	pthread_t hiloServidor;
@@ -51,7 +52,6 @@ int main(void){
 //	Libero todas las variables que me quedan colgadas.
 
 	free(mutex_memTable);
-	config_destroy(config);
 	return EXIT_SUCCESS;
 }
 

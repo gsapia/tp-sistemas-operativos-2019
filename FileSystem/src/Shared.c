@@ -15,6 +15,11 @@ uint64_t stringToLong(char* strToInt){
 	uint64_t numero = strtoul(str, &endptr, 10);
 	return numero;
 }
+uint64_t stringToLongLong(char* strToInt){
+	char* endptr, *str = strToInt;
+	uint64_t numero = strtoull(str, &endptr, 10);
+	return numero;
+}
 
 char* obtenerUltimaLinea(char* bloque){
 	char* path = string_from_format("%sBloques/%s.bin",config.puntoMontaje, bloque);
