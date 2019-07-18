@@ -448,6 +448,8 @@ void largoPlazo(){
 
 		t_script* script = queue_pop(colaNew);
 
+		log_trace(logger, "Script \"%s\" entro a estado NEW.", script->nombre);
+
 		queue_push(colaReady,script);
 		//moverColaDeReady(script);
 
@@ -458,6 +460,7 @@ void largoPlazo(){
 
 
 void ejecutarScript(t_script* script){
+	log_trace(logger, "Script \"%sv entro a estado EXEC.", script->nombre);
 	t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
 	bool fallo = false;
 	for (int q = config.quantum; q > 0 && !queue_is_empty(requests) && !fallo; q--){
@@ -494,9 +497,12 @@ void ejecutarScript(t_script* script){
 void cortoPlazo(){
 	while (1){
 		sem_wait(&ready);
-		sem_wait(&multiProc);
 
 		t_script* script = queue_pop(colaReady);
+
+		log_trace(logger, "Script \"%s\" entro a estado READY.", script->nombre);
+
+		sem_wait(&multiProc);
 
 		// Mando la ejecucion a un hilo_exec deatacheable
 		pthread_t hilo_exec;
