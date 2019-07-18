@@ -265,16 +265,17 @@ void consola() {
 	char *resultado;
 	while (1) {
 		linea = readline(">");
+		if(linea){
+			if (!strcmp(linea, "exit")) {
+				free(linea);
+				break;
+			}
 
-		if (!strcmp(linea, "exit")) {
+			resultado = apiMemoria(linea);
 			free(linea);
-			break;
+			string_trim(&resultado);
+			puts(resultado);
+			free(resultado);
 		}
-
-		resultado = apiMemoria(linea);
-		free(linea);
-		string_trim(&resultado);
-		puts(resultado);
-		free(resultado);
 	}
 }

@@ -16,11 +16,21 @@ SELECT METALS 198
 SELECT METALS 135 
 SELECT ANIMALS 110
 
+Resultados:
+METALS 198 "golden"
+METALS 135 "copper"
+ANIMALS 110 "physical"
+
 6. Ejecutar dentro de la consola del kernel:
 DESCRIBE
 SELECT METALS 198
 SELECT METALS 135 
 SELECT ANIMALS 110
+
+Resultados:
+METALS 198 "golden"
+METALS 135 "copper"
+ANIMALS 110 "physical"
 
 
 Resultados Esperados:

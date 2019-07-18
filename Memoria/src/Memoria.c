@@ -54,7 +54,7 @@ int main(void) {
 	// Salimos limpiamente
 	pthread_cancel(hiloServidor); // Manda senial a hiloServidor de terminarse
 	pthread_join(hiloServidor, NULL); // Esperamos a que hiloServidor termine
-	closeCliente(); // Nos desconectamos de FS
+	//closeCliente(); // Nos desconectamos de FS
 	log_destroy(logger); // Liberamos memoria del log
 
 	return EXIT_SUCCESS;

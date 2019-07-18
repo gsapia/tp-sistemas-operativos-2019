@@ -640,6 +640,7 @@ void enviar_respuesta_describe_global(int socket, struct_describe_global_respues
 
 struct_describe_global_respuesta recibir_respuesta_describe_global(int socket){
 	struct_describe_global_respuesta paquete;
+	paquete.describes = dictionary_create();
 	void* buffer = NULL;
 
 	// Primero recibo el estado
@@ -658,7 +659,6 @@ struct_describe_global_respuesta recibir_respuesta_describe_global(int socket){
 		free(buffer);
 
 		// Ahora recibo todos los describes
-		paquete.describes = dictionary_create();
 		for(int i = 0; i < cantidad_describes; i++){
 			// Primero nombre de tabla
 			char* nombre_tabla = recibir_describe(socket).nombreTabla;
@@ -667,6 +667,9 @@ struct_describe_global_respuesta recibir_respuesta_describe_global(int socket){
 			*describe = recibir_respuesta_describe(socket);
 			dictionary_put(paquete.describes, nombre_tabla, describe);
 		}
+	}
+	if(paquete.estado > ESTADO_DESCRIBE_ERROR_OTRO){
+		paquete.estado = ESTADO_DESCRIBE_ERROR_OTRO;
 	}
 
 	//puts("Listo, recibi el paquete completo!\n");

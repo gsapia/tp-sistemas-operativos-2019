@@ -5,12 +5,53 @@
 #include "Config.h"
 #include "Misc.h"
 
-int socket_cliente;
+//int socket_cliente;
 pthread_mutex_t mutex_fs; // Debemos evitar condiciones de carrera en requests a FS
+
+enum id_proceso handshake(int socket_conexion){
+	// Envio primer mensaje diciendo que soy Memoria
+	const uint8_t soy = ID_MEMORIA;
+	send(socket_conexion, &soy, sizeof(soy), 0);
+
+	// Recibo quien es el otro extremo
+	uint8_t otro;
+	if(!recv(socket_conexion, &otro, sizeof(otro), 0)){
+		// No recibimos nada, algo malo paso
+		log_error(logger, "ERROR en servidor");
+		close(socket_conexion);
+		return 0;
+	}
+
+	return otro;
+}
+
+int connectFS(){
+	struct sockaddr_in direccionServidor;
+	direccionServidor.sin_family= AF_INET;
+	direccionServidor.sin_addr.s_addr = inet_addr(config.ip_fs); // Direccion IP
+	direccionServidor.sin_port = htons(config.puerto_fs); // PUERTO
+
+	int socket_fs = socket(AF_INET, SOCK_STREAM, 0);
+	if(connect(socket_fs, (void*) &direccionServidor, sizeof(direccionServidor)) || handshake(socket_fs) != ID_FILESYSTEM){
+		return 0;
+	}
+
+	// Una vez conectados, recibimos el tamanio del value
+	recv(socket_fs, &tamanio_value, sizeof(tamanio_value), 0);
+
+	return socket_fs;
+}
 
 void operacionAFS(void (*operacion)(int socket)){
 	pthread_mutex_lock(&mutex_fs);
-	operacion(socket_cliente);
+	int socket_cliente = connectFS();
+	if(socket_cliente){
+		operacion(socket_cliente);
+		close(socket_cliente);
+	}
+	else{
+		log_warning(logger, "No nos podemos conectar con FS.");
+	}
 	msleep(config.retardo_acc_fs);
 	pthread_mutex_unlock(&mutex_fs);
 }
@@ -23,7 +64,7 @@ struct_select_respuesta selectAFS(struct_select paquete){
 	//respuesta.timestamp = 123456;
 	//return respuesta;
 	// ----- Fin parte provisoria -----
-	struct_select_respuesta respuesta;
+	struct_select_respuesta respuesta = { .estado = ESTADO_SELECT_ERROR_OTRO };
 	void operacion(int socket){
 		enviar_select(socket, paquete);
 		respuesta = recibir_registro(socket);
@@ -37,7 +78,7 @@ enum estados_insert insertAFS(struct_insert paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
 	// return ESTADO_INSERT_OK;
 	// ----- Fin parte provisoria -----
-	enum estados_insert respuesta;
+	enum estados_insert respuesta = respuesta = ESTADO_INSERT_ERROR_OTRO;
 	void operacion(int socket){
 		enviar_insert_ts(socket, paquete);
 		respuesta = recibir_respuesta_insert(socket);
@@ -71,7 +112,7 @@ struct_describe_respuesta describeAFS(struct_describe paquete){
 	// return respuesta;
 	// ----- Fin parte provisoria -----
 
-	struct_describe_respuesta respuesta;
+	struct_describe_respuesta respuesta = { .estado = ESTADO_DESCRIBE_ERROR_OTRO };
 	void operacion(int socket){
 		enviar_describe(socket, paquete);
 		respuesta = recibir_respuesta_describe(socket);
@@ -102,6 +143,8 @@ struct_describe_global_respuesta describeGlobalAFS(){
 	// ----- Fin parte provisoria -----
 
 	struct_describe_global_respuesta respuesta;
+	respuesta.estado = ESTADO_DESCRIBE_ERROR_OTRO;
+	respuesta.describes = dictionary_create();
 	void operacion(int socket){
 		enviar_describe_global(socket);
 		respuesta = recibir_respuesta_describe_global(socket);
@@ -113,9 +156,9 @@ struct_describe_global_respuesta describeGlobalAFS(){
 
 enum estados_drop dropAFS(struct_drop paquete){
 	// ----- Provisoriamente uso una respuesta por defecto: -----
-	return ESTADO_DROP_OK;
+	// return ESTADO_DROP_OK;
 	// ----- Fin parte provisoria -----
-	enum estados_drop respuesta;
+	enum estados_drop respuesta = ESTADO_DESCRIBE_ERROR_OTRO;
 	void operacion(int socket){
 		enviar_drop(socket, paquete);
 		respuesta = recibir_respuesta_drop(socket);
@@ -125,47 +168,22 @@ enum estados_drop dropAFS(struct_drop paquete){
 	return respuesta;
 }
 
-enum id_proceso handshake(int socket_conexion){
-	// Envio primer mensaje diciendo que soy Memoria
-	const uint8_t soy = ID_MEMORIA;
-	send(socket_conexion, &soy, sizeof(soy), 0);
 
-	// Recibo quien es el otro extremo
-	uint8_t otro;
-	if(!recv(socket_conexion, &otro, sizeof(otro), 0)){
-		// No recibimos nada, algo malo paso
-		log_error(logger, "ERROR en servidor");
-		close(socket_conexion);
-		return 0;
-	}
-
-	return otro;
-}
 
 void initCliente(){
-	log_trace(logger, "Iniciando cliente");
-
-	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family= AF_INET;
-	direccionServidor.sin_addr.s_addr = inet_addr(config.ip_fs); // Direccion IP
-	direccionServidor.sin_port = htons(config.puerto_fs); // PUERTO
-
 	log_info(logger, "Conectando con FS en %s:%d",config.ip_fs,config.puerto_fs);
-
-	socket_cliente = socket(AF_INET, SOCK_STREAM, 0);
-	while(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor)) || handshake(socket_cliente) != ID_FILESYSTEM){
+	int socket_cliente = connectFS();
+	while(!socket_cliente){
+		socket_cliente = connectFS();
 		log_warning(logger, "No se pudo conectar con el servidor (FS). Reintentando en 5 segundos.");
 		sleep(5);
 	}
-
-	// Una vez conectados, recibimos el tamanio del value
-	recv(socket_cliente, &tamanio_value, sizeof(tamanio_value), 0);
-
-	log_info(logger, "Me conecte con FS!");
+	close(socket_cliente);
+	log_info(logger, "Me conecte con FS y obutve el tamanio maximo de value.");
 }
 
 void closeCliente(){
-	close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
+	//close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 
 bool kernel_conectado = false;
@@ -210,7 +228,6 @@ void kernel_handler(int *socket_cliente){
 		// Recibo el codigo de operacion
 		uint8_t cod_op;
 		if(!recv(socket_kernel, &cod_op, sizeof(uint8_t), 0)){
-			log_trace(logger, "El cliente se desconecto");
 			break;
 		}
 
@@ -218,7 +235,7 @@ void kernel_handler(int *socket_cliente){
 			case SELECT:
 			{
 				struct_select paquete = recibir_select(socket_kernel);
-				log_trace(logger, "Recibi un SELECT %s %d", paquete.nombreTabla, paquete.key);
+				log_info(logger, "Recibi un SELECT %s %d", paquete.nombreTabla, paquete.key);
 
 				struct_select_respuesta registro = selects(paquete.nombreTabla, paquete.key);
 				enviar_registro(socket_kernel, registro);
@@ -230,7 +247,7 @@ void kernel_handler(int *socket_cliente){
 			case INSERT:
 			{
 				struct_insert paquete = recibir_insert(socket_kernel);
-				log_trace(logger, "Recibi un INSERT %s %d %s", paquete.nombreTabla, paquete.key, paquete.valor);
+				log_info(logger, "Recibi un INSERT %s %d \"%s\"", paquete.nombreTabla, paquete.key, paquete.valor);
 
 				enum estados_insert estado = insert(paquete.nombreTabla, paquete.key, paquete.valor);
 				responder_insert(socket_kernel, estado);
@@ -243,7 +260,7 @@ void kernel_handler(int *socket_cliente){
 			case CREATE:
 			{
 				struct_create paquete = recibir_create(socket_kernel);
-				log_trace(logger, "Recibi un CREATE %s %s %d %lld", paquete.nombreTabla, consistenciaAString(paquete.consistencia), paquete.particiones, paquete.tiempoCompactacion);
+				log_info(logger, "Recibi un CREATE %s %s %d %lld", paquete.nombreTabla, consistenciaAString(paquete.consistencia), paquete.particiones, paquete.tiempoCompactacion);
 
 				enum estados_create estado = create(paquete.nombreTabla, paquete.consistencia, paquete.particiones, paquete.tiempoCompactacion);
 				responder_create(socket_kernel, estado);
@@ -255,7 +272,7 @@ void kernel_handler(int *socket_cliente){
 			case DESCRIBE:
 			{
 				struct_describe paquete = recibir_describe(socket_kernel);
-				log_trace(logger, "Recibi un DESCRIBE %s", paquete.nombreTabla);
+				log_info(logger, "Recibi un DESCRIBE %s", paquete.nombreTabla);
 
 				struct_describe_respuesta registro;
 				registro = describe(paquete.nombreTabla);
@@ -268,7 +285,7 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case DESCRIBE_GLOBAL:
 			{
-				log_trace(logger, "Recibi un DESCRIBE");
+				log_info(logger, "Recibi un DESCRIBE");
 
 				struct_describe_global_respuesta respuesta;
 
@@ -283,7 +300,7 @@ void kernel_handler(int *socket_cliente){
 			case DROP:
 			{
 				struct_drop paquete = recibir_drop(socket_kernel);
-				log_trace(logger, "Recibi un DROP %s", paquete.nombreTabla);
+				log_info(logger, "Recibi un DROP %s", paquete.nombreTabla);
 
 				enum estados_drop respuesta = drop(paquete.nombreTabla);
 
@@ -295,7 +312,7 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case JOURNAL:
 			{
-				log_trace(logger, "Recibi un JOURNAL");
+				log_info(logger, "Recibi un JOURNAL");
 
 				enum estados_journal respuesta = journal();
 
@@ -304,12 +321,12 @@ void kernel_handler(int *socket_cliente){
 			break;
 			case GOSSIP:
 			{
-				log_trace(logger, "GOSSIPING: Intercambiando tabla con Kernel");
+				log_info(logger, "GOSSIPING: Intercambiando tabla con Kernel");
 				enviar_tabla_gossiping(socket_kernel, tabla_gossiping);
 			}
 			break;
 			default:
-				log_trace(logger, "Recibi una operacion invalida...");
+				log_warning(logger, "Recibi una operacion invalida...");
 		}
 	}
 

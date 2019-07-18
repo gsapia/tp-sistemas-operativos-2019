@@ -310,5 +310,5 @@ void vaciar_memoria(){
 
 	full = false;
 	pthread_mutex_unlock(&mutex_memoria_principal);
-	log_trace(logger, "Journaling terminado.");
+	log_info(logger, "Journaling terminado.");
 }
