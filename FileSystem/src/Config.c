@@ -25,15 +25,13 @@ void actualizar_config(){
 	char buffer[tam];
 
 	while(read(fd, buffer, tam)){
-		config.puerto_escucha = config_get_int_value(configf, "PUERTOESCUCHA");
-		config.puntoMontaje = strdup(config_get_string_value(configf, "PUNTOMONTAJE"));
+		configf = config_create(CONFIG_PATH);
 		config.retardo = config_get_int_value(configf, "RETARDO");
-		config.tamanio_value = config_get_int_value(configf, "TAMAÑOVALUE");
 		config.tiempo_dump = config_get_int_value(configf, "TIEMPODUMP");
 		config_destroy(configf);
 
-		log_trace(logger, "Archivo de configuracion modificado, nuevos valores: PUERTOESCUCHA = %d, PUNTOMONTAJE = %s, RETARDO = %d, TAMAÑOVALUE = %d, TIEMPODUMP = %d",
-				config.puerto_escucha, config.puntoMontaje, config.retardo, config.tamanio_value, config.tiempo_dump);
+		log_trace(logger, "Archivo de configuracion modificado, nuevos valores: RETARDO = %d, TIEMPODUMP = %d",
+				config.retardo, config.tiempo_dump);
 	}
 }
 
