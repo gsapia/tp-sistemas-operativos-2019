@@ -20,8 +20,6 @@ void initMetricas(void){
 	for (int consistencia = 0; consistencia < 3; ++consistencia) {
 		metricas[consistencia].ultimos_selects = queue_create();
 		metricas[consistencia].ultimos_inserts = queue_create();
-		metricas[consistencia].operaciones_totales = 0;
-		metricas[consistencia].operaciones_por_memoria = dictionary_create();
 
 		metricas_respuesta[consistencia].memory_load = dictionary_create();
 	}
@@ -56,43 +54,15 @@ void agregar_metrica(t_metrica_operacion metrica, t_queue* cola){
 }
 
 void informar_select(enum consistencias consistencia, unsigned int nro_memoria, unsigned long long inicio){
-	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp() };
+	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp(), .nro_memoria = nro_memoria };
 	pthread_mutex_lock(&mutex_metricas);
 	agregar_metrica(metrica, metricas[consistencia].ultimos_selects);
-	metricas[consistencia].operaciones_totales++;
-
-	unsigned int * operaciones_memoria;
-	char* memoria = string_from_format("%d", nro_memoria); // Uso char* nomas porque el diccionario de la commons es asi.
-	if(dictionary_has_key(metricas[consistencia].operaciones_por_memoria, memoria)){ // Si hay un valor para esa memoria, simplemente lo actualizamos. Sino, lo agregamos.
-		operaciones_memoria = dictionary_get(metricas[consistencia].operaciones_por_memoria, memoria);
-		(*operaciones_memoria)++;
-	}
-	else{
-		operaciones_memoria = malloc(sizeof(operaciones_memoria));
-		*operaciones_memoria = 1;
-		dictionary_put(metricas[consistencia].operaciones_por_memoria, memoria, operaciones_memoria);
-	}
-
 	pthread_mutex_unlock(&mutex_metricas);
 }
 void informar_insert(enum consistencias consistencia, unsigned int nro_memoria, unsigned long long inicio){
-	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp() };
+	t_metrica_operacion metrica = { .inicio = inicio, .fin = getTimestamp(), .nro_memoria = nro_memoria };
 	pthread_mutex_lock(&mutex_metricas);
 	agregar_metrica(metrica, metricas[consistencia].ultimos_inserts);
-	metricas[consistencia].operaciones_totales++;
-
-	unsigned int * operaciones_memoria;
-	char* memoria = string_from_format("%d", nro_memoria); // Uso char* nomas porque el diccionario de la commons es asi.
-	if(dictionary_has_key(metricas[consistencia].operaciones_por_memoria, memoria)){ // Si hay un valor para esa memoria, simplemente lo actualizamos. Sino, lo agregamos.
-		operaciones_memoria = dictionary_get(metricas[consistencia].operaciones_por_memoria, memoria);
-		(*operaciones_memoria)++;
-	}
-	else{
-		operaciones_memoria = malloc(sizeof(operaciones_memoria));
-		*operaciones_memoria = 1;
-		dictionary_put(metricas[consistencia].operaciones_por_memoria, memoria, operaciones_memoria);
-	}
-
 	pthread_mutex_unlock(&mutex_metricas);
 }
 
@@ -125,6 +95,8 @@ t_metricas * get_metricas(void){
 		metricas_respuesta[consistencia].reads = queue_size(ultimos_selects);
 		metricas_respuesta[consistencia].writes = queue_size(ultimos_inserts);
 
+		unsigned int operaciones_totales = metricas_respuesta[consistencia].reads + metricas_respuesta[consistencia].writes; // Operaciones totales en esa consistencia en los ultimos 30 seg
+
 		void iterador(t_memoria* memoria){
 			char* nro_memoria = string_from_format("%d", memoria->numero);
 
@@ -137,9 +109,20 @@ t_metricas * get_metricas(void){
 				dictionary_put(metricas_respuesta[consistencia].memory_load, strdup(nro_memoria), memory_load);
 			}
 
-			if(dictionary_has_key(metricas[consistencia].operaciones_por_memoria, nro_memoria)){
-				unsigned int * operaciones = dictionary_get(metricas[consistencia].operaciones_por_memoria, nro_memoria);
-				*memory_load = ((float)(*operaciones)) / metricas[consistencia].operaciones_totales;
+			if(operaciones_totales > 0){
+				bool filtrador(t_metrica_operacion * operacion){
+					return operacion->nro_memoria == memoria->numero;
+				}
+
+				t_list * selects_en_memoria = list_filter(ultimos_selects->elements, (_Bool(*)(void*))filtrador); // Selects de esa memoria en los ultimos 30 seg
+				t_list * inserts_en_memoria = list_filter(ultimos_inserts->elements, (_Bool(*)(void*))filtrador); // Inserts de esa memoria en los ultimos 30 seg
+
+				unsigned int operaciones_en_memoria = list_size(selects_en_memoria) + list_size(inserts_en_memoria); // Operaciones de esa memoria en los ultimos 30 seg.
+
+				list_destroy(selects_en_memoria);
+				list_destroy(inserts_en_memoria);
+
+				*memory_load = ((float)operaciones_en_memoria) / operaciones_totales;
 			}
 			else{
 				*memory_load = 0;
