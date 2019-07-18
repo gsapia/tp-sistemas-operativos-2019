@@ -161,6 +161,12 @@ t_resultado create(char* nombreTabla, enum consistencias tipoConsistencia, u_int
 	t_resultado respuesta;
 	respuesta.falla = false;
 
+	if(existeTabla(nombreTabla)){
+		respuesta.falla = true;
+		respuesta.resultado = strdup("ERROR: Esa tabla ya existe");
+		return respuesta;
+	}
+
 	struct_create paquete;
 	paquete.nombreTabla = nombreTabla;
 	paquete.consistencia = tipoConsistencia;
