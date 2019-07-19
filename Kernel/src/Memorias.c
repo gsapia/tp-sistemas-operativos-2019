@@ -117,7 +117,7 @@ t_memoria* obtener_memoria_segun_consistencia(enum consistencias consistencia, u
 
 void gossip(){
 	while(1){
-		int socket = conectar(config.ip_memoria, config.puerto_memoria);
+		int socket = conectar(getConfig().ip_memoria, getConfig().puerto_memoria);
 		if(!socket){
 			log_trace(logger, "No nos pudimos conectar con la memoria principal para pedir su tabla de gossip.");
 		}
@@ -158,6 +158,6 @@ void gossip(){
 			log_info(logger, "Tabla de memorias actualizada. Memorias conocidas: %s", memorias_conocidas);
 		}
 		sem_post(&primer_gossip_hecho);
-		usleep(config.retardo_gossiping * 1000);
+		usleep(getConfig().retardo_gossiping * 1000);
 	}
 }

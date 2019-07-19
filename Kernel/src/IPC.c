@@ -9,7 +9,7 @@ int conectar(char* ip, uint16_t puerto){
 	direccionServidor.sin_addr.s_addr = inet_addr(ip); //Direccion IP
 	direccionServidor.sin_port = htons(puerto); // Puerto al que me conecto (Memoria)
 
-	//log_trace(logger, "Conectando con Memoria en %s:%d",config.ip_memoria,config.puerto_memoria);
+	//log_trace(logger, "Conectando con Memoria en %s:%d",getConfig().ip_memoria,getConfig().puerto_memoria);
 
 	int socket_cliente = socket(AF_INET, SOCK_STREAM, 0);//Pedimos un socket enviandole parametros que especifica que utilizamos protocolo TCP/ IP
 	if(connect(socket_cliente, (void*) &direccionServidor, sizeof(direccionServidor))){
@@ -99,7 +99,7 @@ void updateMetadata(){
 		pthread_mutex_lock(&mutex_metadata);
 		refreshMetadata();
 		pthread_mutex_unlock(&mutex_metadata);
-		usleep(config.refresh_metadata * 1000);
+		usleep(getConfig().refresh_metadata * 1000);
 	}
 }
 
@@ -107,10 +107,10 @@ void initCliente(){
 	log_trace(logger, "Iniciando socket_cliente kernel");
 
 
-	int socket_cliente = conectar(config.ip_memoria, config.puerto_memoria);
+	int socket_cliente = conectar(getConfig().ip_memoria, getConfig().puerto_memoria);
 	while(!socket_cliente){
 		sleep(5);
-		socket_cliente = conectar(config.ip_memoria, config.puerto_memoria);
+		socket_cliente = conectar(getConfig().ip_memoria, getConfig().puerto_memoria);
 	}
 
 	log_trace(logger,"Contectado a Memoria !");

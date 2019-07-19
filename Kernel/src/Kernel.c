@@ -18,6 +18,15 @@ t_queue* colaNew;
 t_queue* colaReady;
 t_queue* colaFinish;
 
+struct ConfigKernel config;
+pthread_mutex_t mutex_config;
+struct ConfigKernel getConfig(){
+	pthread_mutex_lock(&mutex_config);
+	struct ConfigKernel conf = config;
+	pthread_mutex_unlock(&mutex_config);
+	return conf;
+}
+
 
 void inicializarColas(){
 	colaNew = queue_create();
@@ -45,18 +54,21 @@ void actualizar_config(){
 	char buffer[tam];
 
 	while(read(fd, buffer, tam)){
+		pthread_mutex_lock(&mutex_config);
 		configk = config_create(CONFIG_PATH);
 		config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
 		config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
 		config.quantum = config_get_int_value(configk,"QUANTUM");
 		config_destroy(configk);
+		pthread_mutex_unlock(&mutex_config);
 
 		log_trace(logger, "Archivo de configuracion modificado, nuevos valores: RETARDO_CICLICO = %d, REFRESH_METADATA = %d, QUANTUM = %d",
-				config.retardo_ciclico, config.refresh_metadata, config.quantum);
+				getConfig().retardo_ciclico, getConfig().refresh_metadata, getConfig().quantum);
 	}
 }
 void leerConfig(){
 	configk = config_create(CONFIG_PATH);
+	pthread_mutex_lock(&mutex_config);
 	config.ip_memoria = strdup(config_get_string_value(configk,"IP_MEMORIA"));
 	config.puerto_memoria = config_get_int_value(configk,"PUERTO_MEMORIA");
 	config.quantum = config_get_int_value(configk,"QUANTUM");
@@ -64,6 +76,7 @@ void leerConfig(){
 	config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");
 	config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
 	config.retardo_gossiping = config_get_int_value(configk,"RETARDO_GOSSIPING");
+	pthread_mutex_unlock(&mutex_config);
 	config_destroy(configk);
 
 	pthread_t hiloConfig;
@@ -464,9 +477,9 @@ void ejecutarScript(t_script* script){
 	log_trace(logger, "Script \"%s\" entro a estado EXEC.", script->nombre);
 	t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
 	bool fallo = false;
-	for (int q = config.quantum; q > 0 && !queue_is_empty(requests) && !fallo; q--){
-		if(q < config.quantum)
-			usleep(config.retardo_ciclico * 1000); // Agregamos el retardo solo entre operaciones
+	for (int q = getConfig().quantum; q > 0 && !queue_is_empty(requests) && !fallo; q--){
+		if(q < getConfig().quantum)
+			usleep(getConfig().retardo_ciclico * 1000); // Agregamos el retardo solo entre operaciones
 
 		char* request = queue_pop(requests);
 		t_resultado resultado = apiKernel(request);
@@ -533,7 +546,7 @@ int main(void) {
 	sem_init(&new,0,0);
 	sem_init(&ready,0,0);
 	sem_init(&finish,0,0);
-	sem_init(&multiProc,0,config.multiprocesamiento);
+	sem_init(&multiProc,0,getConfig().multiprocesamiento);
 
 	//Inicializo colas de estados
 

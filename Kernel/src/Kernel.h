@@ -24,8 +24,8 @@
 
 
 
-struct ConfigKernel{
 
+struct ConfigKernel{
 	char* ip_memoria;
 	int puerto_memoria;
 	int quantum;
@@ -33,9 +33,9 @@ struct ConfigKernel{
 	int retardo_ciclico;
 	int multiprocesamiento;
 	int retardo_gossiping;
+};
 
-}config;
-
+struct ConfigKernel getConfig();
 
 
 typedef struct{
