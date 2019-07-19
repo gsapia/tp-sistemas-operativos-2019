@@ -25,6 +25,7 @@ void actualizar_config(){
 	char buffer[tam];
 
 	while(read(fd, buffer, tam)){
+		sleep(1);
 		configf = config_create(CONFIG_PATH);
 		config.retardo = config_get_int_value(configf, "RETARDO");
 		config.tiempo_dump = config_get_int_value(configf, "TIEMPODUMP");

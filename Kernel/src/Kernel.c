@@ -55,6 +55,7 @@ void actualizar_config(){
 
 	while(read(fd, buffer, tam)){
 		pthread_mutex_lock(&mutex_config);
+		sleep(1);
 		configk = config_create(CONFIG_PATH);
 		config.retardo_ciclico = config_get_int_value(configk,"RETARDO_CICLICO");
 		config.refresh_metadata = config_get_int_value(configk,"REFRESH_METADATA");

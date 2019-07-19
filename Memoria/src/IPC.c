@@ -5,7 +5,6 @@
 #include "Config.h"
 #include "Misc.h"
 
-//int socket_cliente;
 pthread_mutex_t mutex_fs; // Debemos evitar condiciones de carrera en requests a FS
 
 enum id_proceso handshake(int socket_conexion){
@@ -180,10 +179,6 @@ void initCliente(){
 	}
 	close(socket_cliente);
 	log_info(logger, "Me conecte con FS y obutve el tamanio maximo de value.");
-}
-
-void closeCliente(){
-	//close(socket_cliente); // No me olvido de cerrar el socket que ya no voy a usar
 }
 
 bool kernel_conectado = false;

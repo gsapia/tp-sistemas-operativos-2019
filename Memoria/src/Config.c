@@ -46,6 +46,7 @@ void actualizar_config(){
 	char buffer[tam];
 
 	while(read(fd, buffer, tam)){
+		sleep(1);
 		configf = config_create(CONFIG_PATH);
 		config.retardo_acc_mp = config_get_int_value(configf, "RETARDO_MEM");
 		config.retardo_acc_fs = config_get_int_value(configf, "RETARDO_FS");
