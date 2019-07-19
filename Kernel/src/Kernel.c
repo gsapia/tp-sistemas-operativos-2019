@@ -77,6 +77,7 @@ void leerConfig(){
 void aniadirScript(t_script *script){
 	queue_push(colaNew, script);
 	sem_post(&new);
+	log_trace(logger, "Script \"%s\" entro a estado NEW.", script->nombre);
 }
 
 //Consola Kernel
@@ -448,19 +449,19 @@ void largoPlazo(){
 
 		t_script* script = queue_pop(colaNew);
 
-		log_trace(logger, "Script \"%s\" entro a estado NEW.", script->nombre);
-
 		queue_push(colaReady,script);
 		//moverColaDeReady(script);
 
 		sem_post(&ready);
+
+		log_trace(logger, "Script \"%s\" entro a estado READY.", script->nombre);
 	}
 
 } // End Largo Plazo
 
 
 void ejecutarScript(t_script* script){
-	log_trace(logger, "Script \"%sv entro a estado EXEC.", script->nombre);
+	log_trace(logger, "Script \"%s\" entro a estado EXEC.", script->nombre);
 	t_queue* requests = script->requests;   // busco las request con un puntero a la lista de las mismas
 	bool fallo = false;
 	for (int q = config.quantum; q > 0 && !queue_is_empty(requests) && !fallo; q--){
@@ -484,6 +485,7 @@ void ejecutarScript(t_script* script){
 	if(!queue_is_empty(requests) && !fallo){
 		queue_push(colaReady,script);
 		sem_post(&ready);
+		log_trace(logger, "Script \"%s\" entro a estado READY.", script->nombre);
 		//moverAColaReady(scripts)
 	}
 	else{
@@ -497,12 +499,8 @@ void ejecutarScript(t_script* script){
 void cortoPlazo(){
 	while (1){
 		sem_wait(&ready);
-
-		t_script* script = queue_pop(colaReady);
-
-		log_trace(logger, "Script \"%s\" entro a estado READY.", script->nombre);
-
 		sem_wait(&multiProc);
+		t_script* script = queue_pop(colaReady);
 
 		// Mando la ejecucion a un hilo_exec deatacheable
 		pthread_t hilo_exec;
