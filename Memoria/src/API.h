@@ -13,6 +13,6 @@ struct_describe_respuesta describe(char* nombreTabla);
 struct_describe_global_respuesta describe_global();
 enum estados_drop drop(char* nombreTabla);
 enum estados_journal journal();
-
+char* estado(void);
 
 #endif /* API_H_ */

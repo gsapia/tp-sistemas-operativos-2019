@@ -8,10 +8,15 @@
 #include <commons/collections/list.h>
 #include <pthread.h>
 #include "Memoria.h"
+#include "Config.h"
 
 #define CANT_PAGINAS ( config.tamanio_memoria / tamanio_pagina )
 
+uint64_t* paginas_usadas; // Ultima vez que se uso cada pagina. Posiciones en 0 indican paginas libres.
+
 typedef void* t_marco;
+
+bool full;
 
 void* memoria_principal;
 

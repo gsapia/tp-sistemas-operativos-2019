@@ -250,10 +250,26 @@ char *apiMemoria(char* mensaje){
 			free(comando);
 			return string_from_format("Sintaxis invalida. Uso: JOURNAL");
 		}
+		else if(!strcmp(comando[0],"ESTADO")){
+			//ESTADO
+
+			free(comando[0]);
+			if(cantArgumentos == 0){
+				free(comando);
+				return estado();
+			}
+			while(cantArgumentos){
+				free(comando[cantArgumentos]);
+				cantArgumentos--;
+			}
+			free(comando);
+			return string_from_format("Sintaxis invalida. Uso: JOURNAL");
+				}
 		while(cantArgumentos){
 			free(comando[cantArgumentos]);
 			cantArgumentos--;
 		}
+
 		free(comando[0]);
 	}
 	free(comando);

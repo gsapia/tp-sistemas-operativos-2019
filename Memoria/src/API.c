@@ -1,6 +1,7 @@
 #include "API.h"
 #include "MemoriaPrincipal.h"
 #include "IPC.h"
+#include <commons/string.h>
 
 struct_select_respuesta selects(char* nombreTabla, u_int16_t key){
 	struct_select_respuesta respuesta;
@@ -108,4 +109,43 @@ enum estados_drop drop(char* nombreTabla){
 enum estados_journal journal(){
 	vaciar_memoria();
 	return ESTADO_JOURNAL_OK;
+}
+
+char* estado(){
+	pthread_mutex_lock(&mutex_memoria_principal);
+
+	char* resultado = string_from_format("FRAMES: Hay %d frames:\n", CANT_PAGINAS);
+
+	unsigned int frames_usados = 0;
+	for(int i = 0; i < CANT_PAGINAS; i++){
+		string_append_with_format(&resultado, "\tFrame %d. En uso: %s.\n", i,
+				paginas_usadas[i] ? "Si" : "No");
+		if(paginas_usadas[i])
+			frames_usados++;
+	}
+
+	if(full || frames_usados == CANT_PAGINAS){
+		string_append_with_format(&resultado, "\nLa memoria esta FULL.");
+	}
+	else{
+		string_append_with_format(&resultado, "\nHay %d frames en uso.", frames_usados);
+	}
+
+	string_append_with_format(&resultado, "\n\nSEGMENTOS: Hay %d segmentos:\n", list_size(tabla_segmentos));
+
+	void iterador_segmentos(t_segmento * segmento){
+		string_append_with_format(&resultado, "Segmento %s tiene %d paginas:\n", segmento->nombre_tabla, list_size(segmento->paginas));
+
+		void iterador_paginas(t_pagina * pagina){
+			string_append_with_format(&resultado, "\tPagina %d (key %d). Modificado: %d\n", pagina->numero, *((uint16_t*)(pagina->marco + DESPL_KEY)), (pagina->modificado ? 1 : 0));
+		}
+
+		list_iterate(segmento->paginas, iterador_paginas);
+	}
+
+	list_iterate(tabla_segmentos, iterador_segmentos);
+
+	pthread_mutex_unlock(&mutex_memoria_principal);
+
+	return resultado;
 }

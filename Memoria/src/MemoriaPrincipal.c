@@ -2,14 +2,22 @@
 #include "Misc.h"
 #include "Config.h"
 #include "IPC.h"
+#include "API.h"
 
-uint64_t* paginas_usadas; // Ultima vez que se uso cada pagina. Posiciones en 0 indican paginas libres.
-bool full = false;
 
 void auto_journaling(){
 	while(1){
 		msleep(config.tiempo_journal);
 		vaciar_memoria();
+	}
+}
+
+void auto_status(){
+	while(1){
+		sleep(15);
+		char * estadostr = estado();
+		log_info(logger, "Estado: \n%s", estadostr);
+		free(estadostr);
 	}
 }
 
@@ -38,7 +46,16 @@ void initMemoriaPrincipal(){
 		exit(EXIT_FAILURE);
 	}
 	pthread_detach(hiloJournaling);
+
+	pthread_t hiloStatus;
+	if (pthread_create(&hiloStatus, NULL, (void*)auto_status, NULL)) {
+		log_error(logger, "Hilo auto_journaling: Error - pthread_create()");
+		exit(EXIT_FAILURE);
+	}
+	pthread_detach(hiloStatus);
 }
+
+
 
 
 // Devuelve el marco de una pagina que no haya sido modificada, o -1 en caso de no haber ninguna
@@ -275,6 +292,9 @@ t_segmento* agregar_segmento(char* nombreTabla){
 
 void vaciar_memoria(){
 	log_info(logger, "Realizando Journaling.");
+	char * estadostr =  estado();
+	log_info(logger, "Estado de la memoria: \n%s", estadostr);
+	free(estadostr);
 	pthread_mutex_lock(&mutex_memoria_principal); // Evitamos que alguien tome nuevas paginas mientras tanto
 
 	void liberar_segmento(t_segmento* segmento){
